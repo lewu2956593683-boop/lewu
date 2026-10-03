@@ -9,18 +9,36 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐋</text></svg>">
 <meta property="og:title" content="乐乌 · 个人主页">
 <meta property="og:description" content="把日子过成自己喜欢的样子 🍃">
-<meta property="og:image" content="avatar.jpg">
+<meta property="og:image" content="https://lewu.pages.dev/avatar.jpg">
+<meta property="og:url" content="https://lewu.pages.dev/">
+<meta property="og:site_name" content="乐乌">
 <meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="乐乌 · 个人主页">
+<meta name="twitter:description" content="把日子过成自己喜欢的样子 🍃">
+<meta name="twitter:image" content="https://lewu.pages.dev/avatar.jpg">
+<link rel="canonical" href="https://lewu.pages.dev/">
+<link rel="apple-touch-icon" href="avatar.jpg">
 <script>
   try{if(localStorage.getItem('theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}
 </script>
 <style>
+  /* 注册颜色变量：让 var() 在主题切换时真正可插值，避免过渡时从 initial（透明/白）开始闪白 */
+  @property --bg1{syntax:'<color>';inherits:true;initial-value:#dff3f1;}
+  @property --bg2{syntax:'<color>';inherits:true;initial-value:#e8e3fb;}
+  @property --bg3{syntax:'<color>';inherits:true;initial-value:#fdeef4;}
+  @property --ink{syntax:'<color>';inherits:true;initial-value:#2b3a4a;}
+  @property --ink-2{syntax:'<color>';inherits:true;initial-value:#5c6b7a;}
+  @property --glass{syntax:'<color>';inherits:true;initial-value:rgba(255,255,255,.42);}
+  @property --glass-bd{syntax:'<color>';inherits:true;initial-value:rgba(255,255,255,.65);}
+  @property --acc{syntax:'<color>';inherits:true;initial-value:#5aa9a0;}
+  @property --acc2{syntax:'<color>';inherits:true;initial-value:#8b7fd4;}
   :root{
     --bg1:#dff3f1; --bg2:#e8e3fb; --bg3:#fdeef4;
     --ink:#2b3a4a; --ink-2:#5c6b7a;
     --glass:rgba(255,255,255,.42);
     --glass-bd:rgba(255,255,255,.65);
-    --acc:#5aa9a0; --acc2:#8b7fd4;
+    --acc:#5aa9a0; --acc2:#8b7fd4; --ds:#4d6bfe; /* DeepSeek 官方品牌蓝 */
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html{scroll-behavior:smooth}
@@ -79,6 +97,14 @@
   @keyframes spin{to{transform:rotate(360deg)}}
   .avatar{position:relative;width:118px;height:118px;border-radius:50%;object-fit:cover;
     border:4px solid rgba(255,255,255,.85);box-shadow:0 12px 32px rgba(70,110,130,.25);}
+  /* 头像点击反馈：弹一下 + 轻微摇头 */
+  .avatar.pop{animation:avatarPop .55s cubic-bezier(.34,1.56,.64,1);}
+  @keyframes avatarPop{
+    0%{transform:scale(1) rotate(0)}
+    35%{transform:scale(1.18) rotate(3deg)}
+    65%{transform:scale(.94) rotate(-2deg)}
+    100%{transform:scale(1) rotate(0)}
+  }
   .hero h1{font-size:34px;font-weight:800;letter-spacing:4px;margin-bottom:10px;}
   .hero .sub{font-size:15px;color:var(--ink-2);letter-spacing:1px;margin-bottom:6px;}
   .hero .tag{display:inline-flex;gap:6px;align-items:center;margin-top:8px;padding:7px 16px;border-radius:999px;
@@ -124,6 +150,9 @@
   .work-item .wm{font-weight:600;font-size:14px;margin-bottom:4px;color:var(--ink);}
   .work-item .wd{font-size:12.5px;color:var(--ink-2);line-height:1.7;}
   .work-item .arrow{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:18px;opacity:.5;}
+  .wb{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:500;letter-spacing:.3px;
+    color:var(--acc);background:var(--glass);border:1px solid var(--glass-bd);vertical-align:1px;line-height:1.5;
+    transition:color .5s ease,border-color .5s ease;}
 
   /* 时间线 */
   .timeline{position:relative;padding-left:24px;}
@@ -143,13 +172,14 @@
   .msg .mb{font-size:13.5px;line-height:1.6;padding:9px 13px;border-radius:14px;background:var(--glass);border:1px solid var(--glass-bd);color:var(--ink-2);}
   .msg .nick{font-size:11px;color:var(--ink-2);opacity:.75;margin-bottom:2px;}
   /* 玻璃组统一主题过渡：与卡片一致，随昼夜平滑变色 */
-  nav,nav a,.hero .tag,.skill,.work-item,.msg .mb,footer .soc a,.music-dock,.music-panel,.mp-title,.mp-artist,.mp-time,.music-dock .dt b,.music-dock .dt span,.msg .nick,.work-item .wm,.work-item .wd{
+  nav,nav a,.hero .tag,.skill,.work-item,.msg .mb,footer .soc a,.music-dock,.music-panel,.mp-title,.mp-artist,.mp-time,.music-dock .dt b,.music-dock .dt span,.msg .nick,.work-item .wm,.work-item .wd,footer .ver,footer .visit-count{
     transition:color .5s ease,border-color .5s ease;
   }
 
   /* 页脚 */
   footer{text-align:center;margin-top:54px;color:var(--ink-2);font-size:12px;opacity:.85;line-height:2;}
   footer .visit-count{display:inline-block;margin-top:6px;padding:3px 12px;border-radius:999px;background:var(--glass);border:1px solid var(--glass-bd);font-size:11px;opacity:.9;}
+  footer .ver{display:inline-block;margin-top:6px;padding:2px 10px;border-radius:999px;background:var(--glass);border:1px solid var(--glass-bd);font-size:10.5px;color:var(--acc);letter-spacing:.3px;}
   footer .soc{display:flex;justify-content:center;gap:14px;margin-bottom:12px;}
   footer .soc a{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:50%;
     background:var(--glass);border:1px solid var(--glass-bd);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
@@ -173,6 +203,7 @@
     --ink:#e8f0f7; --ink-2:#a3b6c8;
     --glass:rgba(16,30,44,.55);
     --glass-bd:rgba(255,255,255,.16);
+    --ds:#7c8cff; /* 深色下用稍亮的 DeepSeek 蓝，保证玻璃上可见 */
   }
   /* 深色下的光球氛围 + 平滑过渡 */
   html.dark .blob{opacity:.35}
@@ -286,11 +317,187 @@
     box-shadow:0 8px 20px rgba(80,120,140,.2),inset 0 1px 0 rgba(255,255,255,.6);
     transition:transform .2s ease,box-shadow .3s ease;}
   .mp-play:active{transform:scale(.92)}
-  .mp-vol{flex:1;display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink-2);}
-  .mp-vol input{flex:1;height:5px;accent-color:var(--acc);}
+  .mp-vol{flex:1;min-width:0;display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink-2);}
+  .mp-vol input{flex:1;min-width:0;width:100%;height:5px;accent-color:var(--acc);}
+  /* 曲目列表 + 切歌按钮 */
+  .mp-list{display:flex;flex-direction:column;gap:6px;margin:0 0 12px;max-height:150px;overflow-y:auto;}
+  .mp-item{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;border-radius:12px;cursor:pointer;text-align:left;
+    background:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.65);color:var(--ink);
+    transition:background .25s ease,border-color .25s ease;
+    font-family:inherit;font-size:12px;flex-shrink:0;}
+  .mp-item:hover{background:rgba(255,255,255,.75)}
+  .mp-item .e{flex-shrink:0;font-size:14px;}
+  .mp-item .t{flex:1;min-width:0;}
+  .mp-item .t b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .mp-item .t i{display:block;font-style:normal;font-size:10px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .mp-item.on{background:linear-gradient(135deg,rgba(127,216,205,.45),rgba(167,155,240,.45));border-color:rgba(255,255,255,.9);}
+  .mp-skip{width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.75);flex-shrink:0;cursor:pointer;
+    background:rgba(255,255,255,.55);color:#3a4a5a;font-size:13px;
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .2s ease;}
+  .mp-skip:active{transform:scale(.9)}
+
+  /* ===== 开屏动画（借鉴 ZP-OS 启动过场，液态玻璃风） ===== */
+  .boot{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:130px;
+    background:linear-gradient(135deg,#0b1626,#14263a 60%,#1a2f45);
+    transition:opacity .3s ease,clip-path .7s cubic-bezier(.65,0,.35,1);user-select:none;
+    clip-path:inset(0 0 0 0);overflow:hidden;}
+  .boot::before{content:"";position:absolute;inset:0;opacity:.55;
+    background:radial-gradient(circle at 30% 30%,rgba(127,216,205,.18),transparent 50%),
+               radial-gradient(circle at 70% 70%,rgba(167,155,240,.18),transparent 50%);}
+  .boot.hide{opacity:0;pointer-events:none;clip-path:inset(0 0 100% 0);}
+  .boot-ring{position:relative;width:118px;height:118px;border-radius:50%;}
+  .boot-ring::before{content:"";position:absolute;inset:0;border-radius:50%;
+    background:conic-gradient(from 0deg,#7fd8cd,#a79bf0,#f7b6d0,#7fd8cd);
+    filter:blur(10px);opacity:.85;animation:bootSpin 2.4s linear infinite;}
+  .boot-ring::after{content:"";position:absolute;inset:9px;border-radius:50%;background:#0e1a28;}
+  .boot-whale{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2;display:flex;
+    animation:bootBob 1.6s ease-in-out infinite;}
+  .boot-whale svg{width:56px;height:auto;filter:drop-shadow(0 6px 18px rgba(90,140,255,.38));}
+  .boot-name{margin-top:22px;font-size:17px;font-weight:700;letter-spacing:8px;color:#e8f0f7;padding-left:8px;
+    opacity:0;animation:bootFade .8s .25s ease forwards;}
+  .boot-bar{width:168px;height:3px;border-radius:3px;margin-top:16px;background:rgba(255,255,255,.14);overflow:hidden;}
+  .boot-fill{height:100%;width:0;border-radius:3px;background:linear-gradient(90deg,#7fd8cd,#a79bf0);
+    animation:bootLoad 1.5s .15s cubic-bezier(.4,0,.2,1) forwards;}
+  @keyframes bootSpin{to{transform:rotate(360deg)}}
+  @keyframes bootBob{0%,100%{transform:translate(-50%,-50%) translateY(0)}50%{transform:translate(-50%,-50%) translateY(-6px)}}
+  @keyframes bootFade{to{opacity:1}}
+  @keyframes bootLoad{to{width:100%}}
+  /* 开屏：加载百分比 + 打字机提示 */
+  .boot-pct{margin-top:8px;font-size:11px;color:rgba(232,240,247,.5);letter-spacing:1px;font-variant-numeric:tabular-nums;}
+  .boot-tip{margin-top:12px;font-size:12.5px;color:rgba(232,240,247,.72);letter-spacing:2px;min-height:18px;white-space:nowrap;}
+  .boot-caret{display:inline-block;width:2px;height:12px;margin-left:3px;vertical-align:-1px;background:#7fd8cd;
+    animation:caretBlink .7s steps(2) infinite;}
+  @keyframes caretBlink{50%{opacity:0}}
+  /* 开屏：背景上升气泡（纯 CSS） */
+  .bub{position:absolute;bottom:-40px;border-radius:50%;opacity:0;pointer-events:none;
+    background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.5),rgba(127,216,205,.22) 60%,transparent);
+    animation:bootBub var(--t,6s) linear var(--d,0s) infinite;}
+  @keyframes bootBub{
+    0%{transform:translateY(0);opacity:0}
+    12%{opacity:.7}
+    88%{opacity:.45}
+    100%{transform:translateY(-112vh);opacity:0}
+  }
+  .bub:nth-of-type(1){width:16px;height:16px;left:8%;--t:5.2s;--d:0s}
+  .bub:nth-of-type(2){width:10px;height:10px;left:18%;--t:6.8s;--d:1.1s}
+  .bub:nth-of-type(3){width:20px;height:20px;left:30%;--t:7.6s;--d:.4s}
+  .bub:nth-of-type(4){width:12px;height:12px;left:42%;--t:5.8s;--d:2s}
+  .bub:nth-of-type(5){width:26px;height:26px;left:56%;--t:8.2s;--d:1.6s}
+  .bub:nth-of-type(6){width:11px;height:11px;left:68%;--t:6.4s;--d:.8s}
+  .bub:nth-of-type(7){width:18px;height:18px;left:80%;--t:7s;--d:2.4s}
+  .bub:nth-of-type(8){width:13px;height:13px;left:90%;--t:5.5s;--d:1.2s}
+  @media(prefers-reduced-motion:reduce){.boot{display:none}}
+
+  /* ===== 鲸鱼助手（可对话桌宠） ===== */
+  .pet-panel{
+    position:fixed;left:18px;bottom:90px;z-index:96;width:min(320px,calc(100vw - 36px));
+    border-radius:22px;padding:16px;
+    background:var(--glass);border:1px solid var(--glass-bd);
+    backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);
+    box-shadow:0 20px 50px rgba(80,120,140,.24),inset 0 1px 0 rgba(255,255,255,.7);
+    opacity:0;pointer-events:none;transform:translateY(12px) scale(.96);transform-origin:bottom left;
+    transition:opacity .3s ease,transform .3s ease,color .5s ease,border-color .5s ease;
+  }
+  .pet-panel.open{opacity:1;transform:none;pointer-events:auto;}
+  .pet-head{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:600;color:var(--ink);margin-bottom:10px;}
+  .pet-head .pet-logo{display:inline-flex;align-items:center;color:var(--ds);margin-right:6px;}
+  .pet-head .pet-logo svg{width:17px;height:auto;display:block;}
+  .pet-head span:not(.pet-logo){font-size:10.5px;font-weight:400;color:var(--ds);}
+  .pet-msgs{height:min(230px,34vh);overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px;scroll-behavior:smooth;}
+  .pet-msgs::-webkit-scrollbar{width:4px}
+  .pet-msgs::-webkit-scrollbar-thumb{background:rgba(90,130,150,.25);border-radius:4px}
+  .pet-msg{display:flex;gap:7px;align-items:flex-end;animation:msgIn .25s ease;}
+  @keyframes msgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .pet-msg .pet-ava{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--glass);border:1px solid var(--glass-bd);color:var(--ds);}
+  .pet-msg .pet-ava svg{width:15px;height:auto;display:block;}
+  .pet-msg .pet-mb{font-size:12.5px;line-height:1.6;padding:8px 11px;border-radius:14px;color:var(--ink-2);background:var(--glass);border:1px solid var(--glass-bd);max-width:80%;white-space:pre-line;word-break:break-word;}
+  .pet-msg.u{flex-direction:row-reverse}
+  .pet-msg.u .pet-mb{background:linear-gradient(135deg,rgba(127,216,205,.35),rgba(167,155,240,.35));color:var(--ink);}
+  .pet-msg.w .pet-mb{border-top-left-radius:4px}
+  .pet-msg.u .pet-mb{border-top-right-radius:4px}
+  .pet-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+  .pet-chips button{font-size:11px;padding:4px 10px;border-radius:999px;cursor:pointer;color:var(--acc);background:var(--glass);border:1px solid rgba(90,169,160,.35);transition:transform .15s ease;font-family:inherit;}
+  .pet-chips button:hover{background:rgba(127,216,205,.2)}
+  .pet-chips button:active{transform:scale(.95)}
+  .pet-tips{font-size:10.5px;color:var(--ink-2);opacity:.7;margin-bottom:8px;line-height:1.5;}
+  .pet-row{display:flex;gap:8px;}
+  .pet-row input{flex:1;min-width:0;height:36px;border-radius:999px;border:1px solid var(--glass-bd);background:var(--glass);padding:0 14px;font-size:12.5px;color:var(--ink);outline:none;font-family:inherit;transition:border-color .3s ease;}
+  .pet-row input:focus{border-color:rgba(90,169,160,.6)}
+  .pet-row input::placeholder{color:var(--ink-2);opacity:.6}
+  .pet-row button{height:36px;padding:0 16px;border:none;border-radius:999px;cursor:pointer;font-size:12.5px;color:#fff;background:linear-gradient(135deg,var(--acc),var(--acc2));flex-shrink:0;transition:transform .15s ease,filter .2s ease;font-family:inherit;}
+  .pet-row button:active{transform:scale(.95)}
+  .pet-row button:disabled{opacity:.5;cursor:not-allowed}
+  .pet-btn{
+    position:fixed;left:18px;bottom:18px;z-index:97;width:56px;height:56px;border-radius:50%;
+    border:1px solid var(--glass-bd);background:var(--glass);cursor:pointer;
+    color:var(--ds);display:flex;align-items:center;justify-content:center;
+    backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);
+    box-shadow:0 10px 26px rgba(80,120,140,.18),inset 0 1px 0 rgba(255,255,255,.6);
+    transition:transform .3s ease,box-shadow .3s ease,color .5s ease,border-color .5s ease;
+    animation:petBob 3.2s ease-in-out infinite;
+  }
+  .pet-btn svg{width:32px;height:auto;display:block;}
+  .pet-btn:hover{box-shadow:0 14px 32px rgba(80,120,140,.28)}
+  .pet-btn:active{transform:scale(.92)}
+  .pet-btn.swim{animation:swim 3.4s ease-in-out;}
+  /* 吸引注意：按钮呼吸光晕 */
+  .pet-btn.attn{animation:petBob 3.2s ease-in-out infinite,petGlow 1.4s ease-in-out infinite;}
+  @keyframes petGlow{
+    0%,100%{box-shadow:0 0 0 0 rgba(77,107,254,.45),0 10px 26px rgba(80,120,140,.18)}
+    50%{box-shadow:0 0 0 12px rgba(77,107,254,0),0 10px 26px rgba(80,120,140,.18)}
+  }
+  @keyframes petBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+  @keyframes swim{
+    0%{transform:translateX(0) scaleX(1)}
+    18%{transform:translateX(0) scaleX(-1)}
+    45%{transform:translateX(calc(100vw - 92px)) scaleX(-1)}
+    72%{transform:translateX(calc(100vw - 92px)) scaleX(1)}
+    100%{transform:translateX(0) scaleX(1)}
+  }
+  .pet-bubble{
+    position:fixed;left:84px;bottom:34px;z-index:96;max-width:190px;
+    font-size:12px;line-height:1.6;color:var(--ink-2);padding:8px 12px;border-radius:14px;
+    background:var(--glass);border:1px solid var(--glass-bd);
+    backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);
+    box-shadow:0 8px 22px rgba(80,120,140,.16);
+    opacity:0;pointer-events:none;transform:translateY(6px);
+    transition:opacity .35s ease,transform .35s ease,color .5s ease,border-color .5s ease;
+  }
+  .pet-bubble.show{opacity:1;transform:none;}
+  /* 引导气泡：可点击、带蓝色描边，点它直接打开聊天 */
+  .pet-bubble.cta{pointer-events:auto;cursor:pointer;border-color:rgba(77,107,254,.55);}
+  .pet-bubble.cta::after{content:"👆";position:absolute;left:8px;bottom:-20px;font-size:13px;animation:ctaNod 1.2s ease-in-out infinite;}
+  @keyframes ctaNod{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+  /* 音乐未自动播放时 dock 内的提示徽标 */
+  .mp-hint{display:none;font-size:10px;color:var(--ds);border:1px solid rgba(77,107,254,.45);
+    background:rgba(255,255,255,.6);padding:2px 8px;border-radius:999px;white-space:nowrap;
+    animation:hintBlink 1.6s ease-in-out infinite;flex-shrink:0;}
+  .mp-hint.show{display:inline-block}
+  @keyframes hintBlink{0%,100%{opacity:1}50%{opacity:.55}}
+  @media(max-width:640px){
+    .pet-panel{left:12px;bottom:158px;width:calc(100vw - 24px)}
+    .pet-btn{left:12px;bottom:96px}
+    .pet-bubble{left:78px;bottom:110px}
+  }
+
+  
+
+  
 </style>
 </head>
 <body>
+  <!-- 开屏动画 -->
+  <div class="boot" id="boot">
+    <i class="bub"></i><i class="bub"></i><i class="bub"></i><i class="bub"></i>
+    <i class="bub"></i><i class="bub"></i><i class="bub"></i><i class="bub"></i>
+    <div class="boot-ring"><span class="boot-whale"><svg viewBox="0 0 57 42" width="50" height="37" aria-hidden="true"><defs><linearGradient id="bootWhale" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4fc3f7"/><stop offset="1" stop-color="#8e8bff"/></linearGradient></defs><path fill="url(#bootWhale)" d="M55.6128 3.47119C55.0175 3.17944 54.7611 3.73535 54.413 4.01782C54.2939 4.10889 54.1932 4.22729 54.0924 4.33667C53.2223 5.26587 52.2057 5.87646 50.8776 5.80347C48.9359 5.69409 47.2781 6.30469 45.8126 7.78979C45.5012 5.9585 44.4663 4.86499 42.8909 4.16357C42.0667 3.79907 41.2332 3.43457 40.6561 2.64185C40.2532 2.07715 40.1432 1.44849 39.9418 0.828857C39.8135 0.455322 39.6853 0.0725098 39.2548 0.00878906C38.7877 -0.0639648 38.6045 0.327637 38.4213 0.655762C37.6886 1.99512 37.4047 3.47119 37.4321 4.96533C37.4962 8.32739 38.9159 11.0059 41.7369 12.9102C42.0575 13.1289 42.1399 13.3474 42.0392 13.6665C41.8468 14.3225 41.6178 14.9602 41.4164 15.6162C41.2881 16.0354 41.0957 16.1265 40.647 15.9441C39.0991 15.2974 37.7618 14.3406 36.5803 13.1836C34.5745 11.2429 32.761 9.10181 30.4988 7.42529C29.9675 7.03345 29.4363 6.66919 28.8867 6.32275C26.5786 4.08154 29.189 2.24097 29.7935 2.02246C30.4254 1.79468 30.0133 1.01099 27.9708 1.02026C25.9283 1.0293 24.0599 1.71265 21.6786 2.62378C21.3306 2.7605 20.9641 2.8606 20.5886 2.94263C18.4271 2.53271 16.1831 2.44141 13.8384 2.70581C9.42371 3.19775 5.89758 5.28418 3.30554 8.84668C0.191406 13.1289 -0.54126 17.9941 0.356323 23.0691C1.29968 28.4172 4.02905 32.8452 8.22388 36.3076C12.5745 39.8972 17.5845 41.6558 23.2997 41.3186C26.771 41.1182 30.6361 40.6536 34.9958 36.9636C36.0948 37.5103 37.2489 37.7288 39.1632 37.8928C40.6378 38.0295 42.0575 37.8201 43.1565 37.5923C44.8784 37.2278 44.7594 35.6333 44.1366 35.3418C39.09 32.9912 40.1981 33.9478 39.1907 33.1733C41.7552 30.1394 45.6204 26.9868 47.1316 16.7732C47.2506 15.9624 47.1499 15.4521 47.1316 14.7961C47.1224 14.3953 47.214 14.2405 47.672 14.1948C48.9359 14.0491 50.1632 13.7029 51.2898 13.0833C54.5596 11.2976 55.8784 8.36377 56.1898 4.84692C56.2357 4.30933 56.1807 3.75342 55.6128 3.47119ZM27.119 35.123C22.2281 31.2783 19.856 30.0117 18.8759 30.0664C17.96 30.1211 18.1249 31.1689 18.3263 31.8523C18.537 32.5264 18.8118 32.9912 19.1964 33.5833C19.462 33.9751 19.6453 34.5581 18.9309 34.9956C17.3555 35.9705 14.6169 34.6675 14.4886 34.6038C11.3014 32.7268 8.63611 30.2485 6.75842 26.8594C4.94495 23.5974 3.89172 20.0989 3.71765 16.3633C3.67188 15.4614 3.9375 15.1423 4.83508 14.9785C6.0166 14.7598 7.23474 14.7141 8.41626 14.8872C13.408 15.6162 17.6577 17.8484 21.2206 21.3835C23.2539 23.397 24.7926 25.8025 26.3772 28.1531C28.0624 30.6494 29.8759 33.0276 32.184 34.9773C32.9991 35.6606 33.6494 36.1799 34.2722 36.5627C32.3947 36.7722 29.2622 36.8179 27.119 35.123ZM29.4637 20.0442C29.4637 19.6433 29.7843 19.3245 30.1874 19.3245C30.2789 19.3245 30.3613 19.3425 30.4346 19.3699C30.5354 19.4065 30.627 19.4612 30.7002 19.543C30.8285 19.6707 30.9017 19.8528 30.9017 20.0442C30.9017 20.4451 30.5812 20.7639 30.1782 20.7639C29.7751 20.7639 29.4637 20.4451 29.4637 20.0442ZM36.7452 23.7798C36.2781 23.9712 35.811 24.135 35.3622 24.1533C34.6661 24.1897 33.9059 23.9072 33.4938 23.561C32.8527 23.0234 32.3947 22.7229 32.2023 21.7844C32.1199 21.3835 32.1656 20.7639 32.239 20.4087C32.4038 19.6433 32.2206 19.1514 31.6803 18.7048C31.2406 18.3403 30.6819 18.2402 30.0682 18.2402C29.8392 18.2402 29.6287 18.1399 29.4729 18.0579C29.2164 17.9304 29.0059 17.6116 29.2073 17.2197C29.2714 17.0923 29.5829 16.7825 29.6561 16.7278C30.4896 16.2539 31.4513 16.4089 32.3397 16.7642C33.1641 17.1013 33.7869 17.7209 34.6844 18.5955C35.6003 19.6523 35.7651 19.9441 36.2872 20.7366C36.6995 21.3562 37.075 21.9939 37.3314 22.7229C37.4871 23.1785 37.2856 23.552 36.7452 23.7798Z"/></svg></span></div>
+    <div class="boot-name">乐 乌</div>
+    <div class="boot-bar"><div class="boot-fill"></div></div>
+    <div class="boot-tip"><span class="tip-txt"></span><span class="boot-caret"></span></div>
+    <div class="boot-pct">0%</div>
+  </div>
+
   <div class="blobs"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
   <div class="grain"></div>
 
@@ -326,8 +533,8 @@
         <h3><i>🛠</i> 技能</h3>
         <div class="skills">
           <span class="skill">写代码</span><span class="skill p">做设计</span>
-          <span class="skill">打游戏</span><span class="skill p">睡觉</span>
-          <span class="skill p">熬夜</span>
+          <span class="skill">手机控</span><span class="skill p">摩羯座</span>
+          <span class="skill">各种宅</span><span class="skill p">游戏</span>
         </div>
       </div>
 
@@ -342,20 +549,20 @@
 
     <!-- 作品 -->
     <section id="works" class="card reveal">
-      <div class="sec-title">小作品</div>
+      <div class="sec-title">小作品 <span style="font-size:11px;font-weight:400;color:var(--ink-2);opacity:.7;margin-left:6px;">· 一些正在发光的小东西 ✨</span></div>
       <div class="work-item">
-        <div class="wm">💎 乐乌计算器</div>
-        <div class="wd">自己做的安卓计算器，有鲸鱼粒子彩蛋，还换了专属图标～</div>
+        <div class="wm">💎 乐乌计算器 <span class="wb">稳定版</span></div>
+        <div class="wd">自己做的安卓计算器：深色玻璃质感、按钮带真实光晕，输入 1145141919 还会召唤一条鲸鱼游过 ✨</div>
         <span class="arrow">→</span>
       </div>
       <div class="work-item">
-        <div class="wm">🌊 液态玻璃小站（就是本站）</div>
-        <div class="wd">清新玻璃拟态风格，从零手写，响应式适配手机和电脑。</div>
+        <div class="wm">🌊 液态玻璃小站（就是本站）<span class="wb">v1.2 · 玻璃版</span></div>
+        <div class="wd">把一块会呼吸的液态玻璃搬进网页：鲸鱼潜水时，把留言吹成气泡浮上来 🫧</div>
         <span class="arrow">→</span>
       </div>
       <div class="work-item">
-        <div class="wm">🌱 生活相册（建设中）</div>
-        <div class="wd">想把每天的小确幸都收进来，慢慢攒成一个四季展览。</div>
+        <div class="wm">🌱 生活相册 <span class="wb">施工中</span></div>
+        <div class="wd">想把每天的小确幸都收进来——四季展览正在慢慢长出来，欢迎常来逛逛 🌿</div>
         <span class="arrow">→</span>
       </div>
     </section>
@@ -365,16 +572,16 @@
       <div class="sec-title">足迹</div>
       <div class="timeline">
         <div class="tl-item">
-          <div class="tt">2026 · 乐乌的小站上线</div>
+          <div class="tt">2026.10 · 乐乌的小站上线</div>
           <div class="td">从零开始写了这个网站，第一次让 "乐乌" 有了可以外访的小家 🏡</div>
         </div>
         <div class="tl-item">
-          <div class="tt">2025 · 动手做 App</div>
+          <div class="tt">2026.09 · 动手做 App</div>
           <div class="td">学会了打包安卓应用，第一版「乐乌计算器」装到了自己手机上。</div>
         </div>
         <div class="tl-item">
           <div class="tt">更早 · 收集热爱</div>
-          <div class="td">练琴、拍照、写点小代码……日子在热爱里发光 ✨</div>
+          <div class="td">写点小代码、拍拍照、打打游戏……日子在热爱里发光 ✨</div>
         </div>
       </div>
     </section>
@@ -410,6 +617,7 @@
         <a href="#" title="微博">📣</a>
       </div>
       © 2026 乐乌 · 纯 AI 制作 · 由「吃白饭的大鲸鱼」做的 🐋
+      <span class="ver">v1.2 · 玻璃版</span>
     </footer>
   </div>
 
@@ -417,30 +625,53 @@
   <button class="to-top" id="toTop" title="回到顶部">↑</button>
 
   <!-- 音乐播放器 -->
-  <audio id="bgm" src="music.mp3" preload="auto" loop></audio>
+  <audio id="bgm" src="music.mp3" preload="auto"></audio>
   <div class="music-panel" id="mp">
     <div class="mp-head">
-      <div class="mp-cover">🎻</div>
+      <div class="mp-cover" id="mpCover">🎻</div>
       <div style="flex:1;min-width:0;">
-        <div class="mp-title">无感（小提琴完整版）</div>
-        <div class="mp-artist">Strictlyviolin荀博 · 王朝</div>
+        <div class="mp-title" id="mpTitle">无感（小提琴完整版）</div>
+        <div class="mp-artist" id="mpArtist">Strictlyviolin荀博 · 王朝</div>
       </div>
     </div>
+    <div class="mp-list" id="mpList"></div>
     <div class="mp-progress" id="mpBar"><i id="mpFill"></i></div>
     <div class="mp-time"><span id="mpCur">00:00</span><span id="mpDur">00:00</span></div>
     <div class="mp-row">
+      <button class="mp-skip" id="mpPrev" title="上一首">⏮</button>
       <button class="mp-play" id="mpPlay">▶</button>
+      <button class="mp-skip" id="mpNext" title="下一首">⏭</button>
       <div class="mp-vol">🔉<input type="range" id="mpVol" min="0" max="1" step="0.01" value="0.15"></div>
     </div>
   </div>
   <div class="music-dock" id="mpDock">
     <div class="disc" id="mpDisc">🎻</div>
     <div class="dt">
-      <b>无感（小提琴完整版）</b>
-      <span>Strictlyviolin荀博 · 王朝</span>
+      <b id="dockTitle">无感（小提琴完整版）</b>
+      <span id="dockArtist">Strictlyviolin荀博 · 王朝</span>
     </div>
+    <span class="mp-hint" id="mpHint">🔊 点击播放</span>
     <button class="dbtn" id="mpPlay2">▶</button>
   </div>
+
+  <!-- 鲸鱼助手（可对话桌宠） -->
+  <div class="pet-panel" id="petPanel">
+    <div class="pet-head"><span class="pet-logo" id="petLogo"></span>DeepSeek <span id="petState">● 在线</span></div>
+    <div class="pet-msgs" id="petMsgs"></div>
+    <div class="pet-chips" id="petChips">
+      <button data-q="你是谁">你是谁</button>
+      <button data-q="乐乌有什么作品">有什么作品</button>
+      <button data-q="放首歌">放首歌</button>
+      <button data-q="讲个笑话">讲个笑话</button>
+    </div>
+    <div class="pet-tips" id="petTips">直接打字和小鲸鱼聊天，或点上面的快捷问题 👆</div>
+    <div class="pet-row">
+      <input id="petInput" maxlength="60" placeholder="和小鲸鱼说点什么…" autocomplete="off">
+      <button id="petSend">发送</button>
+    </div>
+  </div>
+  <div class="pet-bubble" id="petBubble"></div>
+  <button class="pet-btn" id="petBtn" title="DeepSeek · 陪聊" aria-label="DeepSeek 助手"></button>
 
 <script>
   // 滚动入场
@@ -449,31 +680,93 @@
   // 初始可见区直接显示
   window.addEventListener('load',()=>{document.querySelectorAll('.reveal').forEach(el=>{const r=el.getBoundingClientRect();if(r.top<window.innerHeight)el.classList.add('show')})});
 
+  // 头像点击反馈：重新触发弹跳动画
+  {
+    const avatarEl=document.querySelector('.hero .avatar');
+    if(avatarEl){
+      avatarEl.addEventListener('click',()=>{
+        avatarEl.classList.remove('pop');
+        void avatarEl.offsetWidth; // 强制 reflow，保证连续点击也能重播
+        avatarEl.classList.add('pop');
+      });
+      avatarEl.addEventListener('animationend',()=>avatarEl.classList.remove('pop'));
+    }
+  }
+
   // ---- 音乐播放器 ----
   const bgm=document.getElementById('bgm'),dock=document.getElementById('mpDock'),pan=document.getElementById('mp');
   const playBtn=document.getElementById('mpPlay'),play2=document.getElementById('mpPlay2'),vol=document.getElementById('mpVol');
-  const disc=document.getElementById('mpDisc');
+  const disc=document.getElementById('mpDisc'),cover=document.getElementById('mpCover');
+  const mpTitle=document.getElementById('mpTitle'),mpArtist=document.getElementById('mpArtist');
+  const dockTitle=document.getElementById('dockTitle'),dockArtist=document.getElementById('dockArtist');
   const bar=document.getElementById('mpBar'),fill=document.getElementById('mpFill');
   const curT=document.getElementById('mpCur'),durT=document.getElementById('mpDur');
+  const prevBtn=document.getElementById('mpPrev'),nextBtn=document.getElementById('mpNext');
+  const list=document.getElementById('mpList');
   bgm.volume=0.15; // 默认音量 15%
+  // 曲库：想加歌就在这里加一行 {src,title,artist,emoji}
+  const TUNES=[
+    {src:'music.mp3',title:'无感（小提琴完整版）',artist:'Strictlyviolin荀博 · 王朝',emoji:'🎻'},
+    {src:'wake.mp3',title:'Wake',artist:'',emoji:'🌊'},
+    {src:'wuxian.mp3',title:'无仙',artist:'Candy_Wind',emoji:'🍃'},
+    {src:'chengnan.mp3',title:'城南花已开',artist:'三亩地',emoji:'🌸'}
+  ];
+  let cur=0;
   const fmt=t=>{if(!isFinite(t))return'00:00';const m=Math.floor(t/60),s=Math.floor(t%60);return(m<10?'0':'')+m+':'+(s<10?'0':'')+s};
   const sync=()=>{const p=!bgm.paused;playBtn.textContent=p?'⏸':'▶';play2.textContent=p?'⏸':'▶';disc.classList.toggle('spin',p)};
+  const renderMeta=()=>{
+    const t=TUNES[cur];
+    mpTitle.textContent=t.title;mpArtist.textContent=t.artist||'';
+    dockTitle.textContent=t.title;dockArtist.textContent=t.artist||'';
+    cover.textContent=t.emoji;disc.textContent=t.emoji;
+    [...list.children].forEach((el,i)=>el.classList.toggle('on',i===cur));
+  };
+  function loadTrack(i,auto){
+    cur=(i+TUNES.length)%TUNES.length;
+    if(bgm.getAttribute('src')!==TUNES[cur].src)bgm.src=TUNES[cur].src;
+    fill.style.width='0%';curT.textContent='00:00';durT.textContent='00:00';
+    renderMeta();
+    if(auto)bgm.play().then(sync).catch(()=>{});
+  }
+  function nextTrack(){loadTrack(cur+1,true)}
+  // 构建曲目列表按钮
+  TUNES.forEach((t,i)=>{
+    const b=document.createElement('button');
+    b.className='mp-item';
+    b.innerHTML='<span class="e">'+t.emoji+'</span><span class="t"><b>'+t.title+'</b><i>'+t.artist+'</i></span>';
+    b.addEventListener('click',e=>{e.stopPropagation();loadTrack(i,true)});
+    list.appendChild(b);
+  });
+  // 初始加载第一首（不自动播，交给 tryAuto 兜底）
+  loadTrack(0,false);
   const toggle=()=>{if(bgm.paused){bgm.play()}else{bgm.pause()}sync()};
   playBtn.addEventListener('click',e=>{e.stopPropagation();toggle()});
   play2.addEventListener('click',e=>{e.stopPropagation();toggle()});
+  prevBtn.addEventListener('click',e=>{e.stopPropagation();loadTrack(cur-1,true)});
+  nextBtn.addEventListener('click',e=>{e.stopPropagation();nextTrack()});
   dock.addEventListener('click',e=>{if(e.target!==play2)pan.classList.toggle('open')});
-  bgm.addEventListener('play',sync);bgm.addEventListener('pause',sync);bgm.addEventListener('ended',sync);
+  bgm.addEventListener('play',sync);bgm.addEventListener('pause',sync);
+  bgm.addEventListener('ended',()=>nextTrack()); // 播完自动切下一首
   bgm.addEventListener('timeupdate',()=>{fill.style.width=(bgm.currentTime/bgm.duration*100)+'%';curT.textContent=fmt(bgm.currentTime)});
   bgm.addEventListener('loadedmetadata',()=>{durT.textContent=fmt(bgm.duration)});
   vol.addEventListener('input',()=>{bgm.volume=parseFloat(vol.value)});
   bar.addEventListener('click',e=>{const r=bar.getBoundingClientRect();bgm.currentTime=((e.clientX-r.left)/r.width)*bgm.duration});
   document.addEventListener('click',e=>{if(!pan.contains(e.target)&&e.target!==dock&&!dock.contains(e.target))pan.classList.remove('open')});
   // 进入页面自动播放（浏览器策略限制时，首次任意触碰即播放）
+  // 健壮版：自动播放被拦 → 挂 click/touchstart/pointerdown/keydown 全部兜底；
+  // 切回前台再试一次；1.5s 还没放起来则点亮 dock 上的「🔊 点击播放」提示。
   function tryAuto(){
-    bgm.play().then(sync).catch(()=>{
-      const kick=()=>{bgm.play().then(sync);document.removeEventListener('click',kick);document.removeEventListener('touchstart',kick)};
-      document.addEventListener('click',kick);document.addEventListener('touchstart',kick);
-    });
+    const hint=document.getElementById('mpHint');
+    let started=false;
+    const evs=['click','touchstart','pointerdown','keydown'];
+    const kick=()=>{
+      if(started)return;
+      const p=bgm.play();
+      if(p)p.then(()=>{if(!started){started=true;sync();if(hint)hint.classList.remove('show');evs.forEach(ev=>document.removeEventListener(ev,kick))}}).catch(()=>{});
+    };
+    bgm.play().then(sync).catch(()=>evs.forEach(ev=>document.addEventListener(ev,kick)));
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!started)kick()});
+    setTimeout(()=>{if(!started&&hint)hint.classList.add('show')},1500);
   }
   tryAuto();
 
@@ -558,6 +851,239 @@
     el.textContent=`👀 今日访客 ${visits}`;
     document.querySelector('footer').appendChild(el);
   })();
+
+  // ---- 开屏动画：2s 后淡出移除，解锁滚动 ----
+  (function(){
+    var boot=document.getElementById('boot');
+    if(!boot)return;
+    function unlock(){document.documentElement.style.overflow='';document.body.style.overflow=''}
+    if(window.matchMedia('(prefers-reduced-motion:reduce)').matches){boot.remove();return}
+    document.documentElement.style.overflow='hidden';
+    document.body.style.overflow='hidden';
+    boot.addEventListener('touchmove',function(e){e.preventDefault()},{passive:false});
+    // 加载百分比：跟 1.5s 的加载条同步走到 100%
+    var pct=boot.querySelector('.boot-pct'),p=0,pctTimer=null;
+    setTimeout(function(){
+      pctTimer=setInterval(function(){
+        p=Math.min(100,p+1);
+        if(pct)pct.textContent=p+'%';
+        if(p>=100)clearInterval(pctTimer);
+      },15);
+    },150);
+    // 打字机小标语：循环打出几句
+    var tipEl=boot.querySelector('.tip-txt');
+    var lines=['正在潜入玻璃海…','召唤小鲸鱼中…','气泡咕噜咕噜…','马上就好～'];
+    var li=0,ci=0,tipTimer=null;
+    function type(){
+      if(!tipEl)return;
+      var line=lines[li%lines.length];
+      if(ci<=line.length){
+        tipEl.textContent=line.slice(0,ci);
+        ci++;
+        tipTimer=setTimeout(type,ci===1?300:90);
+      }else{
+        ci=0;li++;
+        tipTimer=setTimeout(type,400);
+      }
+    }
+    tipTimer=setTimeout(type,300);
+    setTimeout(function(){
+      boot.classList.add('hide');
+      clearInterval(pctTimer);
+      clearTimeout(tipTimer);
+      setTimeout(function(){boot.remove();unlock()},900);
+    },2000);
+  })();
+
+  // ================= 鲸鱼助手（可对话桌宠） =================
+  // ---- 可选：接入真实大模型。打开 enabled 并填 key（OpenAI 兼容接口）后，
+  //      鲸鱼会用真·AI 回答；未开启或请求失败时自动回落本地小脑瓜，纯静态站点也能聊。
+  //      推荐：https://siliconflow.cn 免费额度，模型填 "Qwen/Qwen2.5-7B-Instruct" 可用。
+  const PET_AI={
+    enabled:false,               // 想接真 AI 就把这里改成 true
+    endpoint:'https://api.siliconflow.cn/v1/chat/completions',
+    key:'',                       // 你的 API Key
+    model:'deepseek-ai/DeepSeek-V3',
+    system:'你是「乐乌」个人小站里的鲸鱼助手「小鲸鱼」。主人叫乐乌（网名），他有这些作品：乐乌计算器（输入1145141919会召唤鲸鱼）、本站液态玻璃小站、生活相册（施工中）。你住在这个玻璃海里，说话可爱、简短、多用emoji，像朋友一样陪聊。'
+  };
+  (function(){
+    const petBtn=document.getElementById('petBtn'),petPanel=document.getElementById('petPanel');
+    const petMsgs=document.getElementById('petMsgs'),petInput=document.getElementById('petInput');
+    const petSend=document.getElementById('petSend'),petState=document.getElementById('petState');
+    const petTips=document.getElementById('petTips'),petBubble=document.getElementById('petBubble');
+    const petChips=document.getElementById('petChips');
+    const mem={name:'',lastTopic:'',saidHello:false,idleTimer:null};
+
+    // DeepSeek 官方 logo（单条 path，currentColor 随主题变色；来源 api-docs.deepseek.com/img/logo-mark-light.svg）
+    const DS_LOGO='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0.163 1.75 26.634 19.6" fill="none" aria-hidden="true"><path d="M26.5174 3.39471C26.235 3.2567 26.1137 3.52006 25.9487 3.65346C25.8923 3.69659 25.8446 3.75294 25.7969 3.80469C25.3846 4.24516 24.9027 4.53439 24.2737 4.49989C23.3536 4.44814 22.5682 4.73737 21.8735 5.44119C21.7258 4.57349 21.2353 4.0554 20.4889 3.72304C20.0985 3.55054 19.7034 3.37746 19.4297 3.00197C19.2388 2.73459 19.1865 2.43673 19.091 2.14289C19.0301 1.96579 18.9697 1.78466 18.7656 1.75418C18.5442 1.71968 18.4574 1.90541 18.3705 2.06067C18.0232 2.69549 17.8887 3.39471 17.9019 4.10313C17.9324 5.6965 18.6051 6.96556 19.9421 7.86834C20.0939 7.97184 20.133 8.07535 20.0852 8.22658C19.9938 8.53766 19.8857 8.83955 19.7903 9.15063C19.7293 9.34901 19.6384 9.39271 19.4257 9.30588C18.692 8.9994 18.0583 8.54571 17.4982 7.99772C16.5477 7.07827 15.6881 6.06336 14.6162 5.26869C14.3644 5.08296 14.1125 4.91045 13.8521 4.746C12.7584 3.68394 13.9952 2.81164 14.2816 2.70814C14.5812 2.60003 14.3857 2.22857 13.4179 2.23317C12.4502 2.2372 11.5646 2.56151 10.4359 2.99335C10.2708 3.05832 10.0972 3.10547 9.91951 3.14457C8.8954 2.95022 7.83162 2.90709 6.72069 3.03245C4.62877 3.26533 2.95777 4.25436 1.72954 5.94261C0.254043 7.97184 -0.0932678 10.2777 0.33167 12.6824C0.778458 15.2171 2.07225 17.3153 4.06008 18.9558C6.12152 20.6567 8.49577 21.4905 11.2047 21.3306C12.8498 21.2358 14.6812 21.0155 16.7473 19.2669C17.2682 19.5262 17.8151 19.6297 18.7219 19.7074C19.4205 19.7723 20.0933 19.6729 20.6143 19.5648C21.4302 19.3923 21.3739 18.6367 21.0789 18.4981C18.6874 17.3843 19.2124 17.8374 18.7351 17.4706C19.9501 16.033 21.8063 13.4776 22.379 9.99821C22.4353 9.61409 22.5072 9.073 22.4986 8.76192C22.494 8.57216 22.5377 8.49856 22.7545 8.47671C23.3536 8.40771 23.935 8.24383 24.4692 7.94999C26.0188 7.10357 26.6439 5.71318 26.7911 4.04678C26.8129 3.79204 26.7865 3.52869 26.5174 3.39471ZM13.0143 18.3946C10.6964 16.5724 9.5722 15.9726 9.10816 15.9985C8.67402 16.0244 8.75222 16.5212 8.84768 16.8449C8.94773 17.1646 9.07768 17.3849 9.25996 17.6655C9.38589 17.8512 9.47272 18.1272 9.13404 18.3348C8.38766 18.7965 7.08985 18.1796 7.0289 18.1491C5.51833 17.2595 4.25559 16.0853 3.36546 14.4793C2.50581 12.9337 2.0067 11.2753 1.92447 9.50542C1.90262 9.07818 2.02855 8.92695 2.45406 8.84932C3.01413 8.74582 3.59144 8.72397 4.15093 8.80619C6.51656 9.15178 8.53027 10.2092 10.2185 11.8848C11.1822 12.8388 11.9114 13.979 12.6623 15.0929C13.461 16.2757 14.3201 17.4027 15.4144 18.3268C15.8008 18.6505 16.109 18.8966 16.404 19.0783C15.5144 19.1778 14.0297 19.1991 13.0143 18.3958V18.3946ZM14.1252 11.2489C14.1252 11.0591 14.277 10.9079 14.4679 10.9079C14.511 10.9079 14.5501 10.9165 14.5852 10.9292C14.6329 10.9464 14.6766 10.9723 14.7111 11.0114C14.7721 11.0718 14.8066 11.158 14.8066 11.2489C14.8066 11.4386 14.6548 11.5899 14.4639 11.5899C14.273 11.5899 14.1252 11.4386 14.1252 11.2489ZM17.5759 13.0188C17.3545 13.1096 17.1331 13.1873 16.9203 13.1959C16.5903 13.2131 16.2303 13.0791 16.0348 12.9153C15.7312 12.6605 15.5139 12.5179 15.423 12.0734C15.3839 11.8837 15.4057 11.5899 15.4402 11.4214C15.5185 11.0585 15.4316 10.8257 15.1757 10.614C14.9676 10.4415 14.7025 10.3938 14.4115 10.3938C14.3029 10.3938 14.2034 10.3461 14.1292 10.3076C14.0079 10.2472 13.9078 10.096 14.0033 9.91023C14.0338 9.84985 14.1815 9.70322 14.216 9.67734C14.6111 9.45251 15.0665 9.52612 15.488 9.6946C15.8784 9.85445 16.174 10.1477 16.5989 10.5623C17.033 11.0631 17.1112 11.2011 17.3585 11.5772C17.554 11.871 17.7317 12.1729 17.8536 12.5185C17.9272 12.7341 17.8317 12.9107 17.5759 13.0188Z" fill="currentColor"/></svg>';
+    petBtn.innerHTML=DS_LOGO;
+    document.getElementById('petLogo').innerHTML=DS_LOGO;
+
+    // 打字机输出
+    function typeLine(el,text){
+      return new Promise(res=>{
+        const chars=[...text];el.textContent='';let i=0;
+        (function step(){
+          if(i<chars.length){el.textContent=chars.slice(0,++i).join('');petMsgs.scrollTop=petMsgs.scrollHeight;setTimeout(step,24)}
+          else res();
+        })();
+      });
+    }
+    function addMsg(role,text){
+      const d=document.createElement('div');d.className='pet-msg '+role;
+      d.innerHTML=role==='w'?'<span class="pet-ava">'+DS_LOGO+'</span><div class="pet-mb"></div>':'<div class="pet-mb"></div>';
+      d.querySelector('.pet-mb').textContent=text;
+      petMsgs.appendChild(d);petMsgs.scrollTop=petMsgs.scrollHeight;
+      return d.querySelector('.pet-mb');
+    }
+    async function say(text){
+      petState.textContent='● 思考中…';petSend.disabled=true;
+      const mb=addMsg('w','');
+      await typeLine(mb,text);
+      petState.textContent='● 在线';petSend.disabled=false;
+    }
+    const rand=a=>a[Math.floor(Math.random()*a.length)];
+    const t=(s,strict=true)=>strict?s.replace(/[，。！？、,.!?~～\s]/g,''):s;
+    const nowStr=()=>{const d=new Date();const p=n=>String(n).padStart(2,'0');return `${p(d.getHours())}:${p(d.getMinutes())},${d.getMonth()+1}月${d.getDate()}日 星期${'日一二三四五六'[d.getDay()]}`};
+
+    // ---------- 对话引擎：意图识别（本地小脑瓜） ----------
+    function localReply(q){
+      const s=t(q); // 去掉标点空格再匹配
+      if(/1145141919/.test(q)){
+        petBtn.classList.remove('swim');void petBtn.offsetWidth;petBtn.classList.add('swim');
+        return '🏊 收到！看我一个深海冲刺，游过去就回来～';
+      }
+      if(/游过去|游泳|游一圈|跳个舞|表演/.test(s)){petBtn.classList.remove('swim');void petBtn.offsetWidth;petBtn.classList.add('swim');return '🐳 芜湖～来回游一圈给你看！'}
+      if(/你是谁|你叫什么|自我介绍|介绍下?你/.test(s)){mem.saidHello=true;return '我是 DeepSeek 家的鲸鱼 🐋，被乐乌请来住在这个液态玻璃海里当小助手，可以陪你聊天、带你逛站，问什么都可以～';
+      }
+      if(/谁(做|造|写|设计)的?你/.test(s))return '是乐乌（作者本人）用 AI 技术把我做出来的呀～这个站都写了：纯 AI 制作 😄';
+      if(/你好|哈喽|嗨|在吗|hello|hi/.test(s)){
+        if(mem.saidHello)return rand(['又见面啦～今天过得怎么样呀？','嗨～我在呢，想聊点什么？','嘿嘿，你来啦，我还泡在玻璃海里等你呢 🐳']);
+        mem.saidHello=true;return '你好呀！我是 DeepSeek 的小鲸鱼，乐乌小站的住客 🐋 第一次见面～想让我带你逛逛，还是聊聊天？';
+      }
+      if(/早安|早上好|早呀/.test(s))return rand(['早呀～新的一天，也要把日子过成自己喜欢的样子 🍃','早安！海面波光粼粼的，心情都变好了 ☀️']);
+      if(/晚安|睡觉|困了|休息/.test(s))return '晚安～我潜回深海去啦，你也早点休息，好梦 🌙';
+      if(/谢谢|感谢|辛苦|赞|棒|厉害|好看|可爱/.test(s))return '嘿嘿，不客气～能被你喜欢我超开心的 💙';
+      if(/再见|拜拜|走了|下次见/.test(s))return '拜拜～常回来看看我呀，我一直在玻璃海里等你 🐳👋';
+      if(/哈哈|哈哈哈|笑死|好玩/.test(s))return '哈哈，能看到你笑我也很开心 🫧';
+      if(/乐乌(在|是|谁|介绍)|作者|主人|站长/.test(s))return '乐乌是这个站的主人，一个喜欢记录生活、捣鼓小玩意的普通人。会写代码、做设计，也爱打游戏和睡觉（还爱熬夜 🌙），是个安静的摩羯座 🐐。他说要把日子过成自己喜欢的样子～';
+      if(/讲讲计算器|计算器.*(讲|说|怎么样)|计算器怎么用/.test(s))return '💎 乐乌计算器：自己做的安卓计算器，深色玻璃质感，按钮带真实光晕～最神秘的是输入 1145141919 会召唤一条鲸鱼游过！要不要试试？';
+      if(/讲讲相册|相册.*(讲|说|怎么样)/.test(s))return '🌱 生活相册还在施工中～乐乌想把每天的小确幸都收进去，欢迎常来逛，等它慢慢长大。';
+      if(/作品|做了什么|项目|开发|计算器|相册|app/i.test(s)){
+        mem.lastTopic='works';
+        return '乐乌的小作品有这些：\n💎 乐乌计算器（安卓，输 1145141919 召唤鲸鱼）\n🌊 本站（液态玻璃 v1.2 玻璃版）\n🌱 生活相册（施工中）\n想细看哪一个？告诉我“讲讲计算器”或“讲讲相册”～';
+      }
+      if(/技能|会什么|擅长|标签|游戏|玩什么/.test(s))return '乐乌的技能标签：写代码 ✍️、做设计 🎨、打游戏 🎮（泰拉瑞亚、传说之下、求生之路、脑叶公司、phigros 都是他的心头好）、睡觉 😴、熬夜 🌙（熬夜是“最擅长”的那个，小声说）';
+      if(/最近在做|在做什么|近况/.test(s))return '乐乌最近在：📱 折腾自己的 App、🌐 搭建小站、📷 攒素材、☕ 喝咖啡～挺忙的，但都很喜欢。';
+      if(/时间|几点|几号|日期|星期/.test(s))return '现在这个点呀——' + nowStr() + '～时间过得好快，要记得按时吃饭休息呀 🫧';
+      if(/音乐|歌|放歌|BGM|bgm|播放|暂停/.test(s)){
+        const bgm=document.getElementById('bgm');
+        if(bgm.paused){bgm.play().catch(()=>{});return '好呀，音乐走起 🎵 现在是《'+(TUNES[cur].title)+'》～';
+        }else{bgm.pause();return '好，先暂停一下，让耳朵歇会儿 🤫'}
+      }
+      if(/换一首|切歌|下一首|换歌|换首/.test(s)){if(!bgm.paused){nextTrack();setTimeout(()=>sync(),80);return '好嘞，换一首～现在是《'+(TUNES[cur].title)+'》🎵';}else{bgm.play().catch(()=>{});return '音乐还没开呢，先放起来～《'+(TUNES[cur].title)+'》🎶'}}
+      if(/笑话|讲个|逗我/.test(s))return rand(['为什么鲸鱼不能玩扑克？因为总有鲨鱼在旁边“梭哈” 🦈','乐乌问我为什么总泡在水里，我说这叫“摸鱼”，他居然信了 🐳','为什么玻璃海里的鱼不会感冒？因为它们有“水”分充足 🫧']);
+      if(/帮助|help|你能|会什么|能做什么/.test(s))return '我可以：🎯 带你逛小站、⏰ 报时间、🎵 放歌、📖 讲笑话、💡 介绍乐乌的作品。直接问我问题就行，比如“有什么作品”“放首歌”“讲个笑话”～';
+      if(/今天|心情|过得怎么样/.test(s))return rand(['今天海面风平浪静，心情像玻璃一样透亮 ✨','还不错呀～就是有点想听你多跟我说说话 💙','老样子，在玻璃海里等有缘人来聊天 🐳']);
+      if(/厉害|你怎么.*会|太强|牛/.test(s))return '嘿嘿，都是乐乌教我的～其实我只是一只被丢进 HTML 里的小鲸鱼 🐋';
+      if(/有没有|还有|然后呢|接着|继续|所以呢/.test(s)){
+        if(mem.lastTopic==='works')return '目前就这三个小作品啦～重点推荐计算器，等你把它做成正式版，记得告诉我，我给你加个“打开官方”彩蛋 🎁';
+        return '唔…让我想想。要不你换个问法？比如“有什么作品”或“讲个笑话”试试？';
+      }
+      // 兜底
+      return rand([
+        '唔…这个我还没学会。不过你可以问我“你是谁”“有什么作品”“放首歌”“讲个笑话”～',
+        '我在玻璃海里晃了晃尾巴，没太听懂 🤔 换个说法试试？',
+        '这个问题有点深奥，等我潜下去想想再上来回答你 🐳',
+        '嘿嘿，我懂的不多，但陪你聊天绝对在行。要不要问问乐乌有什么作品？'
+      ]);
+    }
+
+    // ---------- 可选：真·AI 回复 ----------
+    async function aiReply(q){
+      if(!PET_AI.enabled||!PET_AI.key)return null;
+      try{
+        const res=await fetch(PET_AI.endpoint,{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+PET_AI.key},
+          body:JSON.stringify({model:PET_AI.model,max_tokens:200,messages:[
+            {role:'system',content:PET_AI.system},
+            {role:'user',content:q}
+          ]})
+        });
+        if(!res.ok)return null;
+        const j=await res.json();
+        return (j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content||'').trim()||null;
+      }catch(e){return null}
+    }
+    async function think(q){
+      const ai=await aiReply(q);
+      await say(ai||localReply(q));
+    }
+
+    // ---------- 交互 ----------
+    function sendMsg(){
+      const v=petInput.value.trim();if(!v)return;
+      addMsg('u',v);petInput.value='';
+      if(petTips)petTips.style.display='none';
+      think(v);
+    }
+    petSend.addEventListener('click',sendMsg);
+    petInput.addEventListener('keydown',e=>{if(e.key==='Enter')sendMsg()});
+    petChips.addEventListener('click',e=>{
+      const b=e.target.closest('button');if(!b)return;
+      const q=b.dataset.q;addMsg('u',q);
+      if(petTips)petTips.style.display='none';
+      think(q);
+    });
+    petBtn.addEventListener('click',e=>{
+      e.stopPropagation();petPanel.classList.toggle('open');
+      if(petPanel.classList.contains('open')){
+        petBubble.classList.remove('show');
+        if(petMsgs.children.length===0)say('嗨，我是 DeepSeek 的小鲸鱼 🐋 欢迎来乐乌的小站！可以直接打字，或点下面的快捷问题跟我聊天～');
+      }
+    });
+    document.addEventListener('click',e=>{
+      if(petPanel.classList.contains('open')&&!petPanel.contains(e.target)&&e.target!==petBtn)petPanel.classList.remove('open');
+    });
+
+    // 待机小气泡：一段时间没理它，冒一句台词
+    const idleLines=['咕噜咕噜……（偷偷吹了个泡泡）','今天也在等你来聊天呀 🐳','乐乌说：常来看看呀 🍃','嗯？有人叫我吗？'];
+    function planIdle(){
+      clearTimeout(mem.idleTimer);
+      mem.idleTimer=setTimeout(()=>{
+        if(!petPanel.classList.contains('open')){
+          petBubble.textContent=rand(idleLines);petBubble.classList.add('show');
+          setTimeout(()=>petBubble.classList.remove('show'),3500);
+        }
+        planIdle();
+      },45000);
+    }
+    planIdle();
+
+    // 引导气泡：开屏结束后主动冒泡，让人一眼发现这只小鲸鱼（内容站主自定，可改下方文字）
+    const guideLine='嗨，我是 DeepSeek 的小鲸鱼 🐋 点我聊聊天呀～';
+    function showGuide(){
+      setTimeout(()=>{
+        if(petPanel.classList.contains('open'))return;
+        petBubble.textContent=guideLine;
+        petBubble.classList.add('show','cta');
+        petBtn.classList.add('attn');
+        setTimeout(()=>{petBubble.classList.remove('show','cta');petBtn.classList.remove('attn')},9000);
+      },3000); // 等开屏动画结束再冒泡
+    }
+    // 点气泡 = 直接打开面板聊天
+    petBubble.addEventListener('click',()=>{
+      if(!petBubble.classList.contains('cta'))return;
+      petBubble.classList.remove('show','cta');petBtn.classList.remove('attn');
+      petPanel.classList.add('open');
+      if(petMsgs.children.length===0)say('嗨，我是 DeepSeek 的小鲸鱼 🐋 欢迎来乐乌的小站！可以直接打字，或点下面的快捷问题跟我聊天～');
+    });
+    showGuide();
+  })();
 </script>
+
+
+
 </body>
 </html>
