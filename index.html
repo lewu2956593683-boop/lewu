@@ -20,7 +20,11 @@
 <link rel="canonical" href="https://lewu.pages.dev/">
 <link rel="apple-touch-icon" href="avatar.jpg">
 <script>
-  try{if(localStorage.getItem('theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}
+  try{
+    var _t=localStorage.getItem('theme');
+    if(_t==='dark'||_t==='moye'||_t==='mublue')document.documentElement.classList.add('dark');
+    if(_t&&_t!=='light'&&_t!=='dark')document.documentElement.setAttribute('data-theme',_t);
+  }catch(e){}
 </script>
 <style>
   /* 颜色变量不使用 @property 注册：不注册则 var() 切换时"跳变"一次到位，
@@ -110,6 +114,26 @@
     font-size:12.5px;color:var(--ink-2);}
   .hero .tag span{width:7px;height:7px;border-radius:50%;background:#55c98e;box-shadow:0 0 8px #55c98e;animation:blink 1.8s infinite;}
   @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+
+  /* 随机一言 */
+  .hero .quote{display:inline-flex;align-items:center;gap:7px;margin-top:10px;font-size:12.5px;color:var(--ink-2);opacity:.92;cursor:pointer;user-select:none;transition:color .3s ease;}
+  .hero .quote:hover{opacity:1}
+  .hero .quote .qi{font-size:13px;line-height:1;}
+  .hero .quote .qt{max-width:min(330px,72vw);}
+  .hero .quote .qs{opacity:.68;font-size:11px;}
+  .hero .quote.popq{animation:quoteIn .5s cubic-bezier(.34,1.56,.64,1);}
+  @keyframes quoteIn{0%{transform:translateY(6px) scale(.96);opacity:0}100%{transform:none;opacity:1}}
+
+  /* 彩蛋提示 */
+  .egg-hint{font-size:11px;color:var(--ink-2);opacity:.55;margin-top:9px;}
+
+  /* 彩蛋：上升小泡泡 */
+  .egg{position:fixed;bottom:-3rem;z-index:1000;pointer-events:none;animation:eggRise 1.6s ease-in forwards;will-change:transform,opacity;}
+  @keyframes eggRise{
+    0%{transform:translateY(0) translateX(0) rotate(0);opacity:0}
+    12%{opacity:1}
+    100%{transform:translateY(-115vh) translateX(var(--dx)) rotate(var(--rot));opacity:0}
+  }
 
   /* 通用玻璃卡片 */
   .card{
@@ -223,6 +247,42 @@
     box-shadow:0 12px 32px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.08);
   }
 
+/* ===== 更多主题（data-theme 预设；墨夜沿用 html.dark 的 .dark 类，由 JS 同步添加） ===== */
+  html[data-theme="yingfen"]{
+    --bg1:#fdeef4; --bg2:#f9d9e8; --bg3:#fdf3e7;
+    --ink:#4a3340; --ink-2:#8a6a7a;
+    --glass:rgba(255,255,255,.5);
+    --glass-bd:rgba(255,255,255,.7);
+    --acc:#e58ba6; --acc2:#c79ae0; --ds:#4d6bfe;
+  }
+  html[data-theme="yingfen"] .b1{background:radial-gradient(circle,#f9c8dd,transparent 65%)}
+  html[data-theme="yingfen"] .b2{background:radial-gradient(circle,#e7c0f5,transparent 65%)}
+  html[data-theme="yingfen"] .b3{background:radial-gradient(circle,#ffe3b8,transparent 65%)}
+  html[data-theme="tailv"]{
+    --bg1:#eaf7ea; --bg2:#dcefdc; --bg3:#eef6df;
+    --ink:#2e4434; --ink-2:#5f7a68;
+    --glass:rgba(255,255,255,.5);
+    --glass-bd:rgba(255,255,255,.7);
+    --acc:#5fae7d; --acc2:#8aa86a; --ds:#4d6bfe;
+  }
+  html[data-theme="tailv"] .b1{background:radial-gradient(circle,#bfe8cf,transparent 65%)}
+  html[data-theme="tailv"] .b2{background:radial-gradient(circle,#d6e8b8,transparent 65%)}
+  html[data-theme="tailv"] .b3{background:radial-gradient(circle,#c9e8d8,transparent 65%)}
+  html[data-theme="mublue"]{
+    --bg1:#0d1b2e; --bg2:#14263f; --bg3:#1b2f4a;
+    --ink:#e4edf8; --ink-2:#9db4cc;
+    --glass:rgba(14,28,44,.55);
+    --glass-bd:rgba(255,255,255,.16);
+    --acc:#5fb4c4; --acc2:#8f9fe0; --ds:#7c9bff;
+  }
+  html[data-theme="mublue"] body::before{opacity:0}
+  html[data-theme="mublue"] .blob{opacity:.35}
+  html[data-theme="mublue"] .b1{background:radial-gradient(circle,#14465c,transparent 65%)}
+  html[data-theme="mublue"] .b2{background:radial-gradient(circle,#2c3a70,transparent 65%)}
+  html[data-theme="mublue"] .b3{background:radial-gradient(circle,#3a2f5c,transparent 65%)}
+  html[data-theme="mublue"] .grain{opacity:.12}
+  html[data-theme="mublue"] .card{box-shadow:0 12px 32px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.08)}
+
 /* ===== 主题切换按钮（固定悬浮，固定液态玻璃样式，不随主题变色） ===== */
   .theme-fab{
     position:fixed;top:100px;right:20px;z-index:100;width:46px;height:46px;border-radius:50%;
@@ -240,6 +300,18 @@
     45%{transform:rotate(180deg) scale(.35);opacity:.25}
     100%{transform:rotate(360deg) scale(1);opacity:1}
   }
+  /* 主题选择器浮层 */
+  .theme-pop{position:fixed;top:156px;right:20px;z-index:101;min-width:132px;border-radius:16px;padding:8px;
+    background:var(--glass);border:1px solid var(--glass-bd);
+    backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);
+    box-shadow:0 14px 34px rgba(60,100,130,.2);display:none;flex-direction:column;gap:4px;}
+  .theme-pop.open{display:flex;animation:popIn .18s ease;}
+  @keyframes popIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  .theme-pop .th{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:10px;cursor:pointer;font-size:12px;color:var(--ink);transition:background .2s ease;font-family:inherit;}
+  .theme-pop .th:hover{background:rgba(255,255,255,.4)}
+  .theme-pop .th i{width:18px;height:18px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--c1),var(--c2));border:1px solid rgba(255,255,255,.7);box-shadow:inset 0 1px 2px rgba(255,255,255,.5);}
+  .theme-pop .th.cur{font-weight:700}
+  .theme-pop .th.cur::after{content:"✓";margin-left:auto;font-size:11px;color:var(--acc)}
 
 /* ===== 打字机光标 ===== */
   .caret{display:inline-block;width:2px;height:1.1em;background:var(--acc);vertical-align:-2px;margin-left:2px;animation:blink 1s step-end infinite;}
@@ -489,6 +561,39 @@
     .pet-bubble{left:78px;bottom:110px}
   }
 
+  /* ===== 哔站式左侧名片栏（桌面端 ≥1000px） ===== */
+  html{scroll-behavior:smooth}
+  .side-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:18px;width:100%;}
+  .side-stats .ss{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 4px;border-radius:14px;
+    background:var(--glass);border:1px solid var(--glass-bd);}
+  .side-stats .ss b{font-size:16px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1;}
+  .side-stats .ss span{font-size:10px;color:var(--ink-2);white-space:nowrap;}
+  .bili-link{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;width:100%;
+    padding:10px 14px;border-radius:14px;color:#fff;font-size:13px;font-weight:600;text-decoration:none;
+    background:linear-gradient(135deg,#fb7299,#ff5d5d);box-shadow:0 6px 16px rgba(251,114,153,.30);
+    transition:transform .25s ease,box-shadow .25s ease;}
+  .bili-link:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(251,114,153,.42);}
+  .bili-link:active{transform:scale(.97);}
+  @media(max-width:999px){.side-stats{max-width:420px;margin-left:auto;margin-right:auto}.music-card{padding:0;background:none;border:none;box-shadow:none}.music-card .sec-title{display:none}}
+  @media(min-width:1000px){
+    .wrap{max-width:1180px;display:grid;grid-template-columns:290px 1fr;column-gap:34px;align-items:start;}
+    nav{grid-column:1/-1;margin-bottom:18px;}
+    .hero{grid-column:1;grid-row:2/span 999;position:sticky;top:22px;align-self:start;text-align:left;align-items:flex-start;
+      padding:26px 24px 24px;background:var(--glass);border:1px solid var(--glass-bd);border-radius:22px;
+      backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);
+      box-shadow:0 12px 34px rgba(80,120,140,.14);}
+    .hero h1{font-size:26px;letter-spacing:3px;margin:14px 0 8px;}
+    .hero .sub{margin-bottom:10px;}
+    .hero .quote{justify-content:flex-start;text-align:left;}
+    .wrap > :not(nav):not(.hero){grid-column:2;}
+    .music-dock{display:none;}
+    .music-card .music-panel{position:static;left:auto;bottom:auto;transform:none;width:100%;opacity:1;
+      pointer-events:auto;background:transparent;border:none;box-shadow:none;
+      backdrop-filter:none;-webkit-backdrop-filter:none;padding:4px 0 0;transition:none;}
+    .music-card .mp-row{justify-content:center;}
+    .music-card .mp-list{max-height:none;}
+  }
+
   
 
   
@@ -525,6 +630,15 @@
       <h1>乐乌</h1>
       <div class="sub"><span id="typeLine"></span><span class="caret"></span></div>
       <div class="tag"><span></span>欢迎来到我的小站 · 常来看看呀</div>
+      <div class="quote" id="quoteLine" title="点一下换个句子"><span class="qi">💬</span><span class="qt" id="quoteTxt"></span><span class="qs" id="quoteSrc"></span></div>
+      <div class="egg-hint" id="eggHint">🎁 头像里藏着小秘密,连戳几下试试</div>
+      <div class="side-stats">
+        <div class="ss"><b id="stVisit">0</b><span>今日访客</span></div>
+        <div class="ss"><b>3</b><span>小作品</span></div>
+        <div class="ss"><b>4</b><span>背景音乐</span></div>
+        <div class="ss"><b>5</b><span>主题皮肤</span></div>
+      </div>
+      <a class="bili-link" href="https://space.bilibili.com/1063192423" target="_blank" rel="noopener" title="去我的哔站空间逛逛">📺 我的哔站空间</a>
     </header>
 
     <!-- 关于 -->
@@ -533,6 +647,29 @@
       <p>你好呀，我是 <b>乐乌</b>。一个喜欢记录生活、捣鼓点小玩意儿的普通人。<br>
       这里没有宏大叙事，只有我收藏的 <b>好物、灵感和小作品</b>。愿你在浏览的时候，
       也能感受到一点温柔和自在。🌿</p>
+    </section>
+
+    <!-- 音乐 -->
+    <section class="card music-card reveal">
+      <div class="sec-title">🎵 音乐 <span style="font-size:11px;font-weight:400;color:var(--ink-2);opacity:.7;margin-left:6px;">· 4 首纯音乐陪你逛</span></div>
+      <div class="music-panel" id="mp">
+        <div class="mp-head">
+          <div class="mp-cover" id="mpCover">🎻</div>
+          <div style="flex:1;min-width:0;">
+            <div class="mp-title" id="mpTitle">无感（小提琴完整版）</div>
+            <div class="mp-artist" id="mpArtist">Strictlyviolin荀博 · 王朝</div>
+          </div>
+        </div>
+        <div class="mp-list" id="mpList"></div>
+        <div class="mp-progress" id="mpBar"><i id="mpFill"></i></div>
+        <div class="mp-time"><span id="mpCur">00:00</span><span id="mpDur">00:00</span></div>
+        <div class="mp-row">
+          <button class="mp-skip" id="mpPrev" title="上一首">⏮</button>
+          <button class="mp-play" id="mpPlay">▶</button>
+          <button class="mp-skip" id="mpNext" title="下一首">⏭</button>
+          <div class="mp-vol">🔉<input type="range" id="mpVol" min="0" max="1" step="0.01" value="0.15"></div>
+        </div>
+      </div>
     </section>
 
     <!-- Bento 网格 -->
@@ -576,7 +713,7 @@
     </section>
 
     <!-- 时间线 -->
-    <section class="card reveal">
+    <section id="timeline" class="card reveal">
       <div class="sec-title">足迹</div>
       <div class="timeline">
         <div class="tl-item">
@@ -595,7 +732,7 @@
     </section>
 
     <!-- 好友留言（示例） -->
-    <section class="card reveal">
+    <section id="msgs" class="card reveal">
       <div class="sec-title">好友留言</div>
       <div class="msgs">
         <div class="msg">
@@ -629,29 +766,18 @@
     </footer>
   </div>
 
-  <button class="theme-fab" id="themeBtn" title="切换深色/浅色"><span>🌙</span></button>
+  <button class="theme-fab" id="themeBtn" title="切换主题"><span id="themeIcon">🎨</span></button>
+  <div class="theme-pop" id="themePop">
+    <div class="th" data-t="qiwu"><i style="--c1:#dff3f1;--c2:#e8e3fb"></i>青雾</div>
+    <div class="th" data-t="yingfen"><i style="--c1:#fdeef4;--c2:#f9d9e8"></i>樱粉</div>
+    <div class="th" data-t="tailv"><i style="--c1:#eaf7ea;--c2:#dcefdc"></i>苔绿</div>
+    <div class="th" data-t="moye"><i style="--c1:#0b1626;--c2:#101f30"></i>墨夜</div>
+    <div class="th" data-t="mublue"><i style="--c1:#0d1b2e;--c2:#14263f"></i>暮蓝</div>
+  </div>
   <button class="to-top" id="toTop" title="回到顶部">↑</button>
 
   <!-- 音乐播放器 -->
   <audio id="bgm" src="music.mp3" preload="auto"></audio>
-  <div class="music-panel" id="mp">
-    <div class="mp-head">
-      <div class="mp-cover" id="mpCover">🎻</div>
-      <div style="flex:1;min-width:0;">
-        <div class="mp-title" id="mpTitle">无感（小提琴完整版）</div>
-        <div class="mp-artist" id="mpArtist">Strictlyviolin荀博 · 王朝</div>
-      </div>
-    </div>
-    <div class="mp-list" id="mpList"></div>
-    <div class="mp-progress" id="mpBar"><i id="mpFill"></i></div>
-    <div class="mp-time"><span id="mpCur">00:00</span><span id="mpDur">00:00</span></div>
-    <div class="mp-row">
-      <button class="mp-skip" id="mpPrev" title="上一首">⏮</button>
-      <button class="mp-play" id="mpPlay">▶</button>
-      <button class="mp-skip" id="mpNext" title="下一首">⏭</button>
-      <div class="mp-vol">🔉<input type="range" id="mpVol" min="0" max="1" step="0.01" value="0.15"></div>
-    </div>
-  </div>
   <div class="music-dock" id="mpDock">
     <div class="disc" id="mpDisc">🎻</div>
     <div class="dt">
@@ -782,7 +908,9 @@
 
   // ---- 打字机标语（完整字符数组，避免emoji截断；删字保底到0，保证接下一句） ----
   const typeLine=document.getElementById('typeLine');
-  const phrases=['把日子过成自己喜欢的样子 🍃','热爱可抵岁月漫长 ✨','收集生活里的小确幸 🌻','愿你今天也过得很好 🌷'];
+  const _h=new Date().getHours();
+  const _greet=_h<5?'夜深了，欢迎来到我的小站 🌙':_h<9?'早上好，欢迎来到我的小站 ☀️':_h<12?'上午好，欢迎来到我的小站 🌤️':_h<14?'中午好，欢迎来到我的小站 🌞':_h<18?'下午好，欢迎来到我的小站 🌅':'晚上好，欢迎来到我的小站 🌃';
+  const phrases=[_greet,'把日子过成自己喜欢的样子 🍃','热爱可抵岁月漫长 ✨','收集生活里的小确幸 🌻','愿你今天也过得很好 🌷'];
   let pi=0,ci=0,deleting=false;
   const chars=p=>[...p]; // 用数组保证 emoji 完整
   (function type(){
@@ -799,24 +927,131 @@
     setTimeout(type,42);
   })();
 
-  // ---- 深色/浅色模式 ----
-  const themeBtn=document.getElementById('themeBtn'),themeIcon=themeBtn.querySelector('span');
-  const applyTheme=d=>{
+  // ---- 问候语 + 随机一言 ----
+  const QUOTES=[
+    {t:'把日子过成自己喜欢的样子',a:'乐乌的小站'},
+    {t:'热爱可抵岁月漫长',a:''},
+    {t:'收集生活里的小确幸',a:''},
+    {t:'慢慢来，比较快',a:''},
+    {t:'万物皆有裂痕，那是光照进来的地方',a:'莱昂纳德·科恩'},
+    {t:'愿你今天也过得很好',a:''},
+    {t:'温柔是宝藏，你也是',a:''},
+    {t:'生活原本沉闷，但跑起来就有风',a:''},
+    {t:'山海自有归期，风雨自有相逢',a:''},
+    {t:'日子常新，未来不远',a:''},
+    {t:'与其互为人间，不如自成宇宙',a:'里尔克'},
+    {t:'星光不问赶路人，时光不负有心人',a:''},
+    {t:'总之岁月漫长，然而值得等待',a:'村上春树'},
+    {t:'好事正酿，万物皆春',a:''},
+    {t:'愿你温柔且坚定，闪闪又发光',a:''}
+  ];
+  (function(){
+    const ql=document.getElementById('quoteLine'),qt=document.getElementById('quoteTxt'),qs=document.getElementById('quoteSrc');
+    if(ql&&qt){
+      let last=-1;
+      const pick=()=>{
+        let i;do{i=Math.floor(Math.random()*QUOTES.length)}while(QUOTES.length>1&&i===last);
+        last=i;
+        qt.textContent='“'+QUOTES[i].t+'”';
+        qs.textContent=QUOTES[i].a?(' —— '+QUOTES[i].a):'';
+      };
+      pick();
+      ql.addEventListener('click',()=>{pick();ql.classList.remove('popq');void ql.offsetWidth;ql.classList.add('popq')});
+    }
+  })();
+
+  // ---- 彩蛋 🎁 ----
+  (function(){
+    // 控制台欢迎语
+    try{console.log('%c🐋 欢迎来到乐乌的小站 %c提示：连点 5 下头像，或试试经典秘技 ↑↑↓↓←→←→BA','font-size:16px;font-weight:bold;color:#5aa9a0','font-size:12px;color:#8a7a6a')}catch(e){}
+    // 上升小泡泡
+    const EGGS=['✨','🐋','🫧','🌸','🌊','🎐'];
+    function bubbleBurst(n){
+      for(let i=0;i<n;i++){
+        const s=document.createElement('span');s.className='egg';
+        s.textContent=EGGS[i%EGGS.length];
+        s.style.cssText='left:'+(Math.random()*94+3)+'vw;font-size:'+(16+Math.random()*14)+'px;--dx:'+((Math.random()*2-1)*70)+'px;--rot:'+((Math.random()*2-1)*140)+'deg;animation-delay:'+(Math.random()*0.35)+'s';
+        document.body.appendChild(s);setTimeout(()=>s.remove(),2400);
+      }
+    }
+    // 头像连点 5 下 → 解锁彩蛋（带逐次点击提示）
+    const av=document.querySelector('.hero .avatar');
+    if(av){
+      const HINTS={1:'咦?头像好像动了一下…再戳几下试试?',2:'有反应了!继续继续 ✨',3:'快了快了,还差两下!',4:'最后一击,冲鸭!🎯'};
+      let clicks=0,timer=null;
+      av.addEventListener('click',()=>{
+        clicks++;clearTimeout(timer);timer=setTimeout(()=>clicks=0,1600);
+        if(clicks>=5){
+          clicks=0;
+          bubbleBurst(18);
+          const bb=document.getElementById('petBubble');
+          if(bb){bb.textContent='🎉 恭喜解锁彩蛋！你找到了藏在头像里的小秘密～';bb.classList.add('show');
+            setTimeout(()=>bb.classList.remove('show'),6000);
+          }
+          return;
+        }
+        const bb=document.getElementById('petBubble');
+        if(bb&&HINTS[clicks]){bb.textContent=HINTS[clicks];bb.classList.add('show');
+          setTimeout(()=>bb.classList.remove('show'),2500);
+        }
+      });
+    }
+    // 科乐美秘技：彩虹泡泡雨
+    const SECRET='↑↑↓↓←→←→BA';let buf='';
+    document.addEventListener('keydown',e=>{
+      const arrow={ArrowUp:'↑',ArrowDown:'↓',ArrowLeft:'←',ArrowRight:'→'}[e.key];
+      const k=arrow||(/^[aA]$/.test(e.key)?'A':'')||(/^[bB]$/.test(e.key)?'B':'');
+      if(!k)return;
+      buf=(buf+k).slice(-SECRET.length);
+      if(buf===SECRET){
+        buf='';
+        bubbleBurst(40);
+        try{console.log('%c🎉 秘技生效！全站进入彩虹泡泡模式 ✨','font-size:14px;color:#e58ba6')}catch(e2){}
+      }
+    });
+  })();
+
+  // ---- 主题（青雾/樱粉/苔绿/墨夜/暮蓝） ----
+  const themeBtn=document.getElementById('themeBtn'),themeIcon=document.getElementById('themeIcon');
+  const themePop=document.getElementById('themePop');
+  const THEMES={
+    qiwu:{icon:'🫧',meta:'#dff3f1'},
+    yingfen:{icon:'🌸',meta:'#fdeef4'},
+    tailv:{icon:'🌿',meta:'#eaf7ea'},
+    moye:{icon:'🌙',meta:'#0b1626'},
+    mublue:{icon:'🌊',meta:'#0d1b2e'}
+  };
+  const DARK_THEMES=['moye','mublue'];
+  function applyTheme(n,boot){
     const root=document.documentElement;
     root.classList.add('switching');           // 全局禁用 transition，避免几十个元素同时插值掉帧
-    root.classList.toggle('dark',d);
+    root.classList.toggle('dark',DARK_THEMES.includes(n));
+    root.setAttribute('data-theme',n);
     requestAnimationFrame(()=>requestAnimationFrame(()=>root.classList.remove('switching'))); // 切完两帧后恢复过渡
-    themeIcon.classList.remove('flip');void themeIcon.offsetWidth;themeIcon.classList.add('flip');
-    setTimeout(()=>{themeIcon.textContent=d?'☀️':'🌙'},250);
-    try{localStorage.setItem('theme',d?'dark':'light')}catch(e){}
-  };
-  themeBtn.addEventListener('click',()=>{
-    const next=!document.documentElement.classList.contains('dark');
-    applyTheme(next);
+    themeIcon.textContent=THEMES[n]?THEMES[n].icon:'🎨';
+    if(!boot){themeIcon.classList.remove('flip');void themeIcon.offsetWidth;themeIcon.classList.add('flip')}
+    const mt=document.querySelector('meta[name="theme-color"]');
+    if(mt&&THEMES[n])mt.setAttribute('content',THEMES[n].meta);
+    try{localStorage.setItem('theme',n)}catch(e){}
+    [...themePop.querySelectorAll('.th')].forEach(el=>el.classList.toggle('cur',el.dataset.t===n));
+  }
+  themeBtn.addEventListener('click',e=>{e.stopPropagation();themePop.classList.toggle('open')});
+  themePop.addEventListener('click',e=>{
+    const th=e.target.closest('.th');if(!th)return;
+    applyTheme(th.dataset.t);themePop.classList.remove('open');
   });
-  let dark=false;try{dark=localStorage.getItem('theme')==='dark'}catch(e){}
-  if(dark){themeIcon.textContent='☀️';themeIcon.classList.add('flip')}
-  // 主题 class 已在 <head> 内联脚本中提前设置，避免刷新闪白；此处仅同步图标
+  document.addEventListener('click',e=>{
+    if(themePop.classList.contains('open')&&!themePop.contains(e.target)&&e.target!==themeBtn)themePop.classList.remove('open');
+  });
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')themePop.classList.remove('open')});
+  let themeName='qiwu';
+  try{
+    themeName=localStorage.getItem('theme')||'qiwu';
+    if(themeName==='light')themeName='qiwu';
+    if(themeName==='dark')themeName='moye';
+    if(!THEMES[themeName])themeName='qiwu';
+  }catch(e){themeName='qiwu'}
+  applyTheme(themeName,true); // 初始应用（不播 flip 动画）
 
   // ---- 回到顶部 ----
   const toTop=document.getElementById('toTop');
@@ -906,6 +1141,7 @@
     el.className='visit-count';
     el.textContent=`👀 今日访客 ${visits}`;
     document.querySelector('footer').appendChild(el);
+    const st=document.getElementById('stVisit');if(st)st.textContent=visits;
   })();
 
   // ---- 开屏动画：2s 后淡出移除，解锁滚动 ----
