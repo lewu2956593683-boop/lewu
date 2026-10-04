@@ -730,6 +730,29 @@
   .seal{position:absolute;right:14px;top:14px;width:86px;height:86px;color:#5aa9a0;opacity:.5;
     animation:sealSpin 26s linear infinite;}
   @keyframes sealSpin{to{transform:rotate(360deg)}}
+
+  /* ===== 动效包7：宽屏两侧氛围装饰（桌面 ≥1360px 才显示，纯装饰不挡交互） ===== */
+  .side-deco{display:none;}
+  @media(min-width:1360px){
+    .side-deco{position:fixed;inset:0;pointer-events:none;z-index:0;}
+    .side-deco .d{position:absolute;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:28px;}
+    .side-deco .d-l{left:max(16px,calc(50vw - 590px - 84px));}
+    .side-deco .d-r{right:max(16px,calc(50vw - 590px - 84px));}
+    .side-deco .orb{width:44px;height:44px;border-radius:50%;
+      background:radial-gradient(circle at 32% 30%,rgba(127,216,205,.9),rgba(122,111,214,.4) 55%,rgba(122,111,214,0) 72%);
+      animation:sideFloat 7s ease-in-out infinite;}
+    .side-deco .orb2{width:30px;height:30px;
+      background:radial-gradient(circle at 32% 30%,rgba(247,182,208,.85),rgba(201,138,46,.3) 55%,rgba(201,138,46,0) 72%);
+      animation:sideFloat 9s ease-in-out infinite reverse;}
+    .side-deco .seal{width:56px;height:56px;color:var(--acc,#5aa9a0);opacity:.75;animation:sealSpin 26s linear infinite;}
+    .side-deco .leaf{font-size:18px;opacity:.85;animation:sideLeaf 11s ease-in-out infinite;}
+    .side-deco .d-l .leaf{animation-delay:-3s;}
+    .side-deco .d-r .leaf:first-child{font-size:21px;animation-delay:-8s;}
+    .side-deco .d-r .leaf:last-child{font-size:15px;animation-delay:-5s;}
+    @keyframes sideFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+    @keyframes sideLeaf{0%,100%{transform:translateY(0) rotate(-10deg)}50%{transform:translateY(-12px) rotate(12deg)}}
+    @media(prefers-reduced-motion:reduce){.side-deco .orb,.side-deco .seal,.side-deco .leaf{animation:none}}
+  }
 </style>
 </head>
 <body>
@@ -1695,5 +1718,17 @@
 
 
 <script>window.__APK_URL='https://h1059.lanosso.com/1e1aa630a7da1635b525fc2819d60b32/6ac28e82/2026/10/05/d63f993e5f1a1db7e4366e4d990c6bd3.apk?fn=%E4%B9%90%E4%B9%8C%E8%AE%A1%E7%AE%97%E5%99%A8v2_1.0.apk';</script>
+<div class="side-deco" aria-hidden="true">
+  <div class="d d-l">
+    <div class="orb"></div>
+    <svg class="seal" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="4 3"/><text x="28" y="32" text-anchor="middle" font-size="13" fill="currentColor">乐乌</text></svg>
+    <span class="leaf">🍂</span>
+  </div>
+  <div class="d d-r">
+    <span class="leaf">🍂</span>
+    <div class="orb orb2"></div>
+    <span class="leaf">🍁</span>
+  </div>
+</div>
 </body>
 </html>
