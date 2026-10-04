@@ -664,6 +664,24 @@
     .leaves{display:none}
   }
 
+  /* ===== 动效包6：手机端性能与首屏精简（m00379 反馈：手机滚动到下方卡顿 + 首屏太乱） ===== */
+  /* 标签页切后台时暂停装饰性无限动画（省电省帧） */
+  body.paused .amb,body.paused .leaf,body.paused .seal,body.paused .hero h1,
+  body.paused .mp-head .eq i{animation-play-state:paused}
+  /* 手机端：首屏去冗余（tag 欢迎胶囊与打字机问候/时钟重复）、装饰层减半、离屏卡片跳过渲染 */
+  @media(max-width:999px){
+    .hero .tag{display:none}
+    .hero{padding:44px 0 22px}
+    .avatar-wrap{margin-bottom:14px}
+    .hero h1{font-size:28px;margin-bottom:8px}
+    .amb:nth-of-type(even){display:none}
+    .leaves .leaf:nth-child(even){display:none}
+    .leaves{opacity:.5}
+    @supports(content-visibility:auto){
+      .card{content-visibility:auto;contain-intrinsic-size:auto 420px}
+    }
+  }
+
   /* ===== 动效包3：手机端也明显的动效 ===== */
   /* ① 播放律动均衡条（内联播放器头部，播放时跳动，暂停时压暗） */
   .mp-head .eq{display:inline-flex;gap:3px;align-items:flex-end;height:15px;margin-left:8px;align-self:center;
@@ -1221,20 +1239,24 @@
     proBar.style.width=(max>0?(h.scrollTop||document.body.scrollTop||0)/max*100:0)+'%';
   },{passive:true});
 
-  // ---- 动效包5：滚动变色背景（blobs 随滚动 青→紫 hue-rotate，尊重 reduced-motion） ----
+  // ---- 动效包5：滚动变色背景（blobs 随滚动 青→紫 hue-rotate；8° 分档更新防手机滚动卡顿，尊重 reduced-motion） ----
   (function(){
     if(window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;
     const bl=document.querySelector('.blobs');if(!bl)return;
-    let ticking=false;
+    let ticking=false,last=-1;
     const upd=()=>{
       const max=document.documentElement.scrollHeight-window.innerHeight;
       const p=max>0?Math.min(1,window.scrollY/max):0;
-      bl.style.filter='blur(70px) hue-rotate('+(p*60).toFixed(1)+'deg)';
+      const deg=Math.round(p*60/8)*8;                 // 8° 一档：整页滚动最多约 8 次重绘，替代每帧重绘
+      if(deg!==last){bl.style.filter='blur(70px) hue-rotate('+deg+'deg)';last=deg;}
       ticking=false;
     };
     window.addEventListener('scroll',()=>{if(!ticking){ticking=true;requestAnimationFrame(upd)}},{passive:true});
     upd();
   })();
+
+  // ---- 动效包6：标签页切到后台时暂停装饰性无限动画（省电省帧） ----
+  document.addEventListener('visibilitychange',()=>{document.body.classList.toggle('paused',document.hidden)});
 
   // ---- 动效包2：卡片 3D 倾斜（仅桌面悬停设备，尊重 reduced-motion） ----
   if(window.matchMedia('(hover:hover) and (pointer:fine)').matches && !window.matchMedia('(prefers-reduced-motion:reduce)').matches){
