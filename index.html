@@ -797,7 +797,7 @@
       <div class="egg-hint" id="eggHint">🎁 头像里藏着小秘密,连戳几下试试</div>
       <div class="side-stats">
         <div class="ss"><b id="stVisit">0</b><span>今日访客</span></div>
-        <div class="ss"><b>4</b><span>小作品</span></div>
+        <div class="ss"><b>5</b><span>小作品</span></div>
         <div class="ss"><b>4</b><span>背景音乐</span></div>
         <div class="ss"><b>5</b><span>主题皮肤</span></div>
       </div>
@@ -868,8 +868,18 @@
       <div class="sec-title">小作品 <span style="font-size:11px;font-weight:400;color:var(--ink-2);opacity:.7;margin-left:6px;">· 一些正在发光的小东西 ✨</span></div>
       <div class="work-item">
         <div class="wm">💎 乐乌计算器 <span class="wb">稳定版</span></div>
-        <div class="wd">自己做的安卓计算器：深色玻璃质感、按钮带真实光晕，输入 1145141919 还会召唤一条鲸鱼游过 ✨</div>
-        <button class="dl-btn" id="dlCalc"><span class="dl-ic">📥</span><span class="dl-tx">下载安装 v2.0</span></button>
+        <div class="wd">自己做的安卓计算器：深色玻璃质感、按钮带真实光晕，输入 1145141919 还会召唤一条鲸鱼游过 ✨ 文件在小飞机网盘，提取码：lewu 🔑</div>
+        <button class="dl-btn" id="dlCalc"><span class="dl-ic">📥</span><span class="dl-tx">去小飞机网盘下载</span></button>
+      </div>
+      <div class="work-item">
+        <div class="wm">🏡 线稿魔女小屋 <span class="wb">GitHub 开源</span></div>
+        <div class="wd">一栋会呼吸的线稿风 3D 魔女小屋：三视角漫步、昼夜与天气变换、壁炉火光，还能在墙上写字，电脑和手机都能玩 ✨ 小屋是 GitHub 上的开源项目，感谢作者的无私分享 💚 开源精神万岁！</div>
+        <a class="dl-btn" href="https://lewuxiaowu.pages.dev/" target="_blank" rel="noopener" title="去小屋逛逛"><span class="dl-ic">🚪</span><span class="dl-tx">去小屋逛逛</span></a>
+      </div>
+      <div class="work-item">
+        <div class="wm">🌍 寰图小地球仪 <span class="wb">AI 共创</span></div>
+        <div class="wd">一颗转呀转的小地球 —— Grok 出点子、DeepSeek 陪着一起磨出来的 3D 地球仪，寰宇地图尽收眼底，点开就能看 ✨</div>
+        <a class="dl-btn" href="https://lewudiqiu.pages.dev/" target="_blank" rel="noopener" title="去寰图逛逛"><span class="dl-ic">🌍</span><span class="dl-tx">去寰图逛逛</span></a>
       </div>
       <div class="work-item">
         <div class="wm">🌊 液态玻璃小站（就是本站）<span class="wb">v1.2 · 玻璃版</span></div>
@@ -881,11 +891,6 @@
         <div class="wd">想把每天的小确幸都收进来——四季展览正在慢慢长出来，欢迎常来逛逛 🌿</div>
         <span class="arrow">→</span>
       </div>
-      <div class="work-item">
-        <div class="wm">🏡 线稿魔女小屋 <span class="wb">GitHub 开源</span></div>
-        <div class="wd">一栋会呼吸的线稿风 3D 魔女小屋：三视角漫步、昼夜与天气变换、壁炉火光，还能在墙上写字，电脑和手机都能玩 ✨ 小屋是 GitHub 上的开源项目，感谢作者的无私分享 💚 开源精神万岁！</div>
-        <a class="dl-btn" href="https://lewuxiaowu.pages.dev/" target="_blank" rel="noopener" title="去小屋逛逛"><span class="dl-ic">🚪</span><span class="dl-tx">去小屋逛逛</span></a>
-      </div>
     </section>
 
     <!-- 时间线 -->
@@ -893,8 +898,16 @@
       <div class="sec-title">足迹</div>
       <div class="timeline">
         <div class="tl-item">
+          <div class="tt">2026.10 · 和 AI 组队，捏出了小地球 🌍</div>
+          <div class="td">Grok 出点子、DeepSeek 陪着一起磨，把「寰图」3D 地球仪从想法变成能转的页面——原来和 AI 当队友是这种感觉！</div>
+        </div>
+        <div class="tl-item">
           <div class="tt">2026.10 · 乐乌的小站上线</div>
           <div class="td">从零开始写了这个网站，第一次让 "乐乌" 有了可以外访的小家 🏡</div>
+        </div>
+        <div class="tl-item">
+          <div class="tt">2026.10 · 给线稿小屋安了个家</div>
+          <div class="td">在 GitHub 上邂逅了那栋会呼吸的线稿风 3D 魔女小屋，把它部署上线，随时能去壁炉边发发呆 🏡</div>
         </div>
         <div class="tl-item">
           <div class="tt">2026.09 · 动手做 App</div>
@@ -1312,25 +1325,25 @@
   }
 
   // ---- 乐乌计算器 下载安装 ----
-  // APK 为外链直链（window.__APK_URL 在 </body> 前的数据 script 里赋值），点击直接跳下载。
+  // 计算器安装包走小飞机网盘分享页（window.__APK_URL 在 </body> 前的数据 script 里赋值），点击新标签打开。
   const dlCalc=document.getElementById('dlCalc');
   if(dlCalc){
     const dlTx=dlCalc.querySelector('.dl-tx');
     dlCalc.addEventListener('click',()=>{
       if(!window.__APK_URL){
         dlTx.textContent='数据未就绪，请刷新重试';
-        setTimeout(()=>{dlTx.textContent='下载安装 v2.0'},2000);
+        setTimeout(()=>{dlTx.textContent='去小飞机网盘下载'},2000);
         return;
       }
       try{
-        dlTx.textContent='开始下载…';
+        dlTx.textContent='正在打开分享页…';
         const a=document.createElement('a');
         a.href=window.__APK_URL;
-        a.download='乐乌计算器v2_1.0.apk'; // 跨域时浏览器忽略 download 属性，文件名以服务端 Content-Disposition 为准
+        a.target='_blank'; // 小飞机网盘分享页，新标签打开
         a.rel='noopener';
         document.body.appendChild(a);a.click();
-        setTimeout(()=>{document.body.removeChild(a);dlTx.textContent='下载安装 v2.0'},1200);
-      }catch(e){dlTx.textContent='下载失败，请重试';setTimeout(()=>{dlTx.textContent='下载安装 v2.0'},2000)}
+        setTimeout(()=>{document.body.removeChild(a);dlTx.textContent='去小飞机网盘下载'},1200);
+      }catch(e){dlTx.textContent='下载失败，请重试';setTimeout(()=>{dlTx.textContent='去小飞机网盘下载'},2000)}
     });
   }
 
@@ -1442,7 +1455,7 @@
     endpoint:'https://api.siliconflow.cn/v1/chat/completions',
     key:'',                       // 你的 API Key
     model:'deepseek-ai/DeepSeek-V3',
-    system:'你是「乐乌」个人小站里的鲸鱼助手「小鲸鱼」。主人叫乐乌（网名），他有这些作品：乐乌计算器（输入1145141919会召唤鲸鱼）、本站液态玻璃小站、线稿魔女小屋（GitHub 开源 3D 小游戏，线上可玩）、生活相册（施工中）。你住在这个玻璃海里，说话可爱、简短、多用emoji，像朋友一样陪聊。'
+    system:'你是「乐乌」个人小站里的鲸鱼助手「小鲸鱼」。主人叫乐乌（网名），他有这些作品：乐乌计算器（输入1145141919会召唤鲸鱼）、本站液态玻璃小站、线稿魔女小屋（GitHub 开源 3D 小游戏，线上可玩）、寰图小地球仪（Grok+DeepSeek 共做的 3D 地球仪，线上可玩）、生活相册（施工中）。你住在这个玻璃海里，说话可爱、简短、多用emoji，像朋友一样陪聊。'
   };
   (function(){
     const petBtn=document.getElementById('petBtn'),petPanel=document.getElementById('petPanel');
@@ -1511,7 +1524,7 @@
     // 记录本轮对话，供下一轮"接话茬"
     function remember(q,answer){
       let kind='chat';
-      if(/作品|计算器|相册|小屋|做了什么/.test(t(q)))kind='works';
+      if(/作品|计算器|相册|小屋|地球|寰图|做了什么/.test(t(q)))kind='works';
       else if(/时间|几点|日期|星期/.test(t(q)))kind='time';
       else if(/音乐|歌|放歌|bgm/.test(t(q)))kind='music';
       else if(/我叫|名字/.test(t(q)))kind='name';
@@ -1571,7 +1584,7 @@
     }
     // 计算器问答（作品相关）
     function calcTalk(s){
-      if(/计算器|算数|app|应用|安卓|手机/.test(s))return '💎 乐乌计算器：自己做的安卓计算器，深色玻璃质感，按钮带真实光晕～最神秘的是输入 1145141919 会召唤一条鲸鱼游过！要不要试试？';
+      if(/计算器|算数|app|应用|安卓|手机/.test(s))return '💎 乐乌计算器：自己做的安卓计算器，深色玻璃质感，按钮带真实光晕～最神秘的是输入 1145141919 会召唤一条鲸鱼游过！下载走小飞机网盘，提取码 lewu 🔑，要不要试试？';
       return null;
     }
     function localReply(q){
@@ -1602,12 +1615,13 @@
       if(/再见|拜拜|走了|下次见/.test(s))return '拜拜～常回来看看我呀，我一直在玻璃海里等你 🐳👋';
       if(/哈哈|哈哈哈|笑死|好玩/.test(s))return '哈哈，能看到你笑我也很开心 🫧';
       if(/乐乌(在|是|谁|介绍)|作者|主人|站长/.test(s))return '乐乌是这个站的主人，一个喜欢记录生活、捣鼓小玩意的普通人。会写代码、做设计，也爱打游戏和睡觉（还爱熬夜 🌙），是个安静的摩羯座 🐐。他说要把日子过成自己喜欢的样子～';
-      if(/讲讲计算器|计算器.*(讲|说|怎么样)|计算器怎么用/.test(s))return '💎 乐乌计算器：自己做的安卓计算器，深色玻璃质感，按钮带真实光晕～最神秘的是输入 1145141919 会召唤一条鲸鱼游过！要不要试试？';
+      if(/讲讲计算器|计算器.*(讲|说|怎么样)|计算器怎么用/.test(s))return '💎 乐乌计算器：自己做的安卓计算器，深色玻璃质感，按钮带真实光晕～最神秘的是输入 1145141919 会召唤一条鲸鱼游过！下载走小飞机网盘，提取码 lewu 🔑，要不要试试？';
       if(/讲讲相册|相册.*(讲|说|怎么样)/.test(s))return '🌱 生活相册还在施工中～乐乌想把每天的小确幸都收进去，欢迎常来逛，等它慢慢长大。';
       if(/讲讲小屋|小屋.*(讲|说|怎么样)|去小屋/.test(s))return '🏡 线稿魔女小屋：一栋会呼吸的线稿风 3D 小屋，能换视角、调昼夜和天气、点壁炉和吊灯，还能在墙上写字～它是 GitHub 上的开源项目，乐乌特别喜欢所以安利给你，点“去小屋逛逛”或直接访问 lewuxiaowu.pages.dev 就能玩！';
+      if(/讲讲地球仪|讲讲寰图|地球仪.*(讲|说|怎么样)|寰图.*(讲|说|怎么样)/.test(s))return '🌍 寰图小地球仪：乐乌用 Grok 出点子、DeepSeek 一起磨出来的 3D 小地球，转呀转地停在线上等你，点“去寰图逛逛”或访问 lewudiqiu.pages.dev 就能看到它 ✨';
       if(/作品|做了什么|项目|开发|计算器|相册|小屋|app/i.test(s)){
         mem.lastTopic='works';
-        return '乐乌的小作品有这些：\n💎 乐乌计算器（安卓，输 1145141919 召唤鲸鱼）\n🌊 本站（液态玻璃 v1.2 玻璃版）\n🏡 线稿魔女小屋（GitHub 开源 3D 小游戏，在线就能玩，超喜欢）\n🌱 生活相册（施工中）\n想细看哪一个？告诉我“讲讲计算器”“讲讲小屋”或“讲讲相册”～';
+        return '乐乌的小作品有这些：\n💎 乐乌计算器（安卓，输 1145141919 召唤鲸鱼）\n🌊 本站（液态玻璃 v1.2 玻璃版）\n🏡 线稿魔女小屋（GitHub 开源 3D 小游戏，在线就能玩，超喜欢）\n🌍 寰图小地球仪（Grok+DeepSeek 一起做的 3D 地球仪，点开就能看）\n🌱 生活相册（施工中）\n想细看哪一个？告诉我“讲讲计算器”“讲讲小屋”“讲讲地球仪”或“讲讲相册”～';
       }
       if(/技能|会什么|擅长|标签|游戏|玩什么/.test(s))return '乐乌的技能标签：写代码 ✍️、做设计 🎨、打游戏 🎮（泰拉瑞亚、传说之下、求生之路、脑叶公司、phigros 都是他的心头好）、睡觉 😴、熬夜 🌙（熬夜是“最擅长”的那个，小声说）';
       if(/最近在做|在做什么|近况/.test(s))return '乐乌最近在：📱 折腾自己的 App、🌐 搭建小站、📷 攒素材、☕ 喝咖啡～挺忙的，但都很喜欢。';
@@ -1623,7 +1637,7 @@
       if(/今天|心情|过得怎么样/.test(s))return rand(['今天海面风平浪静，心情像玻璃一样透亮 ✨','还不错呀～就是有点想听你多跟我说说话 💙','老样子，在玻璃海里等有缘人来聊天 🐳']);
       if(/厉害|你怎么.*会|太强|牛/.test(s))return '嘿嘿，都是乐乌教我的～其实我只是一只被丢进 HTML 里的小鲸鱼 🐋';
       if(/有没有|还有|然后呢|接着|继续|所以呢/.test(s)){
-        if(mem.lastTopic==='works')return '目前就这四个小作品啦～重点推荐计算器和魔女小屋，小屋在线就能玩。等你把计算器做成正式版记得告诉我，我给你加个“打开官方”彩蛋 🎁';
+        if(mem.lastTopic==='works')return '目前就这五个小作品啦～重点推荐计算器和魔女小屋，地球仪也超可爱，点开就能转。等你把计算器做成正式版记得告诉我，我给你加个“打开官方”彩蛋 🎁';
         return '唔…让我想想。要不你换个问法？比如“有什么作品”或“讲个笑话”试试？';
       }
       // 兜底
@@ -1723,7 +1737,7 @@
 
 
 
-<script>window.__APK_URL='https://h1059.lanosso.com/1e1aa630a7da1635b525fc2819d60b32/6ac28e82/2026/10/05/d63f993e5f1a1db7e4366e4d990c6bd3.apk?fn=%E4%B9%90%E4%B9%8C%E8%AE%A1%E7%AE%97%E5%99%A8v2_1.0.apk';</script>
+<script>window.__APK_URL='https://share.feijipan.com/s/oTvkoxAN?_wv=1';</script>
 <div class="side-deco" aria-hidden="true">
   <div class="d d-l">
     <div class="orb"></div>
