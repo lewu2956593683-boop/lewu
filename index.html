@@ -1035,6 +1035,10 @@
 </style>
 </head>
 <body>
+  <!-- 音乐：必须放在 body 最前面。浏览器解析到这一行就开始下音频数据；
+       以前它挂在页面底部、且只 preload=metadata，等于「点播了才去买菜」 -->
+  <audio id="bgm" src="music.m4a" preload="auto" playsinline></audio>
+
   <!-- 开屏动画 -->
   <div class="boot" id="boot">
     <i class="bub"></i><i class="bub"></i><i class="bub"></i><i class="bub"></i>
@@ -1268,8 +1272,7 @@
   </div>
   <button class="to-top" id="toTop" title="回到顶部">↑</button>
 
-  <!-- 音乐播放器 -->
-  <audio id="bgm" src="music.m4a" preload="metadata"></audio>
+  <!-- 音乐播放器（<audio> 已提到 body 开头，这里只留界面） -->
   <div class="music-dock" id="mpDock">
     <div class="disc" id="mpDisc">🎻</div>
     <div class="dt">
@@ -1381,20 +1384,34 @@
   bar.addEventListener('click',e=>{const r=bar.getBoundingClientRect();bgm.currentTime=((e.clientX-r.left)/r.width)*bgm.duration});
   document.addEventListener('click',e=>{if(!pan.contains(e.target)&&e.target!==dock&&!dock.contains(e.target))pan.classList.remove('open')});
   // ---- 自动播放音乐 ----
-  // 目标：打开页面就开始放。浏览器会拦「没有用户交互的带声音播放」，所以分三层：
-  // ① 一进页面立刻试 → ② 开屏收起后再试 → ③ 都失败就挂一次性手势兜底：
-  //    开屏那 1.8 秒里随手点一下/碰一下屏幕，音乐就起来了，不必去找播放按钮。
+  // 目标：打开页面就开始放。浏览器会拦「没有用户交互的带声音播放」，所以分四步：
+  // ① 解析到这段就立刻 play()（此时音频已在 body 开头下了几百 KB）
+  // ② 音频攒够数据、触发 canplay 时再补一枪
+  // ③ 开屏收起后再试   ④ 1.5s 保底
+  // 全被拦就挂一次性手势兜底：开屏那 1.8 秒里随手点一下，音乐就起来了。
   (function(){
     const hint=document.getElementById('mpHint');
     let started=false,armed=false;
     const EVS=['pointerdown','touchend','click','keydown'];
     const isCtrl=t=>!!(t&&t.closest&&t.closest('.music-dock,.music-panel'));
+    // 第一首出声后，趁页面闲着预取下一首：切歌不用再等一轮下载（省流模式/2G 跳过）
+    let pfDone=false;
+    const prefetch=()=>{
+      if(pfDone)return;pfDone=true;
+      try{const c=navigator.connection||{};if(c.saveData||/2g/.test(c.effectiveType||''))return}catch(e){}
+      const url=TUNES[(cur+1)%TUNES.length].src;
+      if(!url||url===TUNES[cur].src)return;
+      const l=document.createElement('link');
+      l.rel='prefetch';l.href=url;
+      document.head.appendChild(l);
+    };
     const ok=()=>{
       if(started)return;
       started=true;sync();
       if(hint)hint.classList.remove('show');
       EVS.forEach(ev=>document.removeEventListener(ev,kick,true));
       document.removeEventListener('visibilitychange',onVis);
+      setTimeout(prefetch,3000);
     };
     const kick=e=>{
       if(started)return;
@@ -1414,9 +1431,10 @@
       if(!p||!p.then)return;
       p.then(ok).catch(arm);
     };
-    setTimeout(attempt,300);                                     // ① 一进页面就试（让出 300ms 给首屏图和背景）
-    document.addEventListener('bootdone',attempt,{once:true});   // ② 开屏收起后再试
-    setTimeout(attempt,1500);                                    // ③ 首次音频还在加载时补一次
+    attempt();                                                   // ① 立刻试（音频已在 body 开头下载中，数据到齐就出声）
+    bgm.addEventListener('canplay',()=>{if(!started)attempt()});  // ② 第一次拉到足够数据时再补一枪
+    document.addEventListener('bootdone',attempt,{once:true});    // ③ 开屏收起后再试
+    setTimeout(attempt,1500);                                     // ④ 保底
     setTimeout(()=>{if(!started&&hint)hint.classList.add('show')},2600);
   })();
 
