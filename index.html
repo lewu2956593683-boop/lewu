@@ -218,6 +218,14 @@
     background:linear-gradient(135deg,var(--acc),var(--acc2));box-shadow:0 0 0 3px rgba(255,255,255,.7),0 0 12px rgba(91,169,160,.8);}
   .tl-item .tt{font-weight:600;font-size:14px;margin-bottom:3px;}
   .tl-item .td{font-size:12.5px;color:var(--ink-2);line-height:1.7;}
+  /* 足迹折叠：默认只露最近几条，剩下的点开（条目再多也不会把页面拉长） */
+  .timeline.folded .tl-extra{display:none}
+  .tl-toggle{display:inline-flex;align-items:center;gap:6px;margin:4px 0 0;padding:6px 14px;border-radius:999px;
+    border:1px solid var(--glass-bd);background:var(--glass);color:var(--ink-2);font-family:inherit;
+    font-size:12px;line-height:1.6;cursor:pointer;transition:color .3s ease,border-color .3s ease;}
+  .tl-toggle::after{content:"▾";font-size:10px;opacity:.8;transition:transform .25s ease}
+  .tl-toggle[aria-expanded="true"]::after{transform:rotate(180deg)}
+  .tl-toggle:hover{color:var(--ink);border-color:var(--acc)}
 
   /* 评论区样式（滚动字幕展示） */
   .msgs{display:flex;flex-direction:column;gap:10px;}
@@ -1186,6 +1194,14 @@
       <h2 class="sec-title">足迹</h2>
       <div class="timeline">
         <div class="tl-item">
+          <div class="tt">2026.10 · 小站换了身衣服 👕</div>
+          <div class="td">把玻璃卡片擦透了一层，背景照片终于透得出来；作品墙从一列列表改成两排卡片，五张封面第一次完整露脸。进门默认住进墨夜，不用再自己点主题。</div>
+        </div>
+        <div class="tl-item">
+          <div class="tt">2026.10 · 推门就有音乐 🎻</div>
+          <div class="td">以前进来要先找播放键，现在开屏那两秒里随手碰一下屏幕，曲子自己就起来了。音量压在 15%，像背景里的风，不抢话。</div>
+        </div>
+        <div class="tl-item">
           <div class="tt">2026.10 · 和 AI 组队，捏出了小地球 🌍</div>
           <div class="td">Grok 出点子、DeepSeek 陪着一起磨，把「寰图」3D 地球仪从想法变成能转的页面——原来和 AI 当队友是这种感觉！</div>
         </div>
@@ -1607,6 +1623,31 @@
   const toTop=document.getElementById('toTop');
   window.addEventListener('scroll',()=>toTop.classList.toggle('show',window.scrollY>400),{passive:true});
   toTop.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+
+  // ---- 足迹折叠：默认只露最近 3 条 ----
+  // 条目写多少都不会再把页面拉长：超出的先藏起来，点按钮才展开。
+  // 只认 DOM 里的 .tl-item，所以以后往 HTML 里加条目不用改这段逻辑。
+  (function(){
+    const tl=document.querySelector('#timeline .timeline');
+    if(!tl)return;
+    const items=[...tl.querySelectorAll('.tl-item')];
+    const SHOW=3;
+    if(items.length<=SHOW+1)return;     // 4 条以内不值得折，折了反而多一次点击
+    items.forEach((el,i)=>{if(i>=SHOW)el.classList.add('tl-extra')});
+    tl.classList.add('folded');
+    const btn=document.createElement('button');
+    btn.type='button';btn.className='tl-toggle';
+    const label=open=>{btn.textContent=open?'收起':('展开全部 '+items.length+' 条')};
+    label(false);
+    btn.setAttribute('aria-expanded','false');
+    btn.setAttribute('aria-controls','timeline');
+    btn.addEventListener('click',()=>{
+      const folded=tl.classList.toggle('folded');
+      btn.setAttribute('aria-expanded',String(!folded));
+      label(!folded);
+    });
+    tl.appendChild(btn);
+  })();
 
   // ---- 顶部滚动进度条 ----
   const proBar=document.createElement('div');proBar.className='progress-bar';
