@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>乐乌 · 个人主页</title>
 <meta name="description" content="乐乌的个人主页 · 纯 AI 制作 · 由「吃白饭的大鲸鱼」做的 🐋">
-<meta name="theme-color" content="#dff3f1">
+<meta name="theme-color" content="#0b1626">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐋</text></svg>">
 <meta property="og:title" content="乐乌 · 个人主页">
 <meta property="og:description" content="把日子过成自己喜欢的样子 🍃">
@@ -18,13 +18,22 @@
 <meta name="twitter:description" content="把日子过成自己喜欢的样子 🍃">
 <meta name="twitter:image" content="https://lewu.pages.dev/avatar.jpg">
 <link rel="canonical" href="https://lewu.pages.dev/">
+<link rel="preload" as="image" href="bg-mobile.webp" media="(max-width:999px)">
+<link rel="preload" as="image" href="bg-desktop.webp" media="(min-width:1000px)">
 <link rel="apple-touch-icon" href="avatar.jpg">
 <script>
+  /* 首屏主题：默认进「墨夜」。这段必须在 CSS 之前跑完，
+     否则没存过主题的新访客会先看到一帧浅色再跳成深色（闪屏）。 */
   try{
-    var _t=localStorage.getItem('theme');
-    if(_t==='dark'||_t==='moye'||_t==='mublue')document.documentElement.classList.add('dark');
-    if(_t&&_t!=='light'&&_t!=='dark')document.documentElement.setAttribute('data-theme',_t);
-  }catch(e){}
+    var _t=localStorage.getItem('theme')||'moye';
+    if(_t==='light')_t='qiwu';
+    if(_t==='dark')_t='moye';
+    document.documentElement.setAttribute('data-theme',_t);
+    if(_t==='moye'||_t==='mublue')document.documentElement.classList.add('dark');
+  }catch(e){
+    document.documentElement.setAttribute('data-theme','moye');
+    document.documentElement.classList.add('dark');
+  }
 </script>
 <style>
   /* 颜色变量不使用 @property 注册：不注册则 var() 切换时"跳变"一次到位，
@@ -59,21 +68,33 @@
     transition:opacity .7s ease;
   }
   html.dark body::before{opacity:0}
-  /* 流动液态背景 */
-  .blobs{position:fixed;inset:0;z-index:-1;filter:blur(70px);opacity:.8;}
-  .blob{position:absolute;border-radius:50%;animation:float 22s ease-in-out infinite alternate;}
-  .b1{width:46vmax;height:46vmax;left:-10vmax;top:-12vmax;background:radial-gradient(circle,#a7e8dd,transparent 65%);}
-  .b2{width:42vmax;height:42vmax;right:-8vmax;top:6vmax;background:radial-gradient(circle,#c9c0f5,transparent 65%);animation-delay:-6s;}
-  .b3{width:40vmax;height:40vmax;left:16vmax;bottom:-14vmax;background:radial-gradient(circle,#f9c8dd,transparent 65%);animation-delay:-12s;}
-  @keyframes float{
-    0%{transform:translate(0,0) scale(1)}
-    50%{transform:translate(4vmax,-3vmax) scale(1.08)}
-    100%{transform:translate(-3vmax,4vmax) scale(.95)}
+  /* 深色主题下的照片背景（浅色主题保留上面的柔和渐变，两种底子不混用）。
+     照片层放在 body::after，蒙层和图片合成同一张背景，避免多加一层合成开销 */
+  body::after{
+    content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+    opacity:0;transition:opacity .7s ease;
+    background-position:center;background-size:cover;background-repeat:no-repeat;
   }
-  .grain{position:fixed;inset:0;z-index:-1;opacity:.5;pointer-events:none;
-    background-image:radial-gradient(rgba(255,255,255,.6) 1px,transparent 1px);background-size:26px 26px;}
+  html.switching body::after{transition:opacity .7s ease!important}
+  @media(max-width:999px){
+    html.dark body::after{
+      opacity:1;
+      background-image:linear-gradient(180deg,rgba(6,10,18,.74) 0%,rgba(6,10,18,.46) 32%,rgba(6,10,18,.42) 60%,rgba(6,10,18,.68) 100%),url("bg-mobile.webp");
+      background-position:center top;
+    }
+  }
+  @media(min-width:1000px){
+    html.dark body::after{
+      opacity:1;
+      background-image:linear-gradient(180deg,rgba(6,10,18,.62) 0%,rgba(6,10,18,.46) 22%,rgba(6,10,18,.44) 62%,rgba(6,10,18,.82) 100%),url("bg-desktop.webp");
+    }
+  }
 
   .wrap{max-width:920px;margin:0 auto;padding:0 20px 60px;position:relative;}
+  /* 卡片之间的呼吸感：以前各 section 首尾相接（间距 0），视觉上糊成一整块 */
+  .wrap > section.card,.wrap > .grid{margin-bottom:22px;}
+  /* 锚点跳转时给吸顶导航留出高度，避免标题被导航条盖住 */
+  section[id],.g-card[id]{scroll-margin-top:96px;}
 
   /* 玻璃导航 */
   nav{
@@ -126,6 +147,7 @@
 
   /* 彩蛋提示 */
   .egg-hint{font-size:11px;color:var(--ink-2);opacity:.55;margin-top:9px;}
+  html.dark .egg-hint{opacity:.72}
 
   /* 彩蛋：上升小泡泡 */
   .egg{position:fixed;bottom:-3rem;z-index:1000;pointer-events:none;animation:eggRise 1.6s ease-in forwards;will-change:transform,opacity;}
@@ -144,7 +166,8 @@
     transition:transform .3s ease,box-shadow .3s ease,color .5s ease,border-color .5s ease;
   }
   .card:hover{transform:translateY(-3px);box-shadow:0 18px 48px rgba(80,120,140,.16),inset 0 1px 0 rgba(255,255,255,.75);}
-  .sec-title{display:flex;align-items:center;gap:10px;margin:44px 0 18px;font-size:20px;font-weight:700;letter-spacing:1px;}
+  /* 卡片内标题：原来是 margin-top 44px，等于每张卡都被顶出一条空白，改为贴顶 */
+  .sec-title{display:flex;align-items:center;gap:10px;margin:0 0 18px;font-size:19px;font-weight:700;letter-spacing:1px;}
   .sec-title::before{content:"";width:7px;height:20px;border-radius:4px;background:linear-gradient(180deg,var(--acc),var(--acc2));}
 
   /* 关于 */
@@ -171,7 +194,6 @@
   .work-item:last-child{margin-bottom:0}
   .work-item .wm{font-weight:600;font-size:14px;margin-bottom:4px;color:var(--ink);}
   .work-item .wd{font-size:12.5px;color:var(--ink-2);line-height:1.7;}
-  .work-item .arrow{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:18px;opacity:.5;}
   .wb{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:500;letter-spacing:.3px;
     color:var(--acc);background:var(--glass);border:1px solid var(--glass-bd);vertical-align:1px;line-height:1.5;
     transition:color .5s ease,border-color .5s ease;}
@@ -210,7 +232,11 @@
 
   /* 页脚 */
   footer{text-align:center;margin-top:54px;color:var(--ink-2);font-size:12px;opacity:.85;line-height:2;}
-  footer .visit-count{display:inline-block;margin-top:6px;padding:3px 12px;border-radius:999px;background:var(--glass);border:1px solid var(--glass-bd);font-size:11px;opacity:.9;}
+  /* 页脚小字压在照片的高光上会糊，深色下补一点投影提对比 */
+  /* 深色主题：页脚单独给一层玻璃，避免小字直接压在照片高光上 */
+  html.dark footer{color:var(--ink-2);opacity:1;background:var(--glass);border:1px solid var(--glass-bd);
+    border-radius:22px;padding:22px 18px 20px;backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);}
+  footer .visit-count{display:block;width:max-content;margin:8px auto 0;padding:3px 12px;border-radius:999px;background:var(--glass);border:1px solid var(--glass-bd);font-size:11px;opacity:.9;}
   footer .ver{display:inline-block;margin-top:6px;padding:2px 10px;border-radius:999px;background:var(--glass);border:1px solid var(--glass-bd);font-size:10.5px;color:var(--acc);letter-spacing:.3px;}
   footer .soc{display:flex;justify-content:center;gap:14px;margin-bottom:12px;}
   footer .soc a{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:50%;
@@ -232,8 +258,8 @@
 /* ===== 深色模式 ===== */
   html.dark{
     --bg1:#0b1626; --bg2:#101f30; --bg3:#14263a;
-    --ink:#e8f0f7; --ink-2:#a3b6c8;
-    --glass:rgba(16,30,44,.55);
+    --ink:#e8f0f7; --ink-2:#b8c8d8;
+    --glass:rgba(12,22,34,.55);
     --glass-bd:rgba(255,255,255,.16);
     --ds:#7c8cff; /* 深色下用稍亮的 DeepSeek 蓝，保证玻璃上可见 */
   }
@@ -242,7 +268,6 @@
   html.dark .b1{background:radial-gradient(circle,#1c5561,transparent 65%)}
   html.dark .b2{background:radial-gradient(circle,#3b3a6e,transparent 65%)}
   html.dark .b3{background:radial-gradient(circle,#5c2f47,transparent 65%)}
-  html.dark .grain{opacity:.12}
   html.dark .card{
     box-shadow:0 12px 32px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.08);
   }
@@ -280,7 +305,6 @@
   html[data-theme="mublue"] .b1{background:radial-gradient(circle,#14465c,transparent 65%)}
   html[data-theme="mublue"] .b2{background:radial-gradient(circle,#2c3a70,transparent 65%)}
   html[data-theme="mublue"] .b3{background:radial-gradient(circle,#3a2f5c,transparent 65%)}
-  html[data-theme="mublue"] .grain{opacity:.12}
   html[data-theme="mublue"] .card{box-shadow:0 12px 32px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.08)}
 
 /* ===== 主题切换按钮（固定悬浮，固定液态玻璃样式，不随主题变色） ===== */
@@ -307,8 +331,10 @@
     box-shadow:0 14px 34px rgba(60,100,130,.2);display:none;flex-direction:column;gap:4px;}
   .theme-pop.open{display:flex;animation:popIn .18s ease;}
   @keyframes popIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-  .theme-pop .th{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:10px;cursor:pointer;font-size:12px;color:var(--ink);transition:background .2s ease;font-family:inherit;}
+  /* 主题项改成 <button> 后要清掉浏览器默认样式，键盘/读屏才能操作 */
+  .theme-pop .th{display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border:none;border-radius:10px;background:transparent;text-align:left;cursor:pointer;font-size:12px;color:var(--ink);transition:background .2s ease;font-family:inherit;}
   .theme-pop .th:hover{background:rgba(255,255,255,.4)}
+  .theme-pop .th:focus-visible{outline:2px solid var(--acc);outline-offset:1px;background:rgba(255,255,255,.4)}
   .theme-pop .th i{width:18px;height:18px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--c1),var(--c2));border:1px solid rgba(255,255,255,.7);box-shadow:inset 0 1px 2px rgba(255,255,255,.5);}
   .theme-pop .th.cur{font-weight:700}
   .theme-pop .th.cur::after{content:"✓";margin-left:auto;font-size:11px;color:var(--acc)}
@@ -341,7 +367,7 @@
 
 /* ===== 复制按钮 ===== */
   .copy-btn{
-    display:inline-flex;align-items:center;gap:4px;margin-left:8px;padding:3px 10px;border-radius:999px;font-size:11.5px;border:1px solid rgba(90,169,160,.5);
+    display:inline-flex;align-items:center;gap:4px;margin-left:8px;padding:6px 12px;border-radius:999px;font-size:11.5px;border:1px solid rgba(90,169,160,.5);
     background:rgba(127,216,205,.14);color:var(--acc);cursor:pointer;vertical-align:2px;
     transition:transform .2s ease,color .5s ease,border-color .5s ease;}
   .copy-btn:active{transform:scale(.92)}
@@ -405,7 +431,7 @@
   .mp-vol input{flex:1;min-width:0;width:100%;height:5px;accent-color:var(--acc);}
   /* 曲目列表 + 切歌按钮 */
   .mp-list{display:flex;flex-direction:column;gap:6px;margin:0 0 12px;max-height:150px;overflow-y:auto;}
-  .mp-item{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;border-radius:12px;cursor:pointer;text-align:left;
+  .mp-item{display:flex;align-items:center;gap:8px;width:100%;padding:9px 10px;border-radius:12px;cursor:pointer;text-align:left;
     background:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.65);color:var(--ink);
     transition:background .25s ease,border-color .25s ease;
     font-family:inherit;font-size:12px;flex-shrink:0;}
@@ -415,7 +441,21 @@
   .mp-item .t b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .mp-item .t i{display:block;font-style:normal;font-size:10px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .mp-item.on{background:linear-gradient(135deg,rgba(127,216,205,.45),rgba(167,155,240,.45));border-color:rgba(255,255,255,.9);}
-  .mp-skip{width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.75);flex-shrink:0;cursor:pointer;
+  /* 深色主题下的播放器：这些控件原来写死了白色半透明，夜里会变成一排灰白块 */
+  html.dark .mp-item{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14);}
+  /* 卡片内再套一层深玻璃会糊成一片，改用轻微白色提亮来区分层级 */
+  html.dark .work-item{background:rgba(255,255,255,.045);border-color:rgba(255,255,255,.12)}
+  html.dark .msg .mb{background:rgba(255,255,255,.05)}
+  html.dark .mp-item:hover{background:rgba(255,255,255,.12)}
+  html.dark .mp-item.on{background:linear-gradient(135deg,rgba(127,216,205,.20),rgba(167,155,240,.20));border-color:rgba(255,255,255,.30);}
+  html.dark .mp-play,html.dark .mp-skip,html.dark .music-dock .dbtn,html.dark .music-dock .disc{
+    background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.18);color:var(--ink);
+  }
+  html.dark .mp-cover{background:linear-gradient(135deg,rgba(127,216,205,.22),rgba(167,155,240,.22));border-color:rgba(255,255,255,.18);}
+  html.dark .mp-progress{background:rgba(255,255,255,.14)}
+  html.dark .theme-pop .th:hover{background:rgba(255,255,255,.10)}
+  html.dark .skill.p{color:#bfb4ff} /* 原来固定 #6a5fc0，在深色玻璃上几乎看不清 */
+  .mp-skip{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.75);flex-shrink:0;cursor:pointer;
     background:rgba(255,255,255,.55);color:#3a4a5a;font-size:13px;
     display:flex;align-items:center;justify-content:center;
     transition:transform .2s ease;}
@@ -500,8 +540,11 @@
   .pet-msg.u .pet-mb{background:linear-gradient(135deg,rgba(127,216,205,.35),rgba(167,155,240,.35));color:var(--ink);}
   .pet-msg.w .pet-mb{border-top-left-radius:4px}
   .pet-msg.u .pet-mb{border-top-right-radius:4px}
+  /* 回复里的网址：换成可点链接（长链接要能断行，不然会撑破气泡） */
+  .pet-msg .pet-mb a.pet-link{color:var(--ds);font-weight:600;text-decoration:underline;text-underline-offset:2px;word-break:break-all;}
+  .pet-msg .pet-mb a.pet-link:hover{opacity:.8}
   .pet-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
-  .pet-chips button{font-size:11px;padding:4px 10px;border-radius:999px;cursor:pointer;color:var(--acc);background:var(--glass);border:1px solid rgba(90,169,160,.35);transition:transform .15s ease;font-family:inherit;}
+  .pet-chips button{font-size:11px;padding:6px 12px;border-radius:999px;cursor:pointer;color:var(--acc);background:var(--glass);border:1px solid rgba(90,169,160,.35);transition:transform .15s ease;font-family:inherit;}
   .pet-chips button:hover{background:rgba(127,216,205,.2)}
   .pet-chips button:active{transform:scale(.95)}
   .pet-tips{font-size:10.5px;color:var(--ink-2);opacity:.7;margin-bottom:8px;line-height:1.5;}
@@ -561,7 +604,9 @@
   @keyframes hintBlink{0%,100%{opacity:1}50%{opacity:.55}}
   @media(max-width:640px){
     .pet-panel{left:12px;bottom:158px;width:calc(100vw - 24px)}
-    .pet-btn{left:12px;bottom:96px}
+    /* 小屏没有底部音乐条，按钮贴底更不挡正文 */
+    .pet-btn{left:12px;bottom:18px}
+    .to-top{bottom:18px}
     .pet-bubble{left:78px;bottom:110px}
   }
 
@@ -588,7 +633,7 @@
   @media(min-width:1000px){
     .wrap{max-width:1180px;display:grid;grid-template-columns:290px 1fr;column-gap:34px;align-items:start;}
     nav{grid-column:1/-1;margin-bottom:18px;}
-    .hero{grid-column:1;grid-row:2/span 999;position:sticky;top:22px;align-self:start;text-align:left;align-items:flex-start;
+    .hero{grid-column:1;grid-row:2/span 999;position:sticky;top:86px;align-self:start;text-align:left;align-items:flex-start;
       padding:26px 24px 24px;background:var(--glass);border:1px solid var(--glass-bd);border-radius:22px;
       backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);
       box-shadow:0 12px 34px rgba(80,120,140,.14);}
@@ -648,6 +693,8 @@
     }
   }
   @keyframes nameFlow{0%{background-position:0% 50%}100%{background-position:300% 50%}}
+  /* 深色主题：标题渐变整体提亮，压在照片上也读得清 */
+  html.dark .hero h1{background-image:linear-gradient(120deg,#8fe8da,#b9aef7,#ffb3cc,#f0cf92,#8fe8da);}
   /* ② 头像首载扩散光环（一次性，开屏后约 0.9s 触发） */
   .avatar-wrap::after{content:"";position:absolute;left:50%;top:50%;width:118px;height:118px;
     margin:-59px 0 0 -59px;border-radius:50%;border:2px solid rgba(78,205,196,.8);
@@ -670,16 +717,16 @@
   body.paused .mp-head .eq i{animation-play-state:paused}
   /* 手机端：首屏去冗余（tag 欢迎胶囊与打字机问候/时钟重复）、装饰层减半、离屏卡片跳过渲染 */
   @media(max-width:999px){
+    .pet-bubble.cta{display:none}
     .hero .tag{display:none}
-    .hero{padding:44px 0 22px}
+    .hero{padding:28px 18px 24px;background:rgba(12,22,34,.66);border:1px solid var(--glass-bd);border-radius:22px;
+      backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);
+      box-shadow:0 12px 34px rgba(10,20,30,.18);}
     .avatar-wrap{margin-bottom:14px}
     .hero h1{font-size:28px;margin-bottom:8px}
     .amb:nth-of-type(even){display:none}
     .leaves .leaf:nth-child(even){display:none}
     .leaves{opacity:.5}
-    @supports(content-visibility:auto){
-      .card{content-visibility:auto;contain-intrinsic-size:auto 420px}
-    }
   }
 
   /* ===== 动效包3：手机端也明显的动效 ===== */
@@ -705,7 +752,7 @@
   .clock-line{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:2px;
     font-size:12.5px;letter-spacing:.5px;color:var(--ink-2);font-variant-numeric:tabular-nums;}
   .clock-line .ck-ic{font-size:13px}
-  .clock-line .ck-p{color:var(--accent,#5aa9a0)}
+  .clock-line .ck-p{color:var(--acc,#5aa9a0)}
   /* ② 秋叶飘落（wrapper 固定铺满，叶子 nth-child 错位飘落，两端通用） */
   .leaves{position:fixed;inset:0;z-index:1;pointer-events:none;}
   .leaves .leaf{position:absolute;top:-8vh;font-size:20px;opacity:0;
@@ -753,6 +800,230 @@
     @keyframes sideLeaf{0%,100%{transform:translateY(0) rotate(-10deg)}50%{transform:translateY(-12px) rotate(12deg)}}
     @media(prefers-reduced-motion:reduce){.side-deco .orb,.side-deco .seal,.side-deco .leaf{animation:none}}
   }
+
+  /* ===== 字标字体：只包含「乐乌」两个字的宋体子集，1.3KB ===== */
+  @font-face{
+    font-family:"LW Serif";
+    src:url("lw-serif.woff2") format("woff2");
+    font-weight:700;font-style:normal;font-display:swap;
+  }
+  /* 作品封面：桌面端作为左侧缩略图 */
+  .work-item{display:flex;gap:14px;align-items:flex-start}
+  .wcover{display:block;flex:0 0 96px;width:96px;height:96px;border-radius:14px;overflow:hidden;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10)}
+  .wcover img{display:block;width:100%;height:100%;object-fit:cover}
+  .wbody{flex:1;min-width:0}
+  .chap{display:none}
+
+  /* ===== 移动端「杂志」版式（方案 C） ===== */
+  @media(max-width:999px){
+    .wrap{display:flex;flex-direction:column;padding:14px 20px 30px}
+
+    /* 刊头 */
+    nav{order:10;position:static;margin:0 0 16px;padding:0 0 12px;border:none;
+      border-bottom:1px solid rgba(43,58,74,.18);border-radius:0;background:none;
+      box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+    nav .logo{font-size:12px;letter-spacing:3px}
+    nav .links{gap:0}
+    nav a{font-size:10px;padding:3px 7px;letter-spacing:.5px}
+
+    /* 封面：不要卡片，让字压在图上 */
+    .hero{order:20;padding:2px 0 6px;background:none;border:none;border-radius:0;box-shadow:none;
+      backdrop-filter:none;-webkit-backdrop-filter:none;align-items:flex-start;text-align:left}
+    .avatar-wrap{width:56px;height:56px;margin:0 0 16px}
+    .avatar{width:56px;height:56px;border-width:2px}
+    .avatar-wrap::before{inset:-7px;filter:blur(5px)}
+    html .hero h1{
+      font-family:"LW Serif","Songti SC","Noto Serif SC",serif;
+      font-size:64px;line-height:1;letter-spacing:.06em;font-weight:700;
+      color:var(--ink);background:none!important;-webkit-text-fill-color:currentColor;
+      animation:none!important;margin-bottom:10px;
+    }
+    html.dark .hero h1{color:#f6f9fd;text-shadow:0 6px 30px rgba(0,0,0,.6)}
+    html.dark .hero .sub,html.dark .hero .quote,html.dark .side-stats{text-shadow:0 1px 8px rgba(0,0,0,.65)}
+    .hero .sub{font-size:12.5px;line-height:1.9;color:var(--ink-2);letter-spacing:1px;max-width:270px}
+    .clock-line,.egg-hint{display:none}
+    .hero .quote{margin-top:12px;justify-content:flex-start;text-align:left;font-size:11.5px}
+    .hero .quote .qt{max-width:min(250px,68vw)}
+    .side-stats{display:block;margin:14px 0 0;max-width:none;width:auto;line-height:1.9}
+    .side-stats .ss{display:inline;padding:0;background:none;border:none;border-radius:0;white-space:nowrap}
+    .side-stats .ss b{display:inline;font-size:12px;color:var(--ink);margin-right:3px}
+    .side-stats .ss span{font-size:9px;opacity:.85}
+    .side-stats .ss+.ss::before{content:"·";margin:0 7px;opacity:.45}
+    .bili-link{display:inline-flex;width:auto;margin-top:14px;padding:9px 16px;font-size:11.5px;border-radius:999px}
+
+    /* 章节头 */
+    .chap{display:flex;align-items:flex-end;gap:9px;margin:26px 0 10px}
+    .chap b{font-size:26px;font-weight:900;line-height:.85;color:transparent;
+      -webkit-text-stroke:1px rgba(43,58,74,.4)}
+    .chap h2{font-size:13px;letter-spacing:2px;font-weight:600}
+    .chap i{flex:1;height:1px;background:rgba(43,58,74,.18);margin-bottom:5px}
+    html.dark nav{border-bottom-color:rgba(255,255,255,.18)}
+    html.dark .chap b{-webkit-text-stroke:1px rgba(255,255,255,.45)}
+    html.dark .chap i{background:rgba(255,255,255,.16)}
+
+    /* 顺序：关于 → 作品 → 音乐 → 技能 → 足迹 → 留言 → 联系 */
+    #c-about{order:30}#about{order:31}
+    #c-works{order:40}#works{order:41}
+    #c-music{order:50}.music-card{order:51}
+    .grid{order:60}
+    #c-time{order:70}#timeline{order:71}
+    #msgs{order:80}
+    #c-contact{order:90}#contact{order:91}
+    footer{order:100}
+
+    /* 卡片：更薄、错位 */
+    .wrap > section.card{margin-bottom:14px;padding:16px;border-radius:20px}
+    #about{margin:0 0 14px}
+    .music-card{margin:0 0 14px}
+    #about .sec-title,#works .sec-title,.music-card .sec-title,
+    #timeline .sec-title,#contact .sec-title{display:none}
+    .about p{font-size:12px;line-height:1.95}
+    /* 卡片里的旋转印章会和正文打架，小屏隐掉 */
+    #about .seal{display:none}
+
+    /* 作品：横滑卡片 */
+    #works{padding:0;background:none;border:none;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+    .works-rail{display:flex;gap:11px;overflow-x:auto;scroll-snap-type:x mandatory;
+      margin:0 -20px;padding:2px 20px 10px;scrollbar-width:none}
+    .works-rail::-webkit-scrollbar{display:none}
+    .work-item{display:block;flex:0 0 74%;scroll-snap-align:center;margin:0;padding:0;
+      border-radius:20px;overflow:hidden}
+    .wcover{width:auto;height:auto;aspect-ratio:4/3;flex:none;border-radius:0;border:none}
+    .wcover img{aspect-ratio:4/3}
+    .wbody{padding:13px 14px 15px}
+    .wm{font-size:12.5px}
+    .wd{font-size:10.5px;line-height:1.7;display:-webkit-box;-webkit-line-clamp:3;
+      -webkit-box-orient:vertical;overflow:hidden}
+    .work-item .dl-btn{margin-top:9px;padding:7px 13px;font-size:11px}
+    .grid{gap:10px;margin-top:4px}
+    .grid .g-card{padding:14px;border-radius:18px}
+
+    /* 足迹 / 留言 / 联系 */
+    #timeline .timeline{padding-left:18px}
+    .tl-item{padding-bottom:14px}
+    .tt{font-size:12px}
+    .td{font-size:10.5px}
+    #contact p{font-size:12px!important;line-height:2.1!important}
+    .copy-btn{padding:5px 10px;font-size:10.5px}
+    footer{margin-top:26px}
+    .theme-fab{top:auto;bottom:72px;right:14px;width:40px;height:40px;font-size:17px;
+      background:rgba(10,18,28,.45);border-color:rgba(255,255,255,.18);color:#e6eef6}
+  }
+  @media(min-width:641px) and (max-width:999px){
+    .wrap{max-width:640px;margin:0 auto}
+    .work-item{flex:0 0 300px}
+    .hero h1{font-size:76px!important}
+  }
+
+  /* 滚动时悬浮按钮淡出，停下来再回来，避免压住作品封面 */
+  .pet-btn,.theme-fab{transition:opacity .25s ease,transform .3s ease,box-shadow .3s ease,color .5s ease,border-color .5s ease}
+  body.scrolling .pet-btn{opacity:.22}
+  body.scrolling .theme-fab{opacity:.3}
+  body.scrolling .pet-bubble{opacity:0!important}
+
+  /* ===== 开屏：用背景照片，底部排字 ===== */
+  .boot{
+    justify-content:flex-end;align-items:flex-start;padding:0 26px 30px;
+    background:#0b1626 url("bg-mobile.webp") center top/cover no-repeat;
+  }
+  .boot::before{
+    opacity:1;
+    background:linear-gradient(180deg,rgba(5,9,16,.30) 0%,rgba(5,9,16,.16) 38%,rgba(5,9,16,.74) 76%,rgba(5,9,16,.96) 100%);
+  }
+  @media(min-width:1000px){
+    .boot{background-image:url("bg-desktop.webp");padding:0 44px 46px}
+    .boot-name{font-size:92px}
+    .boot-tip{font-size:12px}
+    .boot-bar{max-width:340px}
+  }
+  .boot-ring{display:none}
+  .boot-ring::before{filter:blur(8px);opacity:.55}
+  .boot-ring::after{inset:7px;background:rgba(10,16,26,.6)}
+  .boot-whale svg{width:34px}
+  .boot-name{
+    order:2;margin:0 0 14px;padding:0;
+    font-family:"LW Serif","Songti SC",serif;font-weight:700;
+    font-size:58px;letter-spacing:.08em;
+    color:#f5f9fd;text-shadow:0 6px 30px rgba(0,0,0,.55);
+  }
+  .boot-tip{order:1;margin:0 0 10px;font-size:11px;letter-spacing:3px;color:rgba(255,255,255,.9);min-height:16px;text-shadow:0 1px 8px rgba(0,0,0,.6)}
+  .boot-bar{order:3;width:100%;max-width:260px;height:2px;margin:0 0 9px;background:rgba(255,255,255,.2)}
+  .boot-pct{order:4;font-size:10px;letter-spacing:1.5px;color:rgba(255,255,255,.75)}
+  .boot .bub{opacity:.5}
+  /* 蒙层是绝对定位的伪元素，会盖住静态文本，给文字单独提一层 */
+  .boot-name,.boot-tip,.boot-bar,.boot-pct{position:relative;z-index:1}
+
+/* ===== v1.3 桌面端：玻璃调透 + 版式收紧（只作用于 ≥1000px，手机端不受影响） ===== */
+  @media(min-width:1000px){
+    /* ① 玻璃透出来：卡片底色从 .55 降到 .30，照片才透得出来。
+       模糊半径同时从 24px 收到 16px——太大等于把照片糊成一块色，透不透都看不见。
+       导航/浮层压在滚动内容上方，单独把底色补回去，不然文字会互相干扰。 */
+    html.dark{
+      --glass:rgba(10,18,28,.38);
+      --glass-bd:rgba(255,255,255,.20);
+    }
+    html.dark nav{--glass:rgba(10,18,30,.46)}
+    html.dark .theme-pop{--glass:rgba(10,18,30,.62)}
+    html.dark .pet-panel,html.dark .music-panel{--glass:rgba(10,18,30,.55)}
+    html.dark .card,html.dark .hero{
+      backdrop-filter:blur(16px) saturate(150%);
+      -webkit-backdrop-filter:blur(16px) saturate(150%);
+    }
+    html.dark .card{box-shadow:0 16px 40px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.10)}
+    html.dark .card:hover{box-shadow:0 22px 52px rgba(0,0,0,.30),inset 0 1px 0 rgba(255,255,255,.14)}
+    /* 透到 30% 之后，小字压在照片亮部会发虚，补一层极淡投影兜住 */
+    html.dark .card,html.dark .hero{text-shadow:0 1px 2px rgba(0,0,0,.26)}
+
+    /* ② 两栏比例与间距（右栏拆成两格，给第七步的并排卡片用） */
+    .wrap{max-width:1200px;grid-template-columns:300px minmax(0,1fr) minmax(0,1fr);column-gap:34px}
+    .wrap > :not(nav):not(.hero){grid-column:2/-1}
+    .wrap > section.card,.wrap > .grid{margin-bottom:24px}
+    .card{padding:26px;border-radius:24px}
+    .g-card{padding:24px}
+
+    /* ③ 卡内标题右侧拉一条细线，版面有「刊头」的秩序感 */
+    .sec-title{margin:0 0 16px;font-size:17px;letter-spacing:.5px}
+    .sec-title::after{content:"";flex:1;height:1px;margin-left:10px;align-self:center;
+      background:linear-gradient(90deg,currentColor,transparent);opacity:.16}
+    #contact .sec-title::after{display:none}
+
+    /* ④ 左栏名片：数据改两列，数字能放大，不再挤成一排 */
+    .hero{padding:28px 26px 26px;border-radius:24px}
+    .hero h1{font-size:27px;margin:16px 0 9px}
+    .side-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:16px}
+    .side-stats .ss{padding:11px 6px;border-radius:12px}
+    .side-stats .ss b{font-size:18px}
+    .side-stats .ss span{font-size:10.5px}
+    .bili-link{margin-top:12px;padding:11px 14px;border-radius:12px}
+
+    /* ⑤ 导航 */
+    nav{padding:9px 16px 9px 20px}
+    nav a{font-size:13px;padding:7px 13px}
+    nav a:hover{background:rgba(127,216,205,.14)}
+
+    /* ⑥ 作品：从竖排列表改成两列卡片，4:3 封面终于露得出来；
+       作品数是奇数时，最后一张自动通栏，不留半格空位（新增作品也不用改 CSS） */
+    #works{padding:26px}
+    .works-rail{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+    #works .work-item{display:flex;flex-direction:column;gap:0;margin:0;padding:0;border-radius:18px;overflow:hidden}
+    #works .wcover{flex:none;width:100%;height:auto;aspect-ratio:4/3;border-radius:0;border:none}
+    #works .wcover img{width:100%;height:100%;object-fit:cover}
+    #works .wbody{padding:16px 18px 18px;display:flex;flex-direction:column}
+    #works .wd{margin-bottom:14px}
+    #works .dl-btn{margin-top:auto;align-self:flex-start}
+    #works .work-item:last-child:nth-child(odd){grid-column:1/-1;display:grid;
+      grid-template-columns:44% minmax(0,1fr);align-items:center}
+    #works .work-item:last-child:nth-child(odd) .wbody{justify-content:center;padding:24px 26px}
+
+    /* ⑦ 留言 + 找到我：两张扁卡并排，不再一上一下各空半屏 */
+    #msgs{grid-column:2}
+    #contact{grid-column:3;display:flex;flex-direction:column;justify-content:center}
+
+    /* ⑧ 播放器：头部和曲目列表之间补一条细线，别再糊成一片 */
+    .mp-head{padding-bottom:12px;border-bottom:1px solid rgba(43,58,74,.12);margin-bottom:12px}
+    html.dark .mp-head{border-bottom-color:rgba(255,255,255,.12)}
+  }
 </style>
 </head>
 <body>
@@ -767,8 +1038,6 @@
     <div class="boot-pct">0%</div>
   </div>
 
-  <div class="blobs"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
-  <div class="grain"></div>
   <i class="amb"></i><i class="amb"></i><i class="amb"></i><i class="amb"></i>
   <i class="amb"></i><i class="amb"></i><i class="amb"></i><i class="amb"></i>
   <div class="leaves" aria-hidden="true">
@@ -796,7 +1065,7 @@
       <div class="quote" id="quoteLine" title="点一下换个句子"><span class="qi">💬</span><span class="qt" id="quoteTxt"></span><span class="qs" id="quoteSrc"></span></div>
       <div class="egg-hint" id="eggHint">🎁 头像里藏着小秘密,连戳几下试试</div>
       <div class="side-stats">
-        <div class="ss"><b id="stVisit">0</b><span>今日访客</span></div>
+        <div class="ss"><b id="stVisit">0</b><span>到访天数</span></div>
         <div class="ss"><b>5</b><span>小作品</span></div>
         <div class="ss"><b>4</b><span>背景音乐</span></div>
         <div class="ss"><b>5</b><span>主题皮肤</span></div>
@@ -805,6 +1074,7 @@
     </header>
 
     <!-- 关于 -->
+    <div class="chap" id="c-about"><b>01</b><h2>关于</h2><i></i></div>
     <section id="about" class="card about reveal">
       <svg class="seal" viewBox="0 0 100 100" aria-hidden="true">
         <defs><path id="sealArc" d="M50,50 m-36,0 a36,36 0 1,1 72,0 a36,36 0 1,1 -72,0"></path></defs>
@@ -813,15 +1083,16 @@
         <text font-size="10.5" letter-spacing="1.6" text-anchor="middle"><textPath href="#sealArc">乐乌 · 手工制作 · 乐乌 · 手工制作</textPath></text>
         <text x="50" y="54" text-anchor="middle" font-size="15" fill="currentColor">✦</text>
       </svg>
-      <div class="sec-title">关于我</div>
+      <h2 class="sec-title">关于我</h2>
       <p>你好呀，我是 <b>乐乌</b>。一个喜欢记录生活、捣鼓点小玩意儿的普通人。<br>
       这里没有宏大叙事，只有我收藏的 <b>好物、灵感和小作品</b>。愿你在浏览的时候，
       也能感受到一点温柔和自在。🌿</p>
     </section>
 
     <!-- 音乐 -->
+    <div class="chap" id="c-music"><b>03</b><h2>音乐</h2><i></i></div>
     <section class="card music-card reveal">
-      <div class="sec-title">🎵 音乐 <span style="font-size:11px;font-weight:400;color:var(--ink-2);opacity:.7;margin-left:6px;">· 4 首纯音乐陪你逛</span></div>
+      <h2 class="sec-title">🎵 音乐 <span style="font-size:11px;font-weight:400;color:var(--ink-2);opacity:.7;margin-left:6px;">· 4 首纯音乐陪你逛</span></h2>
       <div class="music-panel" id="mp">
         <div class="mp-head">
           <div class="mp-cover" id="mpCover">🎻</div>
@@ -864,38 +1135,55 @@
     </div>
 
     <!-- 作品 -->
+    <div class="chap" id="c-works"><b>02</b><h2>小作品</h2><i></i></div>
     <section id="works" class="card reveal">
-      <div class="sec-title">小作品 <span style="font-size:11px;font-weight:400;color:var(--ink-2);opacity:.7;margin-left:6px;">· 一些正在发光的小东西 ✨</span></div>
-      <div class="work-item">
-        <div class="wm">💎 乐乌计算器 <span class="wb">稳定版</span></div>
-        <div class="wd">自己做的安卓计算器：深色玻璃质感、按钮带真实光晕，输入 1145141919 还会召唤一条鲸鱼游过 ✨ 文件在小飞机网盘，提取码：lewu 🔑</div>
-        <button class="dl-btn" id="dlCalc"><span class="dl-ic">📥</span><span class="dl-tx">去小飞机网盘下载</span></button>
-      </div>
-      <div class="work-item">
-        <div class="wm">🏡 线稿魔女小屋 <span class="wb">GitHub 开源</span></div>
-        <div class="wd">一栋会呼吸的线稿风 3D 魔女小屋：三视角漫步、昼夜与天气变换、壁炉火光，还能在墙上写字，电脑和手机都能玩 ✨ 小屋是 GitHub 上的开源项目，感谢作者的无私分享 💚 开源精神万岁！</div>
-        <a class="dl-btn" href="https://lewuxiaowu.pages.dev/" target="_blank" rel="noopener" title="去小屋逛逛"><span class="dl-ic">🚪</span><span class="dl-tx">去小屋逛逛</span></a>
-      </div>
-      <div class="work-item">
-        <div class="wm">🌍 寰图小地球仪 <span class="wb">AI 共创</span></div>
-        <div class="wd">一颗转呀转的小地球 —— Grok 出点子、DeepSeek 陪着一起磨出来的 3D 地球仪，寰宇地图尽收眼底，点开就能看 ✨</div>
-        <a class="dl-btn" href="https://lewudiqiu.pages.dev/" target="_blank" rel="noopener" title="去寰图逛逛"><span class="dl-ic">🌍</span><span class="dl-tx">去寰图逛逛</span></a>
-      </div>
-      <div class="work-item">
-        <div class="wm">🌊 液态玻璃小站（就是本站）<span class="wb">v1.2 · 玻璃版</span></div>
-        <div class="wd">把一块会呼吸的液态玻璃搬进网页：鲸鱼潜水时，把留言吹成气泡浮上来 🫧</div>
-        <span class="arrow">→</span>
-      </div>
-      <div class="work-item">
-        <div class="wm">🌱 生活相册 <span class="wb">施工中</span></div>
-        <div class="wd">想把每天的小确幸都收进来——四季展览正在慢慢长出来，欢迎常来逛逛 🌿</div>
-        <span class="arrow">→</span>
+      <h2 class="sec-title">小作品 <span style="font-size:11px;font-weight:400;color:var(--ink-2);opacity:.7;margin-left:6px;">· 一些正在发光的小东西 ✨</span></h2>
+      <div class="works-rail">
+        <div class="work-item">
+          <div class="wcover"><img src="work-calc.webp" alt="乐乌计算器界面" width="800" height="600" loading="lazy" decoding="async"></div>
+          <div class="wbody">
+            <div class="wm">💎 乐乌计算器 <span class="wb">稳定版</span></div>
+            <div class="wd">自己做的安卓计算器：深色玻璃质感、按钮带真实光晕，输入 1145141919 还会召唤一条鲸鱼游过 ✨ 文件在小飞机网盘，提取码：lewu 🔑</div>
+            <button class="dl-btn" id="dlCalc"><span class="dl-ic">📥</span><span class="dl-tx">去小飞机网盘下载</span></button>
+          </div>
+        </div>
+        <div class="work-item">
+          <div class="wcover"><img src="work-house.webp" alt="线稿魔女小屋内部" width="800" height="600" loading="lazy" decoding="async"></div>
+          <div class="wbody">
+            <div class="wm">🏡 线稿魔女小屋 <span class="wb">GitHub 开源</span></div>
+            <div class="wd">一栋会呼吸的线稿风 3D 魔女小屋：三视角漫步、昼夜与天气变换、壁炉火光，还能在墙上写字，电脑和手机都能玩 ✨ 小屋是 GitHub 上的开源项目，感谢作者的无私分享 💚 开源精神万岁！</div>
+            <a class="dl-btn" href="https://lewuxiaowu.pages.dev/" target="_blank" rel="noopener" title="去小屋逛逛"><span class="dl-ic">🚪</span><span class="dl-tx">去小屋逛逛</span></a>
+          </div>
+        </div>
+        <div class="work-item">
+          <div class="wcover"><img src="work-globe.webp" alt="寰图小地球仪" width="800" height="600" loading="lazy" decoding="async"></div>
+          <div class="wbody">
+            <div class="wm">🌍 寰图小地球仪 <span class="wb">AI 共创</span></div>
+            <div class="wd">一颗转呀转的小地球 —— Grok 出点子、DeepSeek 陪着一起磨出来的 3D 地球仪，寰宇地图尽收眼底，点开就能看 ✨</div>
+            <a class="dl-btn" href="https://lewudiqiu.pages.dev/" target="_blank" rel="noopener" title="去寰图逛逛"><span class="dl-ic">🌍</span><span class="dl-tx">去寰图逛逛</span></a>
+          </div>
+        </div>
+        <div class="work-item">
+          <div class="wcover"><img src="work-site.webp" alt="液态玻璃小站预览" width="800" height="600" loading="lazy" decoding="async"></div>
+          <div class="wbody">
+            <div class="wm">🌊 液态玻璃小站（就是本站）<span class="wb">v1.2 · 玻璃版</span></div>
+            <div class="wd">把一块会呼吸的液态玻璃搬进网页：鲸鱼潜水时，把留言吹成气泡浮上来 🫧</div>
+          </div>
+        </div>
+        <div class="work-item">
+          <div class="wcover"><img src="work-album.webp" alt="生活相册封面" width="800" height="600" loading="lazy" decoding="async"></div>
+          <div class="wbody">
+            <div class="wm">🌱 生活相册 <span class="wb">施工中</span></div>
+            <div class="wd">想把每天的小确幸都收进来——四季展览正在慢慢长出来，欢迎常来逛逛 🌿</div>
+          </div>
+        </div>
       </div>
     </section>
 
     <!-- 时间线 -->
+    <div class="chap" id="c-time"><b>04</b><h2>足迹</h2><i></i></div>
     <section id="timeline" class="card reveal">
-      <div class="sec-title">足迹</div>
+      <h2 class="sec-title">足迹</h2>
       <div class="timeline">
         <div class="tl-item">
           <div class="tt">2026.10 · 和 AI 组队，捏出了小地球 🌍</div>
@@ -922,7 +1210,7 @@
 
     <!-- 好友留言（示例） -->
     <section id="msgs" class="card reveal">
-      <div class="sec-title">好友留言</div>
+      <h2 class="sec-title">好友留言</h2>
       <div class="msgs">
         <div class="msg">
           <img src="avatar.jpg" alt="u">
@@ -935,8 +1223,9 @@
     </section>
 
     <!-- 联系 -->
+    <div class="chap" id="c-contact"><b>05</b><h2>找到我</h2><i></i></div>
     <section id="contact" class="card reveal" style="text-align:center;">
-      <div class="sec-title" style="justify-content:center;">找到我</div>
+      <h2 class="sec-title" style="justify-content:center;">找到我</h2>
       <p style="font-size:14px;color:var(--ink-2);line-height:2;">
         📮 邮箱：2956593683@qq.com <button class="copy-btn" data-copy="2956593683@qq.com">复制</button><br>
         💬 QQ：2956593683 <button class="copy-btn" data-copy="2956593683">复制</button>
@@ -947,26 +1236,24 @@
       <div class="soc">
         <a href="https://wpa.qq.com/msgrd?v=3&uin=2956593683&site=qq&menu=yes" target="_blank" title="QQ">💬</a>
         <a href="mailto:2956593683@qq.com" title="邮箱">✉️</a>
-        <a href="#" title="GitHub">🐙</a>
-        <a href="#" title="微博">📣</a>
       </div>
       © 2026 乐乌 · 纯 AI 制作 · 由「吃白饭的大鲸鱼」做的 🐋
       <span class="ver">v1.2 · 玻璃版</span>
     </footer>
   </div>
 
-  <button class="theme-fab" id="themeBtn" title="切换主题"><span id="themeIcon">🎨</span></button>
-  <div class="theme-pop" id="themePop">
-    <div class="th" data-t="qiwu"><i style="--c1:#dff3f1;--c2:#e8e3fb"></i>青雾</div>
-    <div class="th" data-t="yingfen"><i style="--c1:#fdeef4;--c2:#f9d9e8"></i>樱粉</div>
-    <div class="th" data-t="tailv"><i style="--c1:#eaf7ea;--c2:#dcefdc"></i>苔绿</div>
-    <div class="th" data-t="moye"><i style="--c1:#0b1626;--c2:#101f30"></i>墨夜</div>
-    <div class="th" data-t="mublue"><i style="--c1:#0d1b2e;--c2:#14263f"></i>暮蓝</div>
+  <button class="theme-fab" id="themeBtn" title="切换主题" aria-label="切换主题" aria-haspopup="true" aria-expanded="false"><span id="themeIcon">🎨</span></button>
+  <div class="theme-pop" id="themePop" role="group" aria-label="选择主题">
+    <button type="button" class="th" data-t="qiwu" aria-pressed="false"><i style="--c1:#dff3f1;--c2:#e8e3fb"></i>青雾</button>
+    <button type="button" class="th" data-t="yingfen" aria-pressed="false"><i style="--c1:#fdeef4;--c2:#f9d9e8"></i>樱粉</button>
+    <button type="button" class="th" data-t="tailv" aria-pressed="false"><i style="--c1:#eaf7ea;--c2:#dcefdc"></i>苔绿</button>
+    <button type="button" class="th" data-t="moye" aria-pressed="false"><i style="--c1:#0b1626;--c2:#101f30"></i>墨夜</button>
+    <button type="button" class="th" data-t="mublue" aria-pressed="false"><i style="--c1:#0d1b2e;--c2:#14263f"></i>暮蓝</button>
   </div>
   <button class="to-top" id="toTop" title="回到顶部">↑</button>
 
   <!-- 音乐播放器 -->
-  <audio id="bgm" src="music.mp3" preload="auto"></audio>
+  <audio id="bgm" src="music.m4a" preload="metadata"></audio>
   <div class="music-dock" id="mpDock">
     <div class="disc" id="mpDisc">🎻</div>
     <div class="dt">
@@ -1031,10 +1318,10 @@
   bgm.volume=0.15; // 默认音量 15%
   // 曲库：想加歌就在这里加一行 {src,title,artist,emoji}
   const TUNES=[
-    {src:'music.mp3',title:'无感（小提琴完整版）',artist:'Strictlyviolin荀博 · 王朝',emoji:'🎻'},
-    {src:'wake.mp3',title:'Wake',artist:'',emoji:'🌊'},
-    {src:'wuxian.mp3',title:'无仙',artist:'Candy_Wind',emoji:'🍃'},
-    {src:'chengnan.mp3',title:'城南花已开',artist:'三亩地',emoji:'🌸'}
+    {src:'music.m4a',title:'无感（小提琴完整版）',artist:'Strictlyviolin荀博 · 王朝',emoji:'🎻'},
+    {src:'wake.m4a',title:'Wake',artist:'',emoji:'🌊'},
+    {src:'wuxian.m4a',title:'无仙',artist:'Candy_Wind',emoji:'🍃'},
+    {src:'chengnan.m4a',title:'城南花已开',artist:'三亩地',emoji:'🌸'}
   ];
   let cur=0;
   const fmt=t=>{if(!isFinite(t))return'00:00';const m=Math.floor(t/60),s=Math.floor(t%60);return(m<10?'0':'')+m+':'+(s<10?'0':'')+s};
@@ -1077,44 +1364,71 @@
   vol.addEventListener('input',()=>{bgm.volume=parseFloat(vol.value)});
   bar.addEventListener('click',e=>{const r=bar.getBoundingClientRect();bgm.currentTime=((e.clientX-r.left)/r.width)*bgm.duration});
   document.addEventListener('click',e=>{if(!pan.contains(e.target)&&e.target!==dock&&!dock.contains(e.target))pan.classList.remove('open')});
-  // 进入页面自动播放（浏览器策略限制时，首次任意触碰即播放）
-  // 健壮版：自动播放被拦 → 挂 click/touchstart/pointerdown/keydown 全部兜底；
-  // 切回前台再试一次；1.5s 还没放起来则点亮 dock 上的「🔊 点击播放」提示。
-  function tryAuto(){
+  // ---- 自动播放音乐 ----
+  // 目标：打开页面就开始放。浏览器会拦「没有用户交互的带声音播放」，所以分三层：
+  // ① 一进页面立刻试 → ② 开屏收起后再试 → ③ 都失败就挂一次性手势兜底：
+  //    开屏那 1.8 秒里随手点一下/碰一下屏幕，音乐就起来了，不必去找播放按钮。
+  (function(){
     const hint=document.getElementById('mpHint');
-    let started=false;
-    const evs=['click','touchstart','pointerdown','keydown'];
-    const kick=()=>{
+    let started=false,armed=false;
+    const EVS=['pointerdown','touchend','click','keydown'];
+    const isCtrl=t=>!!(t&&t.closest&&t.closest('.music-dock,.music-panel'));
+    const ok=()=>{
+      if(started)return;
+      started=true;sync();
+      if(hint)hint.classList.remove('show');
+      EVS.forEach(ev=>document.removeEventListener(ev,kick,true));
+      document.removeEventListener('visibilitychange',onVis);
+    };
+    const kick=e=>{
+      if(started)return;
+      if(isCtrl(e&&e.target))return; // 播放器自己的按钮自己处理，别抢它的手势（否则一点就播了又停）
+      const p=bgm.play();
+      if(p&&p.then)p.then(ok).catch(()=>{});
+    };
+    const onVis=()=>{if(!document.hidden&&!started){const p=bgm.play();if(p&&p.then)p.then(ok).catch(()=>{})}};
+    const arm=()=>{
+      if(armed)return;armed=true;
+      EVS.forEach(ev=>document.addEventListener(ev,kick,true));
+      document.addEventListener('visibilitychange',onVis);
+    };
+    const attempt=()=>{
       if(started)return;
       const p=bgm.play();
-      if(p)p.then(()=>{if(!started){started=true;sync();if(hint)hint.classList.remove('show');evs.forEach(ev=>document.removeEventListener(ev,kick))}}).catch(()=>{});
+      if(!p||!p.then)return;
+      p.then(ok).catch(arm);
     };
-    bgm.play().then(sync).catch(()=>evs.forEach(ev=>document.addEventListener(ev,kick)));
-    document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!started)kick()});
-    setTimeout(()=>{if(!started&&hint)hint.classList.add('show')},1500);
-  }
-  tryAuto();
+    setTimeout(attempt,300);                                     // ① 一进页面就试（让出 300ms 给首屏图和背景）
+    document.addEventListener('bootdone',attempt,{once:true});   // ② 开屏收起后再试
+    setTimeout(attempt,1500);                                    // ③ 首次音频还在加载时补一次
+    setTimeout(()=>{if(!started&&hint)hint.classList.add('show')},2600);
+  })();
 
   // ---- 打字机标语（完整字符数组，避免emoji截断；删字保底到0，保证接下一句） ----
   const typeLine=document.getElementById('typeLine');
   const _h=new Date().getHours();
   const _greet=_h<5?'夜深了，欢迎来到我的小站 🌙':_h<9?'早上好，欢迎来到我的小站 ☀️':_h<12?'上午好，欢迎来到我的小站 🌤️':_h<14?'中午好，欢迎来到我的小站 🌞':_h<18?'下午好，欢迎来到我的小站 🌅':'晚上好，欢迎来到我的小站 🌃';
   const phrases=[_greet,'把日子过成自己喜欢的样子 🍃','热爱可抵岁月漫长 ✨','收集生活里的小确幸 🌻','愿你今天也过得很好 🌷'];
-  let pi=0,ci=0,deleting=false;
+  let pi=0,ci=0,deleting=false,typedStarted=false;
   const chars=p=>[...p]; // 用数组保证 emoji 完整
-  (function type(){
-    const arr=chars(phrases[pi]);
-    if(!deleting){
-      ci=Math.min(ci+1,arr.length);
+  function startTyping(){
+    if(typedStarted)return;typedStarted=true;
+    (function type(){
+      const arr=chars(phrases[pi]);
+      if(!deleting){
+        ci=Math.min(ci+1,arr.length);
+        typeLine.textContent=arr.slice(0,ci).join('');
+        if(ci===arr.length){setTimeout(type,2000);deleting=true;return}
+        setTimeout(type,110);return;
+      }
+      ci=Math.max(ci-1,0);
       typeLine.textContent=arr.slice(0,ci).join('');
-      if(ci===arr.length){setTimeout(type,2000);deleting=true;return}
-      setTimeout(type,110);return;
-    }
-    ci=Math.max(ci-1,0);
-    typeLine.textContent=arr.slice(0,ci).join('');
-    if(ci===0){deleting=false;pi=(pi+1)%phrases.length;setTimeout(type,450);return}
-    setTimeout(type,42);
-  })();
+      if(ci===0){deleting=false;pi=(pi+1)%phrases.length;setTimeout(type,450);return}
+      setTimeout(type,42);
+    })();
+  }
+  if(window.matchMedia('(prefers-reduced-motion:reduce)').matches){startTyping()}
+  else{document.addEventListener('bootdone',startTyping,{once:true});setTimeout(startTyping,4200)}
 
   // ---- 问候语 + 随机一言 ----
   const QUOTES=[
@@ -1247,25 +1561,47 @@
     const mt=document.querySelector('meta[name="theme-color"]');
     if(mt&&THEMES[n])mt.setAttribute('content',THEMES[n].meta);
     try{localStorage.setItem('theme',n)}catch(e){}
-    [...themePop.querySelectorAll('.th')].forEach(el=>el.classList.toggle('cur',el.dataset.t===n));
+    [...themePop.querySelectorAll('.th')].forEach(el=>{
+      const on=el.dataset.t===n;
+      el.classList.toggle('cur',on);
+      el.setAttribute('aria-pressed',String(on));
+    });
   }
-  themeBtn.addEventListener('click',e=>{e.stopPropagation();themePop.classList.toggle('open')});
+  const setThemePop=open=>{themePop.classList.toggle('open',open);themeBtn.setAttribute('aria-expanded',String(open))};
+  themeBtn.addEventListener('click',e=>{e.stopPropagation();setThemePop(!themePop.classList.contains('open'))});
   themePop.addEventListener('click',e=>{
     const th=e.target.closest('.th');if(!th)return;
-    applyTheme(th.dataset.t);themePop.classList.remove('open');
+    applyTheme(th.dataset.t);setThemePop(false);themeBtn.focus();
   });
   document.addEventListener('click',e=>{
-    if(themePop.classList.contains('open')&&!themePop.contains(e.target)&&e.target!==themeBtn)themePop.classList.remove('open');
+    if(themePop.classList.contains('open')&&!themePop.contains(e.target)&&e.target!==themeBtn)setThemePop(false);
   });
-  document.addEventListener('keydown',e=>{if(e.key==='Escape')themePop.classList.remove('open')});
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Escape')return;
+    const wasOpen=themePop.classList.contains('open');
+    const focusInside=themePop.contains(document.activeElement);
+    setThemePop(false);
+    if(wasOpen&&focusInside)themeBtn.focus();
+  });
   let themeName='qiwu';
   try{
-    themeName=localStorage.getItem('theme')||'qiwu';
+    themeName=localStorage.getItem('theme')||'moye';
     if(themeName==='light')themeName='qiwu';
     if(themeName==='dark')themeName='moye';
-    if(!THEMES[themeName])themeName='qiwu';
-  }catch(e){themeName='qiwu'}
+    if(!THEMES[themeName])themeName='moye';
+  }catch(e){themeName='moye'}
   applyTheme(themeName,true); // 初始应用（不播 flip 动画）
+
+  // ---- 滚动时让悬浮按钮淡出 ----
+  (function(){
+    let t=null;
+    const onScroll=()=>{
+      document.body.classList.add('scrolling');
+      clearTimeout(t);
+      t=setTimeout(()=>document.body.classList.remove('scrolling'),350);
+    };
+    window.addEventListener('scroll',onScroll,{passive:true});
+  })();
 
   // ---- 回到顶部 ----
   const toTop=document.getElementById('toTop');
@@ -1279,22 +1615,6 @@
     const h=document.documentElement,max=h.scrollHeight-h.clientHeight;
     proBar.style.width=(max>0?(h.scrollTop||document.body.scrollTop||0)/max*100:0)+'%';
   },{passive:true});
-
-  // ---- 动效包5：滚动变色背景（blobs 随滚动 青→紫 hue-rotate；8° 分档更新防手机滚动卡顿，尊重 reduced-motion） ----
-  (function(){
-    if(window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;
-    const bl=document.querySelector('.blobs');if(!bl)return;
-    let ticking=false,last=-1;
-    const upd=()=>{
-      const max=document.documentElement.scrollHeight-window.innerHeight;
-      const p=max>0?Math.min(1,window.scrollY/max):0;
-      const deg=Math.round(p*60/8)*8;                 // 8° 一档：整页滚动最多约 8 次重绘，替代每帧重绘
-      if(deg!==last){bl.style.filter='blur(70px) hue-rotate('+deg+'deg)';last=deg;}
-      ticking=false;
-    };
-    window.addEventListener('scroll',()=>{if(!ticking){ticking=true;requestAnimationFrame(upd)}},{passive:true});
-    upd();
-  })();
 
   // ---- 动效包6：标签页切到后台时暂停装饰性无限动画（省电省帧） ----
   document.addEventListener('visibilitychange',()=>{document.body.classList.toggle('paused',document.hidden)});
@@ -1379,20 +1699,22 @@
     (function loop(){x+=(tx-x)*.14;y+=(ty-y)*.14;dot.style.transform=`translate(${x}px,${y}px) translate(-50%,-50%)`;requestAnimationFrame(loop)})();
   }
 
-  // ---- 访问统计（localStorage 本地模拟） ----
+  // ---- 到访记录（localStorage，只能代表"这个浏览器来过几天"） ----
+  // 说清楚：它不是全站访客数，换台设备/清缓存就归零。想要真实访问量请接
+  // Cloudflare Web Analytics / GoatCounter 之类的统计，别在页面上写"今日访客"。
   (function(){
-    let visits=0;
+    let days=0;
     try{
       const today=new Date().toDateString();
       const last=localStorage.getItem('lv_last');
-      if(last!==today){visits=(+localStorage.getItem('lv_cnt')||0)+1;localStorage.setItem('lv_cnt',visits);localStorage.setItem('lv_last',today)}
-      else visits=+localStorage.getItem('lv_cnt')||0;
-    }catch(e){visits=0}
+      days=+(localStorage.getItem('lv_days')||localStorage.getItem('lv_cnt'))||0;
+      if(last!==today){days+=1;localStorage.setItem('lv_days',days);localStorage.setItem('lv_last',today)}
+    }catch(e){days=0}
     const el=document.createElement('div');
     el.className='visit-count';
-    el.textContent=`👀 今日访客 ${visits}`;
+    el.textContent=days>1?`👀 这是你第 ${days} 天来玩`:'👀 今天也来啦，欢迎';
     document.querySelector('footer').appendChild(el);
-    const st=document.getElementById('stVisit');if(st)st.textContent=visits;
+    const st=document.getElementById('stVisit');if(st)st.textContent=days;
     // ---- 动效包3：统计数字滚动（尊重 reduced-motion） ----
     if(!window.matchMedia('(prefers-reduced-motion:reduce)').matches){
       document.querySelectorAll('.side-stats .ss b').forEach(function(el){
@@ -1442,18 +1764,23 @@
       boot.classList.add('hide');
       clearInterval(pctTimer);
       clearTimeout(tipTimer);
-      setTimeout(function(){boot.remove();unlock()},900);
-    },2000);
+      setTimeout(function(){
+        boot.remove();unlock();
+        document.dispatchEvent(new Event('bootdone')); // 通知打字机/音乐：可以开场了
+      },900);
+    },1800);
   })();
 
   // ================= 鲸鱼助手（可对话桌宠） =================
-  // ---- 可选：接入真实大模型。打开 enabled 并填 key（OpenAI 兼容接口）后，
+  // ---- 可选：接入真实大模型。打开 enabled 并配好 proxyUrl（自己的边缘函数）后，
   //      鲸鱼会用真·AI 回答；未开启或请求失败时自动回落本地小脑瓜，纯静态站点也能聊。
-  //      推荐：https://siliconflow.cn 免费额度，模型填 "Qwen/Qwen2.5-7B-Instruct" 可用。
+  //      安全：静态站里写 key = 把 key 公开给所有访客。线上只认 proxyUrl，
+  //      只有 localhost 调试时才允许直接带 key 请求。推荐用 Cloudflare Functions 做代理。
   const PET_AI={
     enabled:false,               // 想接真 AI 就把这里改成 true
+    proxyUrl:'',                  // 推荐：'/api/chat'，由代理替你保管 key
     endpoint:'https://api.siliconflow.cn/v1/chat/completions',
-    key:'',                       // 你的 API Key
+    key:'',                       // 仅本地调试时填；线上会被忽略
     model:'deepseek-ai/DeepSeek-V3',
     system:'你是「乐乌」个人小站里的鲸鱼助手「小鲸鱼」。主人叫乐乌（网名），他有这些作品：乐乌计算器（输入1145141919会召唤鲸鱼）、本站液态玻璃小站、线稿魔女小屋（GitHub 开源 3D 小游戏，线上可玩）、寰图小地球仪（Grok+DeepSeek 共做的 3D 地球仪，线上可玩）、生活相册（施工中）。你住在这个玻璃海里，说话可爱、简短、多用emoji，像朋友一样陪聊。'
   };
@@ -1489,10 +1816,30 @@
       petMsgs.appendChild(d);petMsgs.scrollTop=petMsgs.scrollHeight;
       return d.querySelector('.pet-mb');
     }
+    // 回复里带网址时转成可点链接。全程用 createTextNode / textContent 组装，不碰 innerHTML，
+    // 所以即使消息来自模型或用户输入也不会有注入风险
+    function linkify(el){
+      const raw=el.textContent;
+      if(raw.indexOf('http')<0)return;
+      const re=/https?:\/\/[^\s，。、；：！？（）()【】<>"']+/g;
+      const frag=document.createDocumentFragment();
+      let last=0,m;
+      while((m=re.exec(raw))){
+        if(m.index>last)frag.appendChild(document.createTextNode(raw.slice(last,m.index)));
+        const a=document.createElement('a');
+        a.className='pet-link';a.href=m[0];a.target='_blank';a.rel='noopener noreferrer';
+        a.textContent=m[0];
+        frag.appendChild(a);
+        last=m.index+m[0].length;
+      }
+      if(last<raw.length)frag.appendChild(document.createTextNode(raw.slice(last)));
+      el.textContent='';el.appendChild(frag);
+    }
     async function say(text){
       petState.textContent='● 思考中…';petSend.disabled=true;
       const mb=addMsg('w','');
       await typeLine(mb,text);
+      linkify(mb);
       petState.textContent='● 在线';petSend.disabled=false;
     }
     const rand=a=>a[Math.floor(Math.random()*a.length)];
@@ -1553,6 +1900,19 @@
       for(const it of mem.learned){if(it&&it.q&&it.a&&s.includes(t(it.q)))return it.a}
       return null;
     }
+    // ---------- 隐藏入口：发 cs 才给的下载页（页面上没有任何入口，别加到快捷按钮里） ----------
+    // 匹配规则：整词 cs（不分大小写），带不带版本号都行 —— cs / CS / Cs1.6 / "cs 下载" / 反恐精英 / counter-strike。
+    // 用 (^|[^a-z]) … ($|[^a-z]) 卡住首尾，避免 css、discs 这类词误伤。
+    const CS_URL='https://www.ddooo.com/softdown/16109.htm';
+    function csHit(q){
+      const low=String(q).toLowerCase().replace(/[\s，。！？、,.!?~～]/g,'');
+      return /(^|[^a-z])cs(1\.6)?($|[^a-z])/.test(low)||/反恐精英/.test(low)||/counter-?strike/.test(low);
+    }
+    function csReply(){
+      return '🎮 CS 1.6 在这儿下：\n'+CS_URL+
+        '\n这是第三方下载站，装的时候记得把捆绑的勾都取消掉，安全软件扫一遍再装。'+
+        '想要联机的话，装完再去找个版本号对得上的服务器就行～';
+    }
     // 数学计算：安全表达式求值（只允许数字、四则、括号、百分号、小数点）
     function calcSafe(expr){
       const e=String(expr).replace(/[×xX*]/g,'*').replace(/[÷]/g,'/').replace(/%/g,'/100');
@@ -1594,6 +1954,7 @@
       if(learnName(q))return '记住了，'+(mem.name)+'！以后你就是我熟悉的朋友啦，欢迎常来玩 🐳'+(mem.saidHello?'':'');
       const lq=learnQA(q);if(lq)return '好嘞，我记住这条啦！以后有人问“'+(mem.learned[mem.learned.length-1].q)+'”，我就回答“'+(mem.learned[mem.learned.length-1].a)+'” 💾';
       const lh=learnedHit(s);if(lh)return lh;
+      if(csHit(q)){mem.lastTopic='cs';return csReply()} // 隐藏入口，只认 cs，页面上不留痕迹
       const mq=mathQ(q,s);if(mq)return mq;
       const ct=calcTalk(s);if(ct)return ct;
       if(/1145141919/.test(q)){
@@ -1651,11 +2012,17 @@
 
     // ---------- 可选：真·AI 回复 ----------
     async function aiReply(q){
-      if(!PET_AI.enabled||!PET_AI.key)return null;
+      if(!PET_AI.enabled)return null;
+      const useProxy=!!PET_AI.proxyUrl;
+      const isLocal=/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+      // 线上且没配代理时不发请求，避免把 key 暴露在公开的 HTML 里
+      if(!useProxy&&(!PET_AI.key||!isLocal))return null;
+      const headers={'Content-Type':'application/json'};
+      if(!useProxy)headers['Authorization']='Bearer '+PET_AI.key;
       try{
-        const res=await fetch(PET_AI.endpoint,{
+        const res=await fetch(useProxy?PET_AI.proxyUrl:PET_AI.endpoint,{
           method:'POST',
-          headers:{'Content-Type':'application/json','Authorization':'Bearer '+PET_AI.key},
+          headers,
           body:JSON.stringify({model:PET_AI.model,max_tokens:200,messages:[
             {role:'system',content:PET_AI.system},
             {role:'user',content:q}
@@ -1667,8 +2034,8 @@
       }catch(e){return null}
     }
     async function think(q){
-      const ai=await aiReply(q);
-      const answer=ai||localReply(q);
+      // cs 隐藏入口排在大模型前面：以后就算把 PET_AI.enabled 打开，这条也不会被 AI 抢答
+      const answer=csHit(q)?localReply(q):((await aiReply(q))||localReply(q));
       remember(q,answer);
       await say(answer);
     }
@@ -1715,19 +2082,23 @@
 
     // 引导气泡：开屏结束后主动冒泡，让人一眼发现这只小鲸鱼（内容站主自定，可改下方文字）
     const guideLine='嗨，我是 DeepSeek 的小鲸鱼 🐋 点我聊聊天呀～';
+    let guideTimer=null;
+    const hideGuide=()=>{clearTimeout(guideTimer);petBubble.classList.remove('show','cta');petBtn.classList.remove('attn')};
     function showGuide(){
       setTimeout(()=>{
-        if(petPanel.classList.contains('open'))return;
+        if(petPanel.classList.contains('open')||window.scrollY>60)return;
         petBubble.textContent=guideLine;
         petBubble.classList.add('show','cta');
         petBtn.classList.add('attn');
-        setTimeout(()=>{petBubble.classList.remove('show','cta');petBtn.classList.remove('attn')},9000);
+        guideTimer=setTimeout(hideGuide,6000);
       },3000); // 等开屏动画结束再冒泡
     }
+    // 一开始往下看就让气泡让路，别压在正文上（手机上尤其明显）
+    window.addEventListener('scroll',()=>{if(window.scrollY>40)hideGuide()},{passive:true});
     // 点气泡 = 直接打开面板聊天
     petBubble.addEventListener('click',()=>{
       if(!petBubble.classList.contains('cta'))return;
-      petBubble.classList.remove('show','cta');petBtn.classList.remove('attn');
+      hideGuide();
       petPanel.classList.add('open');
       if(petMsgs.children.length===0)say('嗨，我是 DeepSeek 的小鲸鱼 🐋 欢迎来乐乌的小站！可以直接打字，或点下面的快捷问题跟我聊天～');
     });
