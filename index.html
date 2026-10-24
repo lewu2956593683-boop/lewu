@@ -45,6 +45,9 @@
     --glass:rgba(255,255,255,.42);
     --glass-bd:rgba(255,255,255,.65);
     --acc:#5aa9a0; --acc2:#8b7fd4; --ds:#4d6bfe; /* DeepSeek 官方品牌蓝 */
+    --mp-ico:#35485c; /* 播放控件的图标色：浅色主题用深色线条保证可读 */
+    --gm-card:rgba(255,255,255,.52); --gm-card-bd:rgba(255,255,255,.72); --gm-card-hover:rgba(255,255,255,.82);
+    --ge-tile:rgba(255,255,255,.55);
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   /* 主题切换瞬间禁用全站 transition：切完再恢复，避免几十个元素同时插值掉帧。
@@ -270,14 +273,20 @@
     --glass:rgba(12,22,34,.55);
     --glass-bd:rgba(255,255,255,.16);
     --ds:#7c8cff; /* 深色下用稍亮的 DeepSeek 蓝，保证玻璃上可见 */
+    --mp-ico:#ffffff; /* 深色玻璃上用纯白矢量化图标 */
+    --gm-card:rgba(255,255,255,.06); --gm-card-bd:rgba(255,255,255,.12); --gm-card-hover:rgba(255,255,255,.13);
+    --ge-tile:rgba(255,255,255,.10);
   }
   /* 深色下的光球氛围 + 平滑过渡 */
   html.dark .blob{opacity:.35}
   html.dark .b1{background:radial-gradient(circle,#1c5561,transparent 65%)}
   html.dark .b2{background:radial-gradient(circle,#3b3a6e,transparent 65%)}
   html.dark .b3{background:radial-gradient(circle,#5c2f47,transparent 65%)}
-  html.dark .card{
+  html.dark .card,html.dark .games-entry{
     box-shadow:0 12px 32px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  html.dark .games-entry:hover{
+    box-shadow:0 22px 52px rgba(0,0,0,.30),inset 0 1px 0 rgba(255,255,255,.14);
   }
 
 /* ===== 更多主题（data-theme 预设；墨夜沿用 html.dark 的 .dark 类，由 JS 同步添加） ===== */
@@ -402,12 +411,19 @@
   .music-dock .dt{display:flex;flex-direction:column;line-height:1.35;min-width:0;}
   .music-dock .dt b{font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:108px;}
   .music-dock .dt span{font-size:10.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:108px;}
+  /* 底部胶囊里的播放键：同样的正圆玻璃 + 白色矢量图标 */
   .music-dock .dbtn{
-    width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,.75);flex-shrink:0;cursor:pointer;
-    background:rgba(255,255,255,.55);color:#3a4a5a;font-size:13px;
+    width:34px;height:34px;border-radius:50%;flex-shrink:0;cursor:pointer;
+    border:1px solid rgba(255,255,255,.22);
+    background:radial-gradient(120% 120% at 30% 18%,rgba(255,255,255,.20),rgba(255,255,255,.05) 62%);
+    color:var(--mp-ico);
     display:flex;align-items:center;justify-content:center;
-    transition:transform .2s ease;
+    -webkit-backdrop-filter:blur(10px) saturate(160%);backdrop-filter:blur(10px) saturate(160%);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.26);
+    transition:background .28s ease,box-shadow .3s ease,transform .2s ease,border-color .3s ease;
   }
+  .music-dock .dbtn:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.38);box-shadow:inset 0 1px 0 rgba(255,255,255,.36),0 0 0 5px rgba(127,216,205,.08)}
+  .music-dock .dbtn svg{width:14px;height:14px;display:block}
   .music-dock .dbtn:active{transform:scale(.9)}
   /* 展开面板 */
   .music-panel{
@@ -429,14 +445,35 @@
   .mp-progress{height:6px;border-radius:4px;background:rgba(90,130,150,.18);cursor:pointer;position:relative;margin:0 0 6px;}
   .mp-progress i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:linear-gradient(90deg,var(--acc),var(--acc2));width:0%}
   .mp-time{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink-2);opacity:.8;margin-bottom:12px;}
-  .mp-row{display:flex;align-items:center;gap:14px;}
-  .mp-play{width:48px;height:48px;border-radius:50%;border:1px solid rgba(255,255,255,.75);flex-shrink:0;cursor:pointer;
-    background:rgba(255,255,255,.55);color:#3a4a5a;font-size:18px;
+  .mp-row{display:flex;align-items:center;gap:8px;}
+  /* 播放键：正圆、半透明玻璃底、白色极简图标（同一个按钮切换播放/暂停） */
+  .mp-play{
+    position:relative;width:54px;height:54px;border-radius:50%;flex-shrink:0;cursor:pointer;
     display:flex;align-items:center;justify-content:center;
-    box-shadow:0 8px 20px rgba(80,120,140,.2),inset 0 1px 0 rgba(255,255,255,.6);
-    transition:transform .2s ease,box-shadow .3s ease;}
-  .mp-play:active{transform:scale(.92)}
+    border:1px solid rgba(255,255,255,.26);
+    background:radial-gradient(120% 120% at 30% 18%,rgba(255,255,255,.26),rgba(255,255,255,.06) 60%);
+    -webkit-backdrop-filter:blur(14px) saturate(170%);backdrop-filter:blur(14px) saturate(170%);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.34),0 8px 22px rgba(0,0,0,.18);
+    color:var(--mp-ico);
+    transition:box-shadow .34s ease,border-color .34s ease,transform .22s ease,background .34s ease;
+  }
+  /* 悬停光晕：外扩一圈柔光，不改变布局 */
+  .mp-play::after{
+    content:"";position:absolute;inset:-9px;border-radius:50%;pointer-events:none;opacity:0;
+    background:radial-gradient(circle,rgba(127,216,205,.42),rgba(127,216,205,0) 68%);
+    transition:opacity .36s ease;
+  }
+  .mp-play:hover{
+    border-color:rgba(255,255,255,.44);
+    background:radial-gradient(120% 120% at 30% 18%,rgba(255,255,255,.30),rgba(255,255,255,.08) 62%);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.46),0 10px 26px rgba(0,0,0,.22),0 0 0 6px rgba(127,216,205,.07);
+  }
+  .mp-play:hover::after{opacity:1}
+  .mp-play:focus-visible{outline:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 0 0 6px rgba(127,216,205,.22)}
+  .mp-play:active{transform:scale(.94)}
+  .mp-play svg{width:22px;height:22px;display:block;pointer-events:none}
   .mp-vol{flex:1;min-width:0;display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink-2);}
+  .mp-vol svg{width:16px;height:16px;flex-shrink:0;display:block;color:var(--mp-ico);opacity:.72}
   .mp-vol input{flex:1;min-width:0;width:100%;height:5px;accent-color:var(--acc);}
   /* 曲目列表 + 切歌按钮 */
   .mp-list{display:flex;flex-direction:column;gap:6px;margin:0 0 12px;max-height:150px;overflow-y:auto;}
@@ -457,18 +494,131 @@
   html.dark .msg .mb{background:rgba(255,255,255,.05)}
   html.dark .mp-item:hover{background:rgba(255,255,255,.12)}
   html.dark .mp-item.on{background:linear-gradient(135deg,rgba(127,216,205,.20),rgba(167,155,240,.20));border-color:rgba(255,255,255,.30);}
-  html.dark .mp-play,html.dark .mp-skip,html.dark .music-dock .dbtn,html.dark .music-dock .disc{
-    background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.18);color:var(--ink);
+  html.dark .mp-play,html.dark .mp-skip{color:var(--mp-ico)}
+  html.dark .music-dock .disc{
+    background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.18);
   }
   html.dark .mp-cover{background:linear-gradient(135deg,rgba(127,216,205,.22),rgba(167,155,240,.22));border-color:rgba(255,255,255,.18);}
   html.dark .mp-progress{background:rgba(255,255,255,.14)}
   html.dark .theme-pop .th:hover{background:rgba(255,255,255,.10)}
   html.dark .skill.p{color:#bfb4ff} /* 原来固定 #6a5fc0，在深色玻璃上几乎看不清 */
-  .mp-skip{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.75);flex-shrink:0;cursor:pointer;
-    background:rgba(255,255,255,.55);color:#3a4a5a;font-size:13px;
+  /* 上一首 / 下一首：去掉背景框，只留白色线条图标 */
+  .mp-skip{
+    width:38px;height:38px;border-radius:50%;flex-shrink:0;cursor:pointer;
+    border:1px solid transparent;background:transparent;color:var(--mp-ico);opacity:.7;
     display:flex;align-items:center;justify-content:center;
-    transition:transform .2s ease;}
+    transition:opacity .26s ease,transform .2s ease,background .26s ease;
+  }
+  .mp-skip svg{width:19px;height:19px;display:block;pointer-events:none}
+  .mp-skip:hover{opacity:1;background:rgba(255,255,255,.09)}
+  .mp-skip:focus-visible{opacity:1;outline:none;background:rgba(255,255,255,.12)}
   .mp-skip:active{transform:scale(.9)}
+
+  /* 图标切换：默认显示播放三角，播放中显示暂停竖线（状态类由 body.mplaying 驱动） */
+  .mp-play .ic-pause,.music-dock .dbtn .ic-pause{display:none}
+  body.mplaying .mp-play .ic-play,body.mplaying .music-dock .dbtn .ic-play{display:none}
+  body.mplaying .mp-play .ic-pause,body.mplaying .music-dock .dbtn .ic-pause{display:block}
+
+  /* ===== 摸鱼百宝箱：游戏入口卡片 + 全屏毛玻璃面板 ===== */
+  .games-entry-wrap{display:flex;justify-content:center;margin:26px 0 4px;}
+  /* 玻璃质感、边框、投影全部对齐 .card，保证和技能/最近在赞等卡片同一视觉语言 */
+  .games-entry{
+    position:relative;isolation:isolate;overflow:hidden;
+    display:flex;align-items:center;gap:15px;width:100%;
+    padding:17px 22px;border-radius:22px;cursor:pointer;text-align:left;font-family:inherit;
+    color:var(--ink);
+    background:var(--glass);
+    border:1px solid var(--glass-bd);
+    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+    box-shadow:0 12px 40px rgba(80,120,140,.10),inset 0 1px 0 rgba(255,255,255,.65);
+    transition:transform .3s ease,box-shadow .3s ease,color .5s ease,border-color .5s ease;
+  }
+  /* 悬停时极淡的一层青光，只在卡片内部，不改变整体色调 */
+  .games-entry::before{
+    content:"";position:absolute;inset:0;z-index:-1;opacity:0;
+    background:radial-gradient(130% 180% at 10% 50%,rgba(127,216,205,.13),transparent 65%);
+    transition:opacity .38s ease;
+  }
+  .games-entry:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.34);
+    box-shadow:0 18px 48px rgba(80,120,140,.16),inset 0 1px 0 rgba(255,255,255,.75)}
+  .games-entry:hover::before{opacity:1}
+  .games-entry:active{transform:translateY(0) scale(.995)}
+  .games-entry .ge-ico{
+    width:46px;height:46px;border-radius:15px;flex-shrink:0;font-size:21px;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--ge-tile);
+    border:1px solid var(--glass-bd);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.24);
+    transition:transform .4s cubic-bezier(.2,.8,.2,1);
+  }
+  .games-entry:hover .ge-ico{transform:rotate(-8deg) scale(1.05)}
+  .games-entry .ge-txt{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;}
+  .games-entry .ge-txt b{font-size:16px;font-weight:700;letter-spacing:.6px;color:var(--ink);}
+  .games-entry .ge-txt i{font-style:normal;font-size:12px;color:var(--ink-2);opacity:.95;letter-spacing:.2px;}
+  .games-entry .ge-arrow{flex-shrink:0;font-size:15px;color:var(--ink-2);opacity:.6;transition:transform .32s ease,opacity .32s ease;}
+  .games-entry:hover .ge-arrow{transform:translateX(4px);opacity:1}
+
+  html.gm-lock{overflow:hidden}
+  .games-modal{
+    position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:24px;
+    opacity:0;visibility:hidden;transition:opacity .3s ease,visibility .3s ease;
+  }
+  .games-modal.open{opacity:1;visibility:visible}
+  .gm-backdrop{position:absolute;inset:0;background:rgba(6,12,20,.5);
+    -webkit-backdrop-filter:blur(12px) saturate(125%);backdrop-filter:blur(12px) saturate(125%);}
+  .gm-panel{
+    position:relative;display:flex;flex-direction:column;width:min(880px,100%);max-height:min(84vh,760px);
+    padding:20px 20px 12px;border-radius:26px;border:1px solid var(--glass-bd);
+    background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.01) 45%),var(--glass);
+    -webkit-backdrop-filter:blur(34px) saturate(185%);backdrop-filter:blur(34px) saturate(185%);
+    box-shadow:0 30px 80px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.22);
+    opacity:0;transform:translateY(18px) scale(.97);
+    transition:opacity .34s ease,transform .38s cubic-bezier(.2,.8,.2,1),color .5s ease,border-color .5s ease;
+  }
+  .games-modal.open .gm-panel{opacity:1;transform:none}
+  .gm-head{display:flex;align-items:center;gap:12px;padding:0 2px 13px;border-bottom:1px solid rgba(255,255,255,.1);}
+  .gm-title{display:flex;align-items:center;gap:11px;flex:1;min-width:0;}
+  .gm-title .gm-ico{width:38px;height:38px;border-radius:12px;flex-shrink:0;font-size:19px;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);}
+  .gm-title b{display:block;font-size:15px;font-weight:700;letter-spacing:.4px;color:var(--ink);}
+  .gm-title i{display:block;font-style:normal;font-size:11px;color:var(--ink-2);opacity:.82;margin-top:3px;}
+  .gm-close{width:34px;height:34px;border-radius:50%;flex-shrink:0;cursor:pointer;line-height:1;
+    display:flex;align-items:center;justify-content:center;font-size:15px;
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--ink);
+    transition:background .25s ease,transform .3s ease,color .25s ease;}
+  .gm-close:hover{background:rgba(255,255,255,.18);transform:rotate(90deg)}
+  .gm-grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(186px,1fr));gap:10px;
+    overflow-y:auto;overscroll-behavior:contain;padding:14px 4px 12px;margin:0 -4px;
+  }
+  .gm-card{
+    display:flex;flex-direction:column;gap:5px;padding:11px 13px;border-radius:14px;text-decoration:none;
+    background:var(--gm-card);border:1px solid var(--gm-card-bd);color:var(--ink);
+    transition:background .24s ease,border-color .24s ease,transform .24s ease,box-shadow .24s ease;
+  }
+  .gm-card .gm-name{font-size:13px;font-weight:600;letter-spacing:.2px;line-height:1.35;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .gm-card .gm-url{font-size:10.5px;color:var(--acc);opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}
+  .gm-card:hover{transform:translateY(-2px);background:var(--gm-card-hover);border-color:rgba(127,216,205,.45);
+    box-shadow:0 10px 22px rgba(0,0,0,.2)}
+  .gm-card:hover .gm-url{opacity:1}
+  .gm-card:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+  .gm-close:focus-visible,.games-entry:focus-visible{outline:2px solid var(--acc);outline-offset:3px}
+  /* 浅色主题里 var(--acc) 偏淡，压暗一档保证网址看得清 */
+  html:not(.dark) .gm-card .gm-url{filter:brightness(.72)}
+  .gm-foot{margin:2px 0 0;text-align:center;font-size:10.5px;color:var(--ink-2);opacity:.62;letter-spacing:.2px;}
+  @media(max-width:640px){
+    .games-modal{padding:12px}
+    .gm-panel{padding:16px 14px 10px;border-radius:22px;max-height:88vh}
+    .gm-grid{grid-template-columns:repeat(auto-fill,minmax(146px,1fr));gap:8px;padding:10px 2px}
+    .gm-card{padding:9px 10px}
+    .gm-card .gm-name{font-size:12.5px}
+    .games-entry{padding:13px 16px;gap:12px}
+    .games-entry .ge-ico{width:40px;height:40px;font-size:19px}
+    .games-entry .ge-txt b{font-size:14px}
+  }
 
   /* ===== 开屏动画（借鉴 ZP-OS 启动过场，液态玻璃风） ===== */
   .boot{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:130px;
@@ -875,6 +1025,7 @@
     #c-about{order:30}#about{order:31}
     #c-works{order:40}#works{order:41}
     #c-music{order:50}.music-card{order:51}
+    .games-entry-wrap{order:55;margin:16px 0 2px}
     .grid{order:60}
     #c-time{order:70}#timeline{order:71}
     #msgs{order:80}
@@ -1122,13 +1273,54 @@
         <div class="mp-progress" id="mpBar"><i id="mpFill"></i></div>
         <div class="mp-time"><span id="mpCur">00:00</span><span id="mpDur">00:00</span></div>
         <div class="mp-row">
-          <button class="mp-skip" id="mpPrev" title="上一首">⏮</button>
-          <button class="mp-play" id="mpPlay">▶</button>
-          <button class="mp-skip" id="mpNext" title="下一首">⏭</button>
-          <div class="mp-vol">🔉<input type="range" id="mpVol" min="0" max="1" step="0.01" value="0.15"></div>
+          <button class="mp-skip" id="mpPrev" title="上一首" aria-label="上一首">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18.4 6.6 10.2 12l8.2 5.4V6.6Z"/><path d="M6.2 6v12"/></svg>
+          </button>
+          <button class="mp-play" id="mpPlay" title="播放 / 暂停" aria-label="播放或暂停">
+            <svg class="ic-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 5.6 18.4 12l-9.9 6.4V5.6Z"/></svg>
+            <svg class="ic-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><path d="M9.2 5.6v12.8"/><path d="M14.8 5.6v12.8"/></svg>
+          </button>
+          <button class="mp-skip" id="mpNext" title="下一首" aria-label="下一首">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.6 6.6 13.8 12l-8.2 5.4V6.6Z"/><path d="M17.8 6v12"/></svg>
+          </button>
+          <div class="mp-vol">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 9.5h3.1L12 6.2v11.6L7.6 14.5H4.5z"/><path d="M15.4 9.6a3.4 3.4 0 0 1 0 4.8"/><path d="M18 7.2a7 7 0 0 1 0 9.6"/></svg>
+            <input type="range" id="mpVol" min="0" max="1" step="0.01" value="0.15" aria-label="音量">
+          </div>
         </div>
       </div>
     </section>
+
+    <!-- 游戏入口 -->
+    <div class="games-entry-wrap reveal">
+      <button class="games-entry" id="gamesEntry" type="button" aria-haspopup="dialog" aria-controls="gamesModal">
+        <span class="ge-ico" aria-hidden="true">🎮</span>
+        <span class="ge-txt">
+          <b>小鲸鱼的摸鱼百宝箱</b>
+          <i>22 个网页小游戏 · 点开即玩</i>
+        </span>
+        <span class="ge-arrow" aria-hidden="true">→</span>
+      </button>
+    </div>
+
+    <!-- 摸鱼百宝箱：全屏毛玻璃面板 -->
+    <div class="games-modal" id="gamesModal" role="dialog" aria-modal="true" aria-label="小鲸鱼的摸鱼百宝箱" aria-hidden="true">
+      <div class="gm-backdrop" data-close></div>
+      <div class="gm-panel">
+        <div class="gm-head">
+          <div class="gm-title">
+            <span class="gm-ico" aria-hidden="true">🎮</span>
+            <div>
+              <b>小鲸鱼的摸鱼百宝箱</b>
+              <i>22 个可以点开就玩的网页小游戏</i>
+            </div>
+          </div>
+          <button class="gm-close" type="button" data-close aria-label="关闭">✕</button>
+        </div>
+        <div class="gm-grid" id="gmGrid"></div>
+        <p class="gm-foot">点卡片直接在新标签页打开 · 摸鱼请适度 🐋</p>
+      </div>
+    </div>
 
     <!-- Bento 网格 -->
     <div class="grid">
@@ -1284,7 +1476,10 @@
       <span id="dockArtist">Strictlyviolin荀博 · 王朝</span>
     </div>
     <span class="mp-hint" id="mpHint">🔊 点击播放</span>
-    <button class="dbtn" id="mpPlay2">▶</button>
+    <button class="dbtn" id="mpPlay2" title="播放 / 暂停" aria-label="播放或暂停">
+      <svg class="ic-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 5.6 18.4 12l-9.9 6.4V5.6Z"/></svg>
+      <svg class="ic-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><path d="M9.2 5.6v12.8"/><path d="M14.8 5.6v12.8"/></svg>
+    </button>
   </div>
 
   <!-- 鲸鱼助手（可对话桌宠） -->
@@ -1348,7 +1543,8 @@
   ];
   let cur=0;
   const fmt=t=>{if(!isFinite(t))return'00:00';const m=Math.floor(t/60),s=Math.floor(t%60);return(m<10?'0':'')+m+':'+(s<10?'0':'')+s};
-  const sync=()=>{const p=!bgm.paused;playBtn.textContent=p?'⏸':'▶';play2.textContent=p?'⏸':'▶';disc.classList.toggle('spin',p);document.body.classList.toggle('mplaying',p)};
+  // 图标由 body.mplaying 驱动（CSS 切换 SVG），这里只负责状态类，避免覆盖 innerHTML 里的矢量图标
+  const sync=()=>{const p=!bgm.paused;disc.classList.toggle('spin',p);document.body.classList.toggle('mplaying',p)};
   const renderMeta=()=>{
     const t=TUNES[cur];
     mpTitle.textContent=t.title;mpArtist.textContent=t.artist||'';
@@ -1753,6 +1949,83 @@
       setTimeout(()=>{btn.textContent=old;btn.style.color=''},1600);
     });
   });
+
+  // ---- 摸鱼百宝箱（游戏入口 + 毛玻璃面板） ----
+  (function(){
+    // [网址, 名称/说明]：网址没写协议的统一补 https://
+    const GAMES=[
+      ['mc.js.cool','我的世界网页版'],
+      ['jspvz.com','植物大战僵尸网页版'],
+      ['poki.com','国外小游戏合集站'],
+      ['crazygames.com','io 游戏、闯关类小游戏'],
+      ['ccw.site','共创世界 · 编程平台，大量自制小游戏'],
+      ['h.4399.com','4399 H5 小游戏'],
+      ['cn.pigame.cc','小猪秒玩小游戏'],
+      ['gamer.qq.com','腾讯网页秒玩'],
+      ['cg.163.com','网易网页小游戏'],
+      ['scratch.mit.edu','Scratch 编程平台，学生自制游戏'],
+      ['coolmathgames.com','益智解谜游戏'],
+      ['itch.io','独立小游戏平台'],
+      ['yandex.com.tr','海量免费 H5 小游戏'],
+      ['playhop.com','休闲、模拟小游戏合集'],
+      ['agame.com','休闲竞速多人小游戏'],
+      ['addictinggames.com','街机小游戏集合'],
+      ['armorgames.com','塔防冒险类游戏'],
+      ['y8.com','老牌网页游戏站'],
+      ['abcya.com','教育类小游戏'],
+      ['mathplayground.com','数学益智游戏'],
+      ['kahoot.com','趣味答题小游戏'],
+      ['classic.minecraft.net','MC 原版网页版']
+    ];
+    const toHref=u=>/^https?:\/\//i.test(u)?u:'https://'+u;
+    const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    let built=false;
+    // 懒渲染：第一次打开时再铺卡片，省掉首屏二十多个节点的构建
+    function build(){
+      const grid=document.getElementById('gmGrid');
+      if(built||!grid)return;
+      grid.innerHTML=GAMES.map(([u,n])=>{
+        const href=toHref(u);
+        return '<a class="gm-card" href="'+esc(href)+'" target="_blank" rel="noopener noreferrer">'
+          + '<b class="gm-name">'+esc(n)+'</b>'
+          + '<span class="gm-url">'+esc(href.replace(/^https?:\/\//i,''))+'</span></a>';
+      }).join('');
+      built=true;
+    }
+    let lastFocus=null;
+    function openModal(){
+      const modal=document.getElementById('gamesModal');
+      if(!modal||modal.classList.contains('open'))return;
+      build();
+      lastFocus=document.activeElement;
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden','false');
+      document.documentElement.classList.add('gm-lock');
+      const first=modal.querySelector('.gm-card');
+      if(first)setTimeout(()=>{try{first.focus({preventScroll:true})}catch(e){}},80);
+    }
+    function closeModal(){
+      const modal=document.getElementById('gamesModal');
+      if(!modal)return;
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden','true');
+      document.documentElement.classList.remove('gm-lock');
+      if(lastFocus&&lastFocus.focus){try{lastFocus.focus({preventScroll:true})}catch(e){}}
+    }
+    // 事件委托：不依赖脚本执行时节点是否已就位
+    document.addEventListener('click',e=>{
+      const t=e.target;
+      if(!t||!t.closest)return;
+      if(t.closest('#gamesEntry')){e.preventDefault();openModal();return}
+      const modal=document.getElementById('gamesModal');
+      if(!modal||!modal.classList.contains('open'))return;
+      if(t.closest('[data-close]')||t===modal)closeModal();
+    });
+    document.addEventListener('keydown',e=>{
+      const modal=document.getElementById('gamesModal');
+      if(e.key==='Escape'&&modal&&modal.classList.contains('open'))closeModal();
+    });
+  })();
 
   // ---- 光标光斑跟随（仅桌面） ----
   if(window.matchMedia('(hover:hover)').matches){
