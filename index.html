@@ -339,6 +339,7 @@
     box-shadow:0 14px 34px rgba(60,100,130,.2);display:none;flex-direction:column;gap:4px;}
   .theme-pop.open{display:flex;animation:popIn .18s ease;}
   @keyframes popIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  @keyframes popInUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
   /* 主题项改成 <button> 后要清掉浏览器默认样式，键盘/读屏才能操作 */
   .theme-pop .th{display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border:none;border-radius:10px;background:transparent;text-align:left;cursor:pointer;font-size:12px;color:var(--ink);transition:background .2s ease;font-family:inherit;}
   .theme-pop .th:hover{background:rgba(255,255,255,.4)}
@@ -917,6 +918,9 @@
     footer{margin-top:26px}
     .theme-fab{top:auto;bottom:72px;right:14px;width:40px;height:40px;font-size:17px;
       background:rgba(10,18,28,.45);border-color:rgba(255,255,255,.18);color:#e6eef6}
+    /* 按钮搬到右下后，选项必须跟着下来：原来它钉在 top:156px，一点就跑屏幕顶上 */
+    .theme-pop{top:auto;bottom:124px;right:14px;min-width:124px}
+    .theme-pop.open{animation:popInUp .18s ease}
   }
   @media(min-width:641px) and (max-width:999px){
     .wrap{max-width:640px;margin:0 auto}
