@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Kimi 小圆球</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#ffffff}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",system-ui,sans-serif;
+    touch-action:none;user-select:none}
+  canvas{display:block;position:fixed;inset:0}
+  .hint{position:fixed;bottom:24px;left:0;right:0;text-align:center;font-size:12px;letter-spacing:.04em;
+    color:rgba(20,40,70,.28);pointer-events:none;padding:0 20px;line-height:1.6;z-index:2}
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<div class="hint">点一下它</div>
+
+<script>
+(function(){
+'use strict';
+const cv=document.getElementById('stage'), ctx=cv.getContext('2d');
+const rand=(a,b)=>a+Math.random()*(b-a);
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+
+let W=0,H=0,DPR=1,S=6;
+function resize(){
+  DPR=Math.max(1,Math.min(Math.round(window.devicePixelRatio||1),3));
+  W=window.innerWidth;H=window.innerHeight;
+  cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);
+  cv.style.width=W+'px';cv.style.height=H+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  S=clamp(Math.round(Math.min(W,H)*0.44/24),3,26);
+}
+window.addEventListener('resize',resize);resize();
+
+/* 平滑矢量绘制：坐标即屏幕像素，无像素网格量化 */
+const sx=x=>cx0+x*S, sy=y=>cy0+y*S;
+/* 眼睛专用缩放：眼随球一起缩（点击内缩时眼睛同步变小） */
+let ES=S;
+const ex_=x=>cx0+x*ES, ey_=y=>cy0+y*ES;
+let cx0=0, cy0=0;
+
+/* ---------------- 外观 ---------------- */
+const SKIN={                      // 中心深、边缘浅：外面一层浅的，里面裹着一个深的
+  core:'#4a86d8', in1:'#5a95e0', in2:'#6ca4e8', edge:'#8cb9f0', rim:'#a9cdf6'
+};
+const CFG={
+  bodySize:24,                    // bs:24  球体直径
+  baseW:5,                        // bw:5   眼宽基准
+  scale:.53,                      // sc:53
+  eyeAspect:2.24,                 // as:224 高宽比（细长胶囊）
+  eyeGap:2.1,                     // 两眼间距
+  eyeY:-3,                        // 眼睛高度位置
+  eyeRound:1,                     // 眼形圆角（1=圆润胶囊；调小则变钝、接近圆角矩形）
+  eyeMove:3.4, eyeMoveY:.62,      // em:34 / my:62
+  range:.60,                      // ra:60
+  speed:.45,                      // sp:45
+  blink:.87,                      // bl:87
+  pressPop:.11, pressHold:.03,    // 点击先等比例胀大 11%，按住时略缩 3%
+  popGrowMs:230, popHoldMs:250,    // 变大阶段 / 悬停阶段（合计=胀大总窗口）
+  popGrowStiff:100,               // 变大过程的弹簧刚度（越小变大越慢）
+  jellyK:.05, jellyMax:.07,       // 形变 = 缩放速度 × jellyK（上限）
+  shadow:true, shadowScale:1.0,   // 背后阴影：大小≈球
+  shadowDX:.10, shadowDY:.14,     // 阴影偏移（偏下右）
+  shadowAlpha:.30,                // 阴影浓度
+  angryLid:.43, lidSlant:1.1,     // an:43 / ls:11
+  jitter:.72,                     // ji:72
+  turnK:1.8,                      // 转动角系数（越大转得越远）
+  roll:1.6                        // 倾斜放大（保证看得出来，两眼始终同角度）
+};
+const eyeW=()=>CFG.baseW*CFG.scale;   // 5 × 0.53 = 2.65 逻辑像素宽
+const eyeH=()=>eyeW()*CFG.eyeAspect;  // × 2.24 = 5.94 高
+
+/* ---------------- 球面投影 ----------------
+   眼睛贴在球面上：往四周看 = 沿球面滑动，位置由球面角度投影得到。
+   两只眼永远「平行」：倾角只由注视方向决定，两眼共用同一个角度，
+   所以不会一只内八一只外八；尺寸恒定，不做近大远小。 */
+let sharedRot=0;
+function updateSharedRot(gx,gy){
+  // 用「脸的中心」算倾角：两眼共用，保证永远平行
+  const R=CFG.bodySize/2;
+  const MA=CFG.eyeMove*CFG.range/R*CFG.turnK;
+  const Ax=gx*MA;                        // 中心点：基础 ax = 0
+  const Ay=CFG.eyeY/R + gy*MA*CFG.eyeMoveY;
+  // up 向量投影：往右看 (Ax>0) 且眼睛在球心上方 (Ay<0) → up 偏向左上 → 逆时针
+  sharedRot=CFG.roll*Math.atan2(Math.sin(Ay)*Math.sin(Ax), Math.cos(Ay));
+}
+function eyePose(bx,by,gx,gy){
+  const R=CFG.bodySize/2;                       // 球半径（逻辑像素）
+  const MA=CFG.eyeMove*CFG.range/R*CFG.turnK;   // 最大转动角（弧度）
+  const ax=bx/R + gx*MA;                        // 基础角 + 转动角
+  const ay=by/R + gy*MA*CFG.eyeMoveY;
+  const ca=Math.cos(ay), sa=Math.sin(ay);
+  const cA=Math.cos(ax), sA=Math.sin(ax);
+  return {
+    x : sA*ca*R,          // 正交投影：位置（自带球面压缩）
+    y : sa*R,             // 屏幕 y 向下为正
+    rot: sharedRot        // 两眼共用倾角 → 始终平行
+  };
+}
+
+/* ---------------- 运动 ---------------- */
+/* 两只眼共用同一个注视向量 —— 它们永远同步，不会各晃各的 */
+const gaze={x:0,y:0,vx:0,vy:0,tx:0,ty:0,next:0,seed:rand(0,99)};
+const eyes={l:{lid:0}, r:{lid:0}, nextGaze:0};
+let blink={t0:-99999,dur:170,next:1400};
+let press=0, pressV=0;                          // 整体缩放：负=放大，正=缩小
+let sq=0, sqV=0;                                // 果冻形变：正=横向摊开压扁
+let holding=false, holdT0=-99999, popUntil=-99999, onBall=false;
+let combo=0, lastTap=-99999, rageUntil=-99999, rage=0;
+const RAGE_TAPS=5, RAGE_WINDOW=900, RAGE_COOL=2800;
+let autoMood=null;
+const MOOD=()=>autoMood||'normal';
+
+
+/* ---------------- 指针 ----------------
+   按住任何地方（不一定要在球上）→ 它盯着你的手/鼠标看；松手就恢复自己看。
+   只有按在球上才算「点它」，触发果冻与生气计数。 */
+const ptr={x:0,y:0};
+window.addEventListener('pointermove',e=>{ptr.x=e.clientX;ptr.y=e.clientY;},{passive:true});
+
+function onDown(e){
+  ptr.x=e.clientX; ptr.y=e.clientY;
+  holding=true;                                 // 按住 → 开始盯着看（不限位置）
+  onBall = Math.hypot(e.clientX-cx0, e.clientY-cy0)<=bodyR()*S*1.25;
+  if(onBall) onTap(e);                          // 按在球上 → 点它
+}
+function onRelease(){
+  if(!holding) return;
+  holding=false; onBall=false;
+  eyes.nextGaze=performance.now()+300;   // 松手后停一下，再自己随便看
+}
+window.addEventListener('pointerdown',onDown,{passive:true});
+window.addEventListener('pointerup',onRelease,{passive:true});
+window.addEventListener('pointercancel',onRelease,{passive:true});
+window.addEventListener('blur',onRelease);
+
+/* 点球：果冻 + 生气计数 */
+function onTap(e){
+  const now=performance.now();
+  holdT0=now;
+  // 不再直接把 press 跳到峰值：由弹簧平滑长过去，这样「变大」才看得出动画
+  popUntil=now+CFG.popGrowMs+CFG.popHoldMs;   // 生长阶段 + 悬停阶段
+  if(now<rageUntil) return;                     // 正在生气：只缩，不续气
+  combo = (now-lastTap<RAGE_WINDOW)? combo+1 : 1;
+  lastTap=now;
+  if(combo>=RAGE_TAPS){
+    const extra=Math.min(combo-RAGE_TAPS,10)*380;
+    rageUntil=Math.max(rageUntil, now+RAGE_COOL+extra);
+  }
+}
+
+function doBlink(){
+  const now=performance.now();
+  if(now-blink.t0>blink.dur){blink.t0=now;blink.dur=rand(150,230);}
+  blink.next=now+1000/(0.05+CFG.blink*0.6)*rand(.55,1.6);
+}
+blink.next=performance.now()+900;
+
+function step(now,dt){
+  const ds=Math.min(dt,40)/1000;
+  // 缩放目标：生长+悬停期内趋向「胀大」，之后回落（按在球上则略缩）
+  const popping = now<popUntil;
+  let pT = popping ? -CFG.pressPop : ((holding&&onBall) ? CFG.pressHold : 0);
+  // 生长阶段用更软的弹簧 → 变大是一个看得见的过程；回落阶段稍硬 → 果冻回弹
+  const st1 = popping ? CFG.popGrowStiff : 150, z1=.42, d1=2*Math.sqrt(st1)*z1;
+  const steps=Math.max(1,Math.ceil(ds/(1/240))), h=ds/steps;
+  for(let i=0;i<steps;i++){
+    pressV+=((pT-press)*st1 - pressV*d1)*h; press+=pressV*h;
+  }
+  // 形变由「缩放速度」派生：动的时候被挤压，停下来就恢复正圆
+  // （不再是独立弹簧，所以不会自己来回晃个不停）
+  sq = clamp(pressV*CFG.jellyK, -CFG.jellyMax, CFG.jellyMax);
+  // 怒气：起得快，消得更快（目标为 0 时几乎瞬间回落）
+  const target = now<rageUntil ? 1 : 0;
+  const tau = target?0.10:0.05;
+  rage += (target-rage)*(1-Math.exp(-ds/tau));
+  if(now<lastTap-RAGE_WINDOW) combo=0;
+  autoMood = rage>0.30 ? 'angry' : null;
+
+  if(holding){
+    // 按着的时候盯着手指/鼠标看：指针离球心越远，看得越"使劲"
+    const dx=ptr.x-cx0, dy=ptr.y-cy0, d=Math.hypot(dx,dy)||1;
+    const sat=Math.max(1, bodyR()*S*0.8);
+    const n=d/(d+sat);                        // 0~1，越远越接近 1
+    gaze.tx=dx/d*n; gaze.ty=dy/d*n;
+    eyes.nextGaze=now+1e9;                    // 按住期间不自动换方向
+  }else if(now>eyes.nextGaze){
+    // 没人按：自己向四周看（换方向的间隔拉长，不再频繁乱瞟）
+    gaze.tx=rand(-1,1)*.85; gaze.ty=rand(-1,1)*.7;
+    eyes.nextGaze=now+rand(1400,3400);
+  }
+  // 单一弹簧：微颤只叠一次，两眼共用 → 不会各自抖
+  const st=30+CFG.speed*340, dp=2*Math.sqrt(st)*.62, t=now/1000;
+  const j=CFG.jitter;
+  const mx=(Math.sin(t*1.7+gaze.seed)*.6+Math.sin(t*4.3+gaze.seed*2.7)*.3)*.08*j;
+  const my=(Math.cos(t*2.3+gaze.seed*1.3)*.6+Math.cos(t*5.1+gaze.seed*3.1)*.3)*.06*j;
+  gaze.vx+=((gaze.tx+mx-gaze.x)*st - gaze.vx*dp)*ds;
+  gaze.vy+=((gaze.ty+my-gaze.y)*st - gaze.vy*dp)*ds;
+  gaze.x+=gaze.vx*ds; gaze.y+=gaze.vy*ds;
+  eyes.l.lid=eyeLid(now); eyes.r.lid=eyeLid(now);
+  if(now>blink.next)doBlink();
+}
+
+/* 眼皮：0 = 全睁，1 = 闭合 */
+function eyeLid(now){
+  const bp=(now-blink.t0)/blink.dur;
+  if(bp<0||bp>=1)return 0;
+  if(bp<0.36){const u=bp/0.36;return u*u*(3-2*u);}
+  const u=(bp-0.36)/0.64, e=u*u*(3-2*u);
+  return clamp(1-e-Math.sin(u*Math.PI)*0.09*(1-u),0,1);
+}
+
+function bodyR(){ return CFG.bodySize/2*(1-press); }
+
+/* ---------------- 绘制 ---------------- */
+function draw(now){
+  const bs=CFG.bodySize, R=bodyR()*S;
+  cx0=W/2; cy0=H/2;
+  ES = S*(1-press);                   // 眼睛随球一起缩
+
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);
+
+  // 果冻形变：横向膨胀 / 纵向压扁（sq>0 → 扁，<0 → 长）
+  const RX=R*(1+sq*0.5), RY=R*(1-sq*0.5);
+  const BASE=Math.max(RX,RY);
+
+  // 背后那层：其实是阴影，不是涟漪。
+  // 大小跟球差不多，位置偏下右，会跟着球形变/缩放实时变动。
+  if(CFG.shadow){
+    const ox=R*CFG.shadowDX, oy=R*CFG.shadowDY;
+    const sr=Math.max(RX,RY)*CFG.shadowScale;
+    const A=CFG.shadowAlpha, C='rgba(34,70,124,';
+    ctx.save();
+    ctx.translate(cx0,cy0);
+    ctx.scale(RX/BASE, RY/BASE);              // 跟着果冻一起被挤压
+    ctx.translate(-cx0,-cy0);
+    const sg=ctx.createRadialGradient(cx0+ox,cy0+oy,sr*0.35, cx0+ox,cy0+oy,sr*1.16);
+    sg.addColorStop(0,   C+A+')');
+    sg.addColorStop(.58, C+(A*0.82).toFixed(3)+')');
+    sg.addColorStop(1,   C+'0)');
+    ctx.fillStyle=sg;
+    ctx.beginPath();ctx.arc(cx0+ox,cy0+oy,sr*1.16,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+
+  // 球体：里面是深的，往边缘逐渐变浅（外面那层浅的裹着它）
+  const g=ctx.createRadialGradient(cx0-RX*0.14,cy0-RY*0.18,RX*0.05, cx0,cy0,Math.max(RX,RY)*1.02);
+  g.addColorStop(0,   SKIN.core);
+  g.addColorStop(.40, SKIN.in1);
+  g.addColorStop(.72, SKIN.in2);
+  g.addColorStop(.92, SKIN.edge);
+  g.addColorStop(1,   SKIN.rim);
+  ctx.fillStyle=g;
+  ctx.beginPath();ctx.ellipse(cx0,cy0,RX,RY,0,0,Math.PI*2);ctx.fill();
+
+  // 两眼：竖向白色胶囊（矩形 + 两端半圆），贴在球面上
+  const ew=eyeW();
+  const bx=CFG.eyeGap+ew/2;                 // 眼睛中心到球心的距离
+  updateSharedRot(gaze.x, gaze.y);
+  drawEye(-bx, CFG.eyeY, 'l', eyes.l.lid);
+  drawEye( bx, CFG.eyeY, 'r', eyes.r.lid);
+}
+
+/* bx/by = 眼睛在球面上的基础位置（逻辑像素，相对球心）
+   实际位置、倾角、透视缩放都由 eyePose 算出 */
+function drawEye(bx,by,side,lid){
+  const ew=eyeW(), eh=eyeH();
+  const rx=ew/2, ry=eh/2;
+  const E=eyes[side];
+  const P=eyePose(bx,by,gaze.x,gaze.y);
+
+  // 眼皮：从上方往下压，压掉的部分露出球体本身（局部坐标）
+  const angry = MOOD()==='angry' && rage>0.01;
+  const al = angry ? CFG.angryLid*rage : 0;            // an:43
+  const cut = -ry + eh*Math.max(lid, al);
+  const sl = angry ? CFG.lidSlant*(1-al*0.35) : 0;     // ls:11
+  const yOut = cut-sl, yIn = cut+sl;                   // 外侧高 / 内侧低
+  const ya = side==='l' ? yOut : yIn;                  // 局部 x = -rx 端
+  const yb = side==='l' ? yIn  : yOut;                 // 局部 x = +rx 端
+
+  // 两眼作为一组绕球心刚体旋转 sharedRot：
+  // 于是「两眼连线」也跟着倾斜，而两只眼自身转同样角度 → 始终平行
+  const cs=Math.cos(P.rot), sn=Math.sin(P.rot);
+  const px=P.x*cs - P.y*sn;
+  const py=P.x*sn + P.y*cs;
+
+  ctx.save();
+  ctx.translate(ex_(px), ey_(py));
+  ctx.rotate(P.rot);
+  ctx.scale(ES, ES);                   // 两只眼始终同尺寸、不缩放
+  ctx.beginPath();
+  ctx.moveTo(-rx-1, ya);
+  ctx.lineTo( rx+1, yb);
+  ctx.lineTo( rx+1, ry+1);
+  ctx.lineTo(-rx-1, ry+1);
+  ctx.closePath();ctx.clip();
+  capsule(rx,ry);
+  ctx.restore();
+}
+
+/* 竖向胶囊：中间矩形 + 两端半圆，以 (0,0) 为中心、逻辑单位
+   白色不是贴在球面上的，而是被外面那层深蓝包裹着、从里面透出来的光。
+   所以：本体是中心纯白、边缘转蓝白的渐变，外圈再散一圈蓝白辉光。 */
+function capsule(rx,ry){
+  const r=Math.min(rx,ry)*CFG.eyeRound;   // 圆角：越小越接近圆角矩形（更钝）
+  const flat=Math.max(0, ry-r);           // 直边半长
+  ctx.beginPath();
+  ctx.arc(0, -flat, r, Math.PI, 0);       // 上端半圆
+  ctx.lineTo(rx, flat);                   // 右侧直边
+  ctx.arc(0, flat, r, 0, Math.PI);        // 下端半圆
+  ctx.closePath();
+
+  ctx.fillStyle='#ffffff';   // 纯白，不掺蓝
+  ctx.fill();
+}
+
+/* ---------------- 主循环 ---------------- */
+let prev=0;
+function frame(now){
+  const dt=prev?now-prev:16;
+  prev=now;
+  step(now,dt);
+  draw(now);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

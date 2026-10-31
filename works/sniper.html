@@ -1,0 +1,4024 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OPERATION WINTER LINE — Pixel Sniper</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    background: #04060b;
+    overflow: hidden;
+    font-family: "Inter", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #6b7794;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #wrap {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  #scene {
+    /* 给顶部画质条和底部提示留出空间，画面不会再把它挤出屏幕 */
+    width: min(96vw, calc((100vh - 118px) * 1.7778));
+    height: auto;
+    aspect-ratio: 16 / 9;
+    display: block;
+    background: #04060b;
+    /* 真正的关键：最近邻放大，一个逻辑像素 = 一个屏幕色块 */
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    box-shadow: 0 0 0 1px #171c2b, 0 24px 80px rgba(0, 0, 0, .85);
+    cursor: crosshair;
+    touch-action: none;
+  }
+  #tips {
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    opacity: .55;
+    text-align: center;
+    line-height: 1.7;
+  }
+  #tips b { color: #a3adc3; font-weight: 600; }
+  /* 画质选择：默认中低，卡的话直接点按钮降 */
+  .qbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    max-width: 96vw;
+    padding: 7px 12px;
+    border-radius: 10px;
+    background: rgba(12, 18, 30, .92);
+    border: 1px solid #33456b;
+    font-size: 12px;
+    letter-spacing: .06em;
+    color: #cdd6e6;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .5);
+  }
+  .qbar .ql { font-weight: 600; color: #8fc7ff; }
+  .qopts { display: flex; gap: 4px; }
+  .qopts button {
+    font: inherit;
+    font-size: 12px;
+    letter-spacing: .06em;
+    cursor: pointer;
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px solid #2a3550;
+    background: #0c1220;
+    color: #8b97b3;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .qopts button:hover { border-color: #5b7aa8; color: #ccd4e4; }
+  .qopts button[aria-pressed="true"] {
+    background: #5b7aa8;
+    border-color: #7c9cd0;
+    color: #fff;
+  }
+  .qbar .qtip { font-size: 10.5px; color: #6b7794; }
+</style>
+</head>
+<body>
+  <div id="wrap">
+    <div class="qbar" aria-label="画质设置" title="性能吃紧时把画质调低">
+      <span class="ql">⚙ 画质</span>
+      <div class="qopts" role="group" aria-label="画质">
+        <button type="button" data-q="low">低</button>
+        <button type="button" data-q="midlow" aria-pressed="true">中低</button>
+        <button type="button" data-q="mid">中</button>
+        <button type="button" data-q="high">高</button>
+      </div>
+      <span class="qtip">卡就调低</span>
+    </div>
+    <canvas id="scene"></canvas>
+    <div id="tips">
+      <b>鼠标瞄准</b> · 点击画面或右下 <b>FIRE</b> 开火 · <b>Shift / 右键</b> 屏息稳住准星 · <b>R</b> 换弹 · <b>M</b> 静音 · <b>方向键</b> 微调 · 对岸的人会自由走动、中弹后四散奔逃
+    </div>
+  </div>
+
+  <!-- ==== core.js ==== -->
+<script>
+/* ============================================================
+   CORE — 受限调色板 / Bayer 抖动 / 像素字体 / 程序化音效
+   全部为「真像素」管线服务：任何绘制都必须落在整数像素网格上
+   ============================================================ */
+window.PS = window.PS || {};
+(function (PS) {
+  'use strict';
+
+  /* ---------- 逻辑分辨率 ---------- */
+  PS.PW = 640;                 // 内部画布宽
+  PS.PH = 360;                 // 内部画布高（16:9）
+
+  /* ---------- 受限调色板（64 色） ---------- */
+  PS.C = {
+    VOID:  '#04060b',
+    // 夜空
+    NG0: '#080d1a', NG1: '#0d1424', NG2: '#121c31', NG3: '#1a2641',
+    NG4: '#233252', NG5: '#2e4066', NG6: '#3c5179', NG7: '#4d638c',
+    // 雪
+    SN0: '#151a29', SN1: '#212839', SN2: '#303950', SN3: '#464f69',
+    SN4: '#606b86', SN5: '#7f8aa3', SN6: '#a3adc3', SN7: '#ccd4e4', SN8: '#f2f7ff',
+    // 混凝土 / 砖
+    CN0: '#131619', CN1: '#1d2126', CN2: '#282d34', CN3: '#363c45',
+    CN4: '#474e59', CN5: '#5b636f',
+    BR0: '#191310', BR1: '#271d17', BR2: '#372820', BR3: '#4a362a', BR4: '#5f4737',
+    // 木
+    WD0: '#181109', WD1: '#291d12', WD2: '#3d2b1a', WD3: '#543c24', WD4: '#6d4f30',
+    // 金属
+    MT0: '#171a1f', MT1: '#23282f', MT2: '#323943', MT3: '#454e5b', MT4: '#616c7c',
+    // 锈 / 黄铜
+    RS0: '#291809', RS1: '#40230e', RS2: '#5a3314', RS3: '#77491d',
+    BR1M: '#6b5426', BR2M: '#a8873a', BR3M: '#e0ba56',
+    // 灯光
+    LP0: '#3a2a12', LP1: '#6b4a1c', LP2: '#a8762b', LP3: '#e0a63f', LP4: '#ffd275', LP5: '#fff1c6',
+    // 军大衣
+    CT0: '#12170f', CT1: '#1b2318', CT2: '#273123', CT3: '#354230', CT4: '#465641',
+    // 皮肤 / 毛皮
+    SK0: '#6d4f3c', SK1: '#9a7255', SK2: '#c09370',
+    FR0: '#211a15', FR1: '#372c23', FR2: '#513f33',
+    // 血（7 级，随氧化/干涸递进）
+    BL0: '#1c0608', BL1: '#360b11', BL2: '#571219', BL3: '#7d1a25',
+    BL4: '#a32532', BL5: '#cf3644', BL6: '#ff5a68',
+    // 水 / 冰
+    WT0: '#030711', WT1: '#071023', WT2: '#0b1936', WT3: '#122449',
+    WT4: '#1a3263', WT5: '#274582', WT6: '#3a60a2', WT7: '#547fc0',
+    IC0: '#132236', IC1: '#1f3450', IC2: '#30506c', IC3: '#466a89', IC4: '#6689a6', IC5: '#8fabc4',
+    // 枯草 / 苔
+    GR0: '#1b2214', GR1: '#28311e', GR2: '#39442a',
+    // 其它
+    RED: '#a42326', YEL: '#e2bb48', WHT: '#ffffff', DIM: '#000000'
+  };
+
+  /* ---------- 随机 ---------- */
+  PS.mulberry32 = function (a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  };
+  // 全局非确定性随机（粒子用）
+  PS.M = Math.random;
+  PS.MR = function (a, b) { return a + Math.random() * (b - a); };
+  PS.MI = function (a, b) { return Math.floor(a + Math.random() * (b - a + 1)); };
+
+  /* ---------- Bayer 8x8 有序抖动 ---------- */
+  var BAYER = [
+    [0, 32, 8, 40, 2, 34, 10, 42],
+    [48, 16, 56, 24, 50, 18, 58, 26],
+    [12, 44, 4, 36, 14, 46, 6, 38],
+    [60, 28, 52, 20, 62, 30, 54, 22],
+    [3, 35, 11, 43, 1, 33, 9, 41],
+    [51, 19, 59, 27, 49, 17, 57, 25],
+    [15, 47, 7, 39, 13, 45, 5, 37],
+    [63, 31, 55, 23, 61, 29, 53, 21]
+  ];
+
+  var _ctxId = 0;
+  function cid(ctx) {
+    var cv = ctx.canvas;
+    if (!cv.__psid) cv.__psid = ++_ctxId;
+    return cv.__psid;
+  }
+  var _patCache = {};   // id -> { key: pattern }
+
+  // 取得（并缓存）某个透明度级别的抖动图案
+  PS.pattern = function (ctx, color, level) {
+    level = Math.max(0, Math.min(1, level));
+    var a = Math.round(level * 64);
+    if (a <= 0) return null;
+    if (a >= 64) return color;
+    var id = cid(ctx);
+    var cache = _patCache[id] || (_patCache[id] = {});
+    var key = color + '|' + a;
+    if (cache[key]) return cache[key];
+
+    var c = document.createElement('canvas');
+    c.width = 8; c.height = 8;
+    var g = c.getContext('2d');
+    for (var y = 0; y < 8; y++) {
+      for (var x = 0; x < 8; x++) {
+        if (BAYER[y][x] < a) { g.fillStyle = color; g.fillRect(x, y, 1, 1); }
+      }
+    }
+    var p = ctx.createPattern(c, 'repeat');
+    cache[key] = p;
+    return p;
+  };
+
+  // 抖动填充矩形：level 0..1
+  PS.dt = function (ctx, x, y, w, h, color, level) {
+    if (level <= 0 || w <= 0 || h <= 0) return;
+    x = x | 0; y = y | 0; w = w | 0; h = h | 0;
+    if (level >= 1) { ctx.fillStyle = color; ctx.fillRect(x, y, w, h); return; }
+    var p = PS.pattern(ctx, color, level);
+    if (!p) return;
+    ctx.fillStyle = p;
+    ctx.fillRect(x, y, w, h);
+  };
+  // 实心 1px
+  PS.p = function (ctx, x, y, color) {
+    ctx.fillStyle = color; ctx.fillRect(x | 0, y | 0, 1, 1);
+  };
+  PS.rect = function (ctx, x, y, w, h, color) {
+    ctx.fillStyle = color; ctx.fillRect(x | 0, y | 0, w | 0, h | 0);
+  };
+
+  // 抖动渐变的垂直条带（level 从 l0 到 l1）
+  PS.dtBand = function (ctx, x, y, w, h, color, l0, l1) {
+    for (var i = 0; i < h; i++) {
+      PS.dt(ctx, x, y + i, w, 1, color, l0 + (l1 - l0) * (i / Math.max(1, h - 1)));
+    }
+  };
+
+  /* ---------- 画布工具 ---------- */
+  PS.makeCanvas = function (w, h) {
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    var x = c.getContext('2d');
+    x.imageSmoothingEnabled = false;
+    return c;
+  };
+  PS.layer = function (w, h, fn) {
+    var c = PS.makeCanvas(w || PS.PW, h || PS.PH);
+    fn(c.getContext('2d'));
+    return c;
+  };
+  // 像素化的实心圆（逐行）
+  PS.disc = function (ctx, cx, cy, r, color, level) {
+    var r2 = r * r;
+    for (var y = -Math.ceil(r); y <= Math.ceil(r); y++) {
+      var dy = y, dx = Math.floor(Math.sqrt(Math.max(0, r2 - dy * dy)));
+      if (dx <= 0 && Math.abs(dy) > r) continue;
+      PS.dt(ctx, cx - dx, cy + y, dx * 2 + 1, 1, color, level === undefined ? 1 : level);
+    }
+  };
+  // 像素化椭圆
+  PS.ell = function (ctx, cx, cy, rx, ry, color, level) {
+    for (var y = -Math.ceil(ry); y <= Math.ceil(ry); y++) {
+      var t = y / ry;
+      if (Math.abs(t) > 1) continue;
+      var dx = Math.floor(rx * Math.sqrt(1 - t * t));
+      PS.dt(ctx, cx - dx, cy + y, dx * 2 + 1, 1, color, level === undefined ? 1 : level);
+    }
+  };
+  // 洋葱顶教堂穹顶轮廓（逐行定义半宽）
+  PS.onionCol = function (ctx, cx, baseY, h, color, shade) {
+    for (var i = 0; i < h; i++) {
+      var t = i / h;
+      var w = Math.round(Math.sin(Math.pow(t, 0.62) * Math.PI) * h * 0.46 + (t > 0.86 ? t * 6 : 0));
+      if (w < 0) w = 0;
+      PS.rect(ctx, cx - w, baseY - h + i, w * 2 + 1, 1, color);
+      if (w > 1) PS.rect(ctx, cx + w - 1, baseY - h + i, 1, 1, shade);
+    }
+  };
+  // 圆顶（大清真寺式）
+  PS.dome = function (ctx, cx, baseY, r, color, shade) {
+    for (var y = 0; y < r; y++) {
+      var t = y / r;
+      var w = Math.round(r * Math.sqrt(1 - t * t));
+      PS.rect(ctx, cx - w, baseY - r + y, w * 2 + 1, 1, color);
+      if (w > 1) PS.rect(ctx, cx + w - 1, baseY - r + y, 1, 1, shade);
+    }
+  };
+
+  /* ---------- 5x7 像素字体 ---------- */
+  var F = PS.F = {};
+  F['A'] = ['01110', '10001', '10001', '11111', '10001', '10001', '10001'];
+  F['B'] = ['11110', '10001', '10001', '11110', '10001', '10001', '11110'];
+  F['C'] = ['01110', '10001', '10000', '10000', '10000', '10001', '01110'];
+  F['D'] = ['11110', '10001', '10001', '10001', '10001', '10001', '11110'];
+  F['E'] = ['11111', '10000', '10000', '11110', '10000', '10000', '11111'];
+  F['F'] = ['11111', '10000', '10000', '11110', '10000', '10000', '10000'];
+  F['G'] = ['01110', '10001', '10000', '10111', '10001', '10001', '01110'];
+  F['H'] = ['10001', '10001', '10001', '11111', '10001', '10001', '10001'];
+  F['I'] = ['11111', '00100', '00100', '00100', '00100', '00100', '11111'];
+  F['J'] = ['00111', '00010', '00010', '00010', '00010', '10010', '01100'];
+  F['K'] = ['10001', '10010', '10100', '11000', '10100', '10010', '10001'];
+  F['L'] = ['10000', '10000', '10000', '10000', '10000', '10000', '11111'];
+  F['M'] = ['10001', '11011', '10101', '10101', '10001', '10001', '10001'];
+  F['N'] = ['10001', '11001', '10101', '10011', '10001', '10001', '10001'];
+  F['O'] = ['01110', '10001', '10001', '10001', '10001', '10001', '01110'];
+  F['P'] = ['11110', '10001', '10001', '11110', '10000', '10000', '10000'];
+  F['Q'] = ['01110', '10001', '10001', '10001', '10101', '10011', '01111'];
+  F['R'] = ['11110', '10001', '10001', '11110', '10100', '10010', '10001'];
+  F['S'] = ['01111', '10000', '10000', '01110', '00001', '00001', '11110'];
+  F['T'] = ['11111', '00100', '00100', '00100', '00100', '00100', '00100'];
+  F['U'] = ['10001', '10001', '10001', '10001', '10001', '10001', '01110'];
+  F['V'] = ['10001', '10001', '10001', '10001', '10001', '01010', '00100'];
+  F['W'] = ['10001', '10001', '10001', '10101', '10101', '11011', '10001'];
+  F['X'] = ['10001', '10001', '01010', '00100', '01010', '10001', '10001'];
+  F['Y'] = ['10001', '10001', '01010', '00100', '00100', '00100', '00100'];
+  F['Z'] = ['11111', '00001', '00010', '00100', '01000', '10000', '11111'];
+  F['0'] = ['01110', '10001', '10011', '10101', '11001', '10001', '01110'];
+  F['1'] = ['00100', '01100', '00100', '00100', '00100', '00100', '01110'];
+  F['2'] = ['01110', '10001', '00001', '00010', '00100', '01000', '11111'];
+  F['3'] = ['11111', '00010', '00100', '00010', '00001', '10001', '01110'];
+  F['4'] = ['00010', '00110', '01010', '10010', '11111', '00010', '00010'];
+  F['5'] = ['11111', '10000', '11110', '00001', '00001', '10001', '01110'];
+  F['6'] = ['00110', '01000', '10000', '11110', '10001', '10001', '01110'];
+  F['7'] = ['11111', '00001', '00010', '00100', '01000', '01000', '01000'];
+  F['8'] = ['01110', '10001', '10001', '01110', '10001', '10001', '01110'];
+  F['9'] = ['01110', '10001', '10001', '01111', '00001', '00010', '01100'];
+  F[' '] = ['00000', '00000', '00000', '00000', '00000', '00000', '00000'];
+  F['.'] = ['00000', '00000', '00000', '00000', '00000', '01100', '01100'];
+  F[','] = ['00000', '00000', '00000', '00000', '01100', '01100', '01000'];
+  F[':'] = ['00000', '01100', '01100', '00000', '01100', '01100', '00000'];
+  F['/'] = ['00001', '00010', '00010', '00100', '01000', '01000', '10000'];
+  F['-'] = ['00000', '00000', '00000', '11111', '00000', '00000', '00000'];
+  F['!'] = ['00100', '00100', '00100', '00100', '00100', '00000', '00100'];
+  F['%'] = ['10001', '00010', '00010', '00100', '01000', '01000', '10001'];
+  F['+'] = ['00000', '00100', '00100', '11111', '00100', '00100', '00000'];
+  F['?'] = ['01110', '10001', '00001', '00010', '00100', '00000', '00100'];
+  F['*'] = ['00000', '01010', '00100', '11111', '00100', '01010', '00000'];
+  F['='] = ['00000', '00000', '11111', '00000', '11111', '00000', '00000'];
+  F['('] = ['00010', '00100', '01000', '01000', '01000', '00100', '00010'];
+  F[')'] = ['01000', '00100', '00010', '00010', '00010', '00100', '01000'];
+  F['['] = ['01110', '01000', '01000', '01000', '01000', '01000', '01110'];
+  F[']'] = ['01110', '00010', '00010', '00010', '00010', '00010', '01110'];
+  F['<'] = ['00010', '00100', '01000', '10000', '01000', '00100', '00010'];
+  F['>'] = ['01000', '00100', '00010', '00001', '00010', '00100', '01000'];
+  F['#'] = ['01010', '01010', '11111', '01010', '11111', '01010', '01010'];
+  F['_'] = ['00000', '00000', '00000', '00000', '00000', '00000', '11111'];
+  F['/'] = F['/'];
+
+  var _tCache = {};
+  // 把一行文本烘焙成像素精灵（带缓存），保证字形永远清晰
+  PS.textSprite = function (str, color, tracking) {
+    tracking = tracking === undefined ? 1 : tracking;
+    var key = str + '|' + color + '|' + tracking;
+    if (_tCache[key]) return _tCache[key];
+    str = String(str).toUpperCase();
+    var w = str.length * (5 + tracking) - tracking;
+    if (w <= 0) w = 1;
+    var c = PS.makeCanvas(w, 7);
+    var g = c.getContext('2d');
+    var x = 0;
+    for (var i = 0; i < str.length; i++) {
+      var gl = F[str[i]] || F['?'];
+      for (var y = 0; y < 7; y++) {
+        var row = gl[y];
+        for (var cx = 0; cx < 5; cx++) {
+          if (row[cx] === '1') { g.fillStyle = color; g.fillRect(x + cx, y, 1, 1); }
+        }
+      }
+      x += 5 + tracking;
+    }
+    _tCache[key] = c;
+    return c;
+  };
+  PS.textW = function (str, tracking) {
+    tracking = tracking === undefined ? 1 : tracking;
+    return String(str).length * (5 + tracking) - tracking;
+  };
+  // 绘制（direct / per frame，短文本用）
+  PS.text = function (ctx, str, x, y, color, tracking) {
+    var sp = PS.textSprite(str, color, tracking);
+    ctx.drawImage(sp, x | 0, y | 0);
+  };
+
+  /* ---------- 程序化音效（WebAudio，无素材） ---------- */
+  PS.Audio = (function () {
+    var ac = null, master = null, enabled = true, noiseBuf = null;
+    function ensure() {
+      if (!ac) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return false;
+        ac = new AC();
+        master = ac.createGain();
+        master.gain.value = 0.55;
+        master.connect(ac.destination);
+        // 预生成噪声
+        var len = ac.sampleRate * 2;
+        noiseBuf = ac.createBuffer(1, len, ac.sampleRate);
+        var d = noiseBuf.getChannelData(0);
+        for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      }
+      if (ac.state === 'suspended') ac.resume();
+      return true;
+    }
+    function noise(dur, type, f0, f1, gain, delay) {
+      if (!enabled || !ensure()) return;
+      var t = ac.currentTime + (delay || 0);
+      var src = ac.createBufferSource(); src.buffer = noiseBuf;
+      var flt = ac.createBiquadFilter(); flt.type = type; flt.frequency.setValueAtTime(f0, t);
+      flt.frequency.exponentialRampToValueAtTime(Math.max(40, f1), t + dur);
+      var g = ac.createGain();
+      g.gain.setValueAtTime(gain, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(flt); flt.connect(g); g.connect(master);
+      src.start(t); src.stop(t + dur + 0.02);
+    }
+    function tone(freq, dur, type, gain, delay, freqEnd) {
+      if (!enabled || !ensure()) return;
+      var t = ac.currentTime + (delay || 0);
+      var o = ac.createOscillator(); o.type = type || 'sine';
+      o.frequency.setValueAtTime(freq, t);
+      if (freqEnd) o.frequency.exponentialRampToValueAtTime(Math.max(20, freqEnd), t + dur);
+      var g = ac.createGain();
+      g.gain.setValueAtTime(gain, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(master);
+      o.start(t); o.stop(t + dur + 0.02);
+    }
+    var wind = null;
+    return {
+      unlock: function () { ensure(); },
+      enabled: function () { return enabled; },
+      toggle: function (v) {
+        enabled = v === undefined ? !enabled : v;
+        if (!enabled && wind) { try { wind.stop(); } catch (e) { } wind = null; }
+        if (enabled && ensure()) this.startWind();
+        return enabled;
+      },
+      shot: function () {
+        noise(0.30, 'lowpass', 3200, 120, 0.85);
+        tone(90, 0.22, 'sine', 0.75, 0, 34);
+        noise(0.16, 'highpass', 1800, 900, 0.30);
+        noise(0.55, 'bandpass', 900, 300, 0.16, 0.10);   // 远处回声
+        tone(64, 0.7, 'sine', 0.16, 0.14);
+      },
+      bolt: function () {
+        noise(0.07, 'highpass', 2600, 1800, 0.30);
+        noise(0.06, 'highpass', 2000, 1200, 0.22, 0.10);
+        tone(420, 0.05, 'square', 0.06, 0.02);
+      },
+      load: function () {
+        noise(0.06, 'highpass', 3000, 2000, 0.22);
+        tone(180, 0.07, 'square', 0.09, 0.08);
+      },
+      hitBody: function () {
+        noise(0.13, 'lowpass', 900, 180, 0.45);
+        tone(120, 0.12, 'sine', 0.22, 0, 55);
+      },
+      hitHead: function () {
+        noise(0.16, 'lowpass', 1500, 200, 0.55);
+        tone(150, 0.14, 'sine', 0.26, 0, 48);
+        noise(0.10, 'bandpass', 2400, 900, 0.22, 0.02);
+      },
+      impact: function (hard) {
+        if (hard) { noise(0.11, 'bandpass', 2600, 700, 0.30); tone(210, 0.09, 'square', 0.10); }
+        else { noise(0.13, 'lowpass', 700, 140, 0.22); }
+      },
+      splash: function () { noise(0.20, 'bandpass', 1400, 420, 0.20); },
+      ui: function () { tone(660, 0.045, 'square', 0.07); },
+      dry: function () { noise(0.05, 'highpass', 3200, 2400, 0.16); tone(240, 0.04, 'square', 0.05); },
+      startWind: function () {
+        if (!enabled || !ensure() || wind) return;
+        var src = ac.createBufferSource();
+        src.buffer = noiseBuf; src.loop = true;
+        var flt = ac.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 340;
+        var g = ac.createGain(); g.gain.value = 0.06;
+        src.connect(flt); flt.connect(g); g.connect(master);
+        src.start();
+        wind = src;
+      }
+    };
+  })();
+
+})(window.PS);
+
+</script>
+  <!-- ==== world.js ==== -->
+<script>
+/* ============================================================
+   WORLD — 静态地图生成（全部逐像素，禁用任何渐变 API）
+   构图：天空 / 对岸城市 / 对岸街道 / 河 / 近岸 / 玩家掩体
+   ============================================================ */
+(function (PS) {
+  'use strict';
+  var C = PS.C, PW = PS.PW, PH = PS.PH;
+
+  /* ---------- 地理分区 ---------- */
+  var G = PS.GEO = {
+    CITY_BASE: 196,     // 建筑基线
+    // 敌人可站立的连续深度带（不是两排：z∈[0,1] 在这两个 y 之间自由插值）
+    DEPTH_FAR: 210,     // 最远（贴着店面墙根）
+    DEPTH_NEAR: 234,    // 最近（河堤沿）
+    WALK_BACK: 210,     // 后排步道（路面）
+    WALK_FRONT: 232,    // 前排人行道参考线
+    QUAY_TOP: 236,      // 对岸石堤顶
+    QUAY_BOT: 250,      // 石堤底 / 入水线
+    RIVER_TOP: 250,
+    RIVER_BOT: 286,
+    NEAR_TOP: 286,      // 近岸冰层顶
+    NEAR_GND: 300,      // 近岸地面（玩家侧）
+    BTN_Y: 330
+  };
+
+  function noise1(x, s) {
+    return Math.sin(x * 0.037 * s + 1.3) * 0.5 +
+      Math.sin(x * 0.091 * s + 4.2) * 0.32 +
+      Math.sin(x * 0.213 * s + 2.1) * 0.18;
+  }
+
+  var W = PS.World = {};
+  W.windows = [];
+  W.lamps = [];
+  W.covers = [];      // 遮挡体（命中判定用）
+  W.smokes = [];      // 烟囱位置（冒烟粒子）
+  W.litSpots = [];    // 街面光斑（窗光投射）
+
+  /* ============================================================
+     天空
+     ============================================================ */
+  function buildSky(g) {
+    // 垂直色带，每 12px 一档，档间用抖动过渡
+    var bands = [
+      [0, 52, C.NG0, C.NG1],
+      [52, 98, C.NG1, C.NG2],
+      [98, 138, C.NG2, C.NG3],
+      [138, 168, C.NG3, C.NG4],
+      [168, 188, C.NG4, C.NG5],
+      [188, 204, C.NG5, C.NG6]
+    ];
+    for (var b = 0; b < bands.length; b++) {
+      var bd = bands[b];
+      var hgt = bd[1] - bd[0];
+      for (var i = 0; i < hgt; i++) {
+        var t = i / hgt;
+        // 向下渐亮：用抖动在两色之间混合
+        PS.dt(g, 0, bd[0] + i, PW, 1, C.NG0, 0);
+        PS.dt(g, 0, bd[0] + i, PW, 1, bd[2], 1);
+        PS.dt(g, 0, bd[0] + i, PW, 1, bd[3], t * 0.85);
+      }
+    }
+    // 地平线暖色（城市光污染）
+    PS.dtBand(g, 0, 172, PW, 40, C.LP0, 0.05, 0.55);
+    PS.dtBand(g, 0, 186, PW, 24, C.LP1, 0.04, 0.30);
+
+    // 星星
+    var rnd = PS.mulberry32(7717);
+    for (var s = 0; s < 130; s++) {
+      var sx = Math.floor(rnd() * PW), sy = Math.floor(rnd() * 160);
+      var lv = (1 - sy / 200) * (0.25 + rnd() * 0.75);
+      var col = rnd() < 0.85 ? C.SN7 : C.SN5;
+      PS.dt(g, sx, sy, 1, 1, col, Math.min(1, lv));
+      if (rnd() < 0.06) PS.dt(g, sx, sy, 1, 1, C.WHT, 1);
+    }
+    // 月亮（带柔光环）
+    var mx = 528, my = 44;
+    PS.disc(g, mx, my, 17, C.SN6, 0.10);
+    PS.disc(g, mx, my, 12, C.SN6, 0.16);
+    PS.disc(g, mx, my, 8, C.SN7, 0.45);
+    PS.disc(g, mx, my, 7, C.SN8, 1);
+    PS.disc(g, mx - 1, my + 2, 1, C.SN6, 0.35);   // 月海
+    PS.disc(g, mx + 2, my - 1, 1, C.SN6, 0.28);
+    PS.disc(g, mx + 1, my + 3, 1, C.SN6, 0.22);
+  }
+
+  /* 云层（动态横向漂移） */
+  function buildClouds(g) {
+    g.clearRect(0, 0, PW, PH);
+    var rnd = PS.mulberry32(4242);
+    for (var i = 0; i < 16; i++) {
+      var cx = rnd() * PW, cy = 40 + rnd() * 120;
+      var rr = 6 + rnd() * 22;
+      var lv = 0.06 + rnd() * 0.10;
+      PS.ell(g, cx, cy, rr, rr * (0.22 + rnd() * 0.16), C.NG6, lv);
+      PS.ell(g, cx + rr * 0.6, cy + 1, rr * 0.7, rr * 0.2, C.NG6, lv * 0.8);
+    }
+    for (var j = 0; j < 10; j++) {
+      var dx = rnd() * PW, dy = 130 + rnd() * 60;
+      PS.ell(g, dx, dy, 10 + rnd() * 26, 2 + rnd() * 4, C.NG5, 0.10 + rnd() * 0.10);
+    }
+  }
+
+  /* ============================================================
+     对岸城市（远景 / 中景）
+     ============================================================ */
+  var LIT_COLORS = [C.LP3, C.LP4, C.LP2, C.LP5, '#9fc6ff', '#e8a05a'];
+
+  function buildCity(g) {
+    W.windows.length = 0;
+    var rnd = PS.mulberry32(90210);
+    function R(a, b) { return a + rnd() * (b - a); }
+    function I(a, b) { return Math.floor(R(a, b + 1)); }
+
+    /* --- 最远排（淡雾中的楼影） --- */
+    var x = -10;
+    while (x < PW + 10) {
+      var w1 = I(18, 44), h1 = I(30, 84);
+      for (var yy = 0; yy < h1; yy++) {
+        PS.dt(g, x, G.CITY_BASE - h1 + yy, w1, 1, C.NG4, 0.42);
+        PS.dt(g, x, G.CITY_BASE - h1 + yy, 1, 1, C.NG5, 0.30);
+      }
+      x += w1 + I(2, 9);
+    }
+
+    /* --- 主排建筑 --- */
+    var slots = [], sx = -14;
+    while (sx < PW + 14) { slots.push(sx); sx += R(58, 106); }
+
+    for (var i = 0; i < slots.length; i++) {
+      ruinChance = rnd();
+      var bx = Math.floor(slots[i] + R(-6, 8));
+      var bw = I(48, 86);
+      var bh = I(58, 130);
+      if (ruinChance < 0.22) drawRuinedHouse(g, bx, bw, bh, rnd);
+      else drawHouse(g, bx, bw, bh, rnd);
+    }
+
+    /* --- 地标：教堂 --- */
+    drawChurch(g, 400, rnd);
+    /* --- 地标：塔吊 --- */
+    drawCrane(g, 600, rnd);
+    /* --- 地标：工厂 + 烟囱 --- */
+    drawFactory(g, 132, rnd);
+
+    /* --- 整排房屋的接地积雪（统一一层，压住杂乱底部） --- */
+    PS.dtBand(g, 0, G.CITY_BASE - 9, PW, 12, C.SN2, 0.35, 0.85);
+  }
+  var ruinChance = 0;
+
+  function drawHouse(g, x, w, h, rnd) {
+    var base = G.CITY_BASE;
+    var body = C.CN1, lit = C.CN2, dark = C.CN0;
+    x = Math.floor(x);
+    PS.rect(g, x, base - h, w, h, body);
+    // 左右明暗（月光从左上来）
+    PS.dt(g, x, base - h, 1, h, C.CN3, 0.55);
+    PS.dt(g, x + w - 1, base - h, 1, h, C.VOID, 0.75);
+    PS.dt(g, x + w - 2, base - h, 1, h, C.VOID, 0.35);
+    // 顶：女儿墙 + 积雪
+    PS.rect(g, x - 2, base - h - 3, w + 4, 3, C.CN0);
+    PS.rect(g, x - 2, base - h - 4, w + 4, 1, C.SN5);
+    for (var s = 0; s < w + 4; s += 3) {
+      if (((s + x) % 7) < 3) PS.rect(g, x - 2 + s, base - h - 5, 2, 1, C.SN4);
+    }
+    // 侧墙撞色块（混凝土板缝）
+    for (var f = 1; f < 5; f++) {
+      var fy = base - h + Math.floor(h * f / 5);
+      PS.dt(g, x, fy, w, 1, C.VOID, 0.45);
+    }
+    // 窗户网格
+    var cols = Math.max(1, Math.floor((w - 8) / 9));
+    var rows = Math.max(1, Math.floor((h - 10) / 11));
+    var gx = Math.floor((w - cols * 6) / (cols + 1));
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        var wx = x + gx + c * (6 + gx);
+        var wy = base - h + 7 + r * 11;
+        PS.rect(g, wx, wy, 6, 7, C.CN0);
+        PS.rect(g, wx, wy, 6, 1, C.VOID);
+        PS.dt(g, wx, wy, 1, 7, C.VOID, 0.6);
+        // 窗台积雪
+        PS.dt(g, wx - 1, wy + 7, 8, 1, C.SN4, 0.5);
+        if (rnd() < 0.26) {
+          W.windows.push({
+            x: wx + 1, y: wy + 1, w: 4, h: 6,
+            col: LIT_COLORS[Math.floor(rnd() * LIT_COLORS.length)],
+            base: 0.5 + rnd() * 0.5, ph: rnd() * 6.28, spd: 0.3 + rnd() * 1.1,
+            fl: rnd() < 0.16 ? 2 + rnd() * 6 : 0
+          });
+        } else if (rnd() < 0.14) {
+          // 玻璃反光
+          PS.dt(g, wx + 1, wy + 1, 4, 2, C.NG5, 0.35);
+        }
+      }
+    }
+    // 屋顶杂物
+    if (rnd() < 0.55) {
+      var ax = x + 4 + Math.floor(rnd() * (w - 10));
+      PS.rect(g, ax, base - h - 10 - Math.floor(rnd() * 8), 1, 10, C.CN0);
+      PS.rect(g, ax - 2, base - h - 16, 5, 1, C.CN0);
+    }
+    if (rnd() < 0.4) {
+      var tx2 = x + 6 + Math.floor(rnd() * (w - 20));
+      PS.rect(g, tx2, base - h - 11, 9, 8, C.CN0);
+      PS.rect(g, tx2 - 1, base - h - 12, 11, 1, C.SN5);
+      PS.rect(g, tx2 + 3, base - h - 15, 1, 4, C.CN0);
+    }
+    // 外挂招牌（东欧街区特征）
+    if (rnd() < 0.34) {
+      var sgx = x + 3 + Math.floor(rnd() * Math.max(1, w - 12));
+      var sgy = base - Math.floor(h * 0.35);
+      PS.rect(g, sgx, sgy, 9, 6, C.CN0);
+      PS.dt(g, sgx + 1, sgy + 1, 7, 4, rnd() < 0.5 ? C.RED : C.YEL, 0.45);
+      for (var sk = 0; sk < 4; sk++) PS.rect(g, sgx + 2 + sk, sgy - 1, 1, 1, C.CN3);
+    }
+    // 门洞
+    if (rnd() < 0.5) {
+      var dx2 = x + Math.floor(w / 2) - 3;
+      PS.rect(g, dx2, base - 11, 7, 11, C.VOID);
+      PS.dt(g, dx2 + 1, base - 10, 5, 9, C.LP1, 0.35);
+      W.litSpots.push({ x: dx2 + 3, y: base + 2, r: 7, col: C.LP1, lv: 0.20 });
+    }
+  }
+
+  function drawRuinedHouse(g, x, w, h, rnd) {
+    var base = G.CITY_BASE;
+    x = Math.floor(x);
+    // 塌陷轮廓：逐列高度
+    var cols = w, heights = [];
+    for (var i = 0; i < cols; i++) {
+      var t = i / cols;
+      var hh = h;
+      if (t < 0.16) hh = h * (0.35 + t * 4);
+      if (rnd() < 0.10) hh -= rnd() * h * 0.35;
+      heights.push(Math.max(4, Math.floor(hh)));
+    }
+    for (var c2 = 0; c2 < cols; c2++) {
+      var top = base - heights[c2];
+      PS.rect(g, x + c2, top, 1, base - top, c2 === 0 || c2 === cols - 1 ? C.CN0 : C.CN1);
+      PS.dt(g, x + c2, top, 1, 1, C.SN4, 0.6);
+    }
+    // 楼板残迹
+    for (var L = 1; L < 6; L++) {
+      var ly = base - Math.floor(h * L / 6);
+      for (var c3 = 0; c3 < cols; c3++) {
+        if (base - heights[c3] < ly) {
+          PS.rect(g, x + c3, ly, 1, 1, C.CN3);
+          PS.dt(g, x + c3, ly + 1, 1, 1, C.VOID, 0.6);
+        }
+      }
+    }
+    // 黑洞窗户
+    for (var wy2 = base - h + 8; wy2 < base - 8; wy2 += 11) {
+      for (var wx2 = x + 4; wx2 < x + w - 8; wx2 += 9) {
+        var colTop = base - heights[Math.max(0, Math.min(cols - 1, wx2 - x))];
+        if (wy2 > colTop + 2) {
+          PS.rect(g, wx2, wy2, 6, 7, C.VOID);
+          if (rnd() < 0.25) PS.dt(g, wx2, wy2, 6, 1, C.CN2, 0.4);
+          if (rnd() < 0.05) {
+            W.windows.push({
+              x: wx2 + 1, y: wy2 + 1, w: 4, h: 5, col: rnd() < 0.6 ? C.LP2 : C.RED,
+              base: 0.4 + rnd() * 0.4, ph: rnd() * 6.28, spd: 1.2 + rnd() * 2, fl: 4 + rnd() * 6
+            });
+          }
+        }
+      }
+    }
+    // 断口处的积雪
+    for (var c4 = 0; c4 < cols; c4 += 2) {
+      PS.dt(g, x + c4, base - heights[c4] - 1, 2, 1, C.SN5, 0.7);
+    }
+  }
+
+  function drawChurch(g, cx, rnd) {
+    var base = G.CITY_BASE;
+    // 主楼
+    PS.rect(g, cx - 20, base - 40, 40, 40, C.CN2);
+    PS.dt(g, cx - 20, base - 40, 1, 40, C.CN3, 0.5);
+    PS.dt(g, cx + 19, base - 40, 1, 40, C.VOID, 0.7);
+    // 洋葱穹顶塔
+    PS.rect(g, cx - 8, base - 74, 16, 34, C.CN1);
+    PS.dt(g, cx - 8, base - 74, 1, 34, C.CN3, 0.5);
+    PS.onionCol(g, cx, base - 72, 20, C.BR1, C.VOID);
+    PS.dt(g, cx - 1, base - 90, 3, 1, C.SN5, 0.8);
+    // 十字
+    PS.rect(g, cx, base - 104, 1, 14, C.CN4);
+    PS.rect(g, cx - 4, base - 100, 9, 1, C.CN4);
+    PS.rect(g, cx - 2, base - 97, 5, 1, C.CN4);
+    // 侧面小塔
+    PS.rect(g, cx + 22, base - 30, 9, 30, C.CN2);
+    PS.onionCol(g, cx + 26, base - 29, 11, C.BR1, C.VOID);
+    PS.rect(g, cx + 26, base - 44, 1, 5, C.CN4);
+    // 拱窗（暖光）
+    for (var i = 0; i < 3; i++) {
+      var wx = cx - 14 + i * 11;
+      PS.rect(g, wx, base - 32, 6, 12, C.CN0);
+      PS.rect(g, wx + 1, base - 35, 4, 3, C.CN0);
+      W.windows.push({
+        x: wx + 1, y: base - 31, w: 4, h: 11, col: C.LP3,
+        base: 0.7, ph: i * 1.7, spd: 0.5, fl: 0
+      });
+    }
+    // 屋顶雪
+    PS.rect(g, cx - 21, base - 41, 42, 1, C.SN5);
+    PS.dt(g, cx - 9, base - 75, 18, 1, C.SN5, 0.7);
+  }
+
+  function drawCrane(g, cx, rnd) {
+    var base = G.CITY_BASE;
+    PS.rect(g, cx - 1, base - 86, 3, 86, C.CN3);
+    PS.dt(g, cx - 1, base - 86, 1, 86, C.CN4, 0.5);
+    PS.rect(g, cx - 30, base - 90, 60, 3, C.CN3);
+    PS.rect(g, cx + 26, base - 90, 2, 10, C.CN3);
+    // 斜拉
+    for (var i = 0; i < 30; i++) {
+      PS.rect(g, cx - 28 + i, base - 88 - Math.floor(i * 0.13), 1, 1, C.CN2);
+    }
+    for (var j = 0; j < 30; j++) {
+      PS.rect(g, cx + 2 + j, base - 84 + Math.floor(j * 0.13), 1, 1, C.CN2);
+    }
+    // 吊索 + 钩
+    PS.rect(g, cx + 20, base - 86, 1, 22, C.CN4);
+    PS.rect(g, cx + 17, base - 64, 7, 3, C.CN4);
+    // 顶部小红灯（动态）
+    W.lamps.push({ x: cx, y: base - 92, r: 4, col: C.RED, ph: 0, blink: true, tiny: true });
+  }
+
+  function drawFactory(g, cx, rnd) {
+    var base = G.CITY_BASE;
+    // 锯齿屋顶厂房
+    PS.rect(g, cx - 44, base - 34, 88, 34, C.CN1);
+    for (var s = 0; s < 6; s++) {
+      var sx0 = cx - 44 + s * 15;
+      for (var k = 0; k < 7; k++) {
+        PS.rect(g, sx0 + k, base - 34 - (8 - k), 1, 1, C.CN2);
+      }
+      for (var k2 = 0; k2 < 8; k2++) {
+        PS.rect(g, sx0 + k2, base - 34 - k2, 1, 1, C.VOID);
+      }
+      PS.dt(g, sx0, base - 42, 8, 1, C.SN5, 0.5);
+    }
+    // 烟囱 x2
+    function stack(px, ph) {
+      PS.rect(g, px - 3, base - ph, 7, ph, C.BR2);
+      PS.dt(g, px - 3, base - ph, 2, ph, C.BR3, 0.5);
+      PS.dt(g, px + 2, base - ph, 2, ph, C.VOID, 0.6);
+      PS.rect(g, px - 4, base - ph - 3, 9, 3, C.BR0);
+      PS.rect(g, px - 4, base - ph - 4, 9, 1, C.SN5);
+      W.smokes.push({ x: px, y: base - ph - 4 });
+      W.lamps.push({ x: px, y: base - ph - 6, r: 3, col: C.RED, ph: Math.random() * 6, blink: true, tiny: true });
+    }
+    stack(cx - 40, 78);
+    stack(cx + 46, 62);
+    // 厂房窗
+    for (var i = 0; i < 6; i++) {
+      var wx = cx - 30 + i * 11;
+      PS.rect(g, wx, base - 18, 7, 9, C.CN0);
+      if (rnd() < 0.5) {
+        W.windows.push({ x: wx + 1, y: base - 17, w: 5, h: 7, col: C.LP2, base: 0.6, ph: i, spd: 0.6, fl: 0 });
+      }
+    }
+  }
+
+  /* ============================================================
+     对岸街道（敌人行走的地面 + 全部道具）
+     ============================================================ */
+  function buildStreet(g) {
+    var base = G.CITY_BASE;
+    // ---- 街后墙 / 店面 ----
+    PS.dtBand(g, 0, base, PW, G.WALK_BACK - base, C.CN0, 0.9, 0.6);
+    // 店面浮雕（避免大片空白）
+    var rnd = PS.mulberry32(31337);
+    for (var i = 0; i < 26; i++) {
+      var sx = Math.floor(rnd() * PW);
+      var sw = 4 + Math.floor(rnd() * 12), sh = 5 + Math.floor(rnd() * 7);
+      var sy = base + 1 + Math.floor(rnd() * 5);
+      PS.dt(g, sx, sy, sw, sh, C.CN1, 0.7);
+      PS.dt(g, sx, sy, sw, 1, C.CN2, 0.5);
+      PS.dt(g, sx, sy + sh, sw, 1, C.VOID, 0.6);
+      if (rnd() < 0.4) PS.dt(g, sx + 1, sy + 1, sw - 2, 3, C.LP0, 0.35);
+    }
+
+    // ---- 后排步道（稍暗，稍远） ----
+    groundBand(g, G.WALK_BACK - 8, G.WALK_BACK, C.SN1, C.SN2, 0.55);
+    // 后排地面
+    PS.rect(g, 0, G.WALK_BACK, PW, G.QUAY_TOP - G.WALK_BACK, C.SN2);
+    snowSurface(g, G.WALK_BACK, G.QUAY_TOP, 0.6, rnd);
+
+    // ---- 前排人行道 edge（比路面更亮，靠河一侧） ----
+    PS.rect(g, 0, G.WALK_FRONT - 10, PW, 10 + (G.QUAY_TOP - G.WALK_FRONT), C.SN3);
+    PS.rect(g, 0, G.WALK_FRONT - 11, PW, 1, C.SN6);       // 人行道前缘高光
+    PS.dt(g, 0, G.WALK_FRONT - 10, PW, 1, C.SN7, 0.5);
+    snowSurface(g, G.WALK_FRONT - 9, G.QUAY_TOP, 0.85, rnd);
+    // 人行道与路面之间的路缘石阴影
+    PS.dt(g, 0, G.WALK_FRONT - 12, PW, 1, C.CN0, 0.35);
+    PS.dt(g, 0, G.WALK_FRONT - 13, PW, 2, C.SN1, 0.30);
+
+    // ---- 路缘阴影：分隔街道与店面墙 ----
+    PS.dtBand(g, 0, G.WALK_BACK, PW, 4, C.CN0, 0.45, 0.0);
+
+    // ---- 石堤（垂直岸壁） ----
+    PS.rect(g, 0, G.QUAY_TOP, PW, G.QUAY_BOT - G.QUAY_TOP, C.CN1);
+    for (var r = G.QUAY_TOP; r < G.QUAY_BOT; r++) {
+      for (var c = (r % 2 ? 0 : 3); c < PW; c += 7) {
+        PS.dt(g, c, r, 6, 1, r % 3 === 0 ? C.CN2 : C.CN0, 0.55);
+      }
+      PS.dt(g, 0, r, PW, 1, C.VOID, (r - G.QUAY_TOP) / (G.QUAY_BOT - G.QUAY_TOP) * 0.6);
+    }
+    PS.rect(g, 0, G.QUAY_TOP, PW, 1, C.SN6);
+    PS.dt(g, 0, G.QUAY_TOP + 1, PW, 1, C.SN5, 0.6);
+    // 堤上的积雪下垂 + 冰凌
+    for (var ix = 0; ix < PW; ix += 3) {
+      var dl = Math.floor(1 + Math.abs(noise1(ix, 3.7)) * 3);
+      PS.dt(g, ix, G.QUAY_TOP, 2, dl, C.SN5, 0.55);
+    }
+    for (var ic = 0; ic < 22; ic++) {
+      var px = Math.floor(rnd() * PW);
+      var len = 2 + Math.floor(rnd() * 5);
+      PS.rect(g, px, G.QUAY_TOP + 1, 1, len, C.IC4);
+      PS.dt(g, px, G.QUAY_TOP + len, 1, 1, C.SN7, 0.7);
+    }
+
+    // ---- 街道道具（背景部分：贴着后墙的） ----
+    propsBack(g, rnd);
+  }
+
+  function groundBand(g, y0, y1, c0, c1, lv) {
+    PS.rect(g, 0, y0, PW, y1 - y0, c0);
+    PS.dt(g, 0, y0, PW, y1 - y0, c1, lv);
+  }
+
+  // 雪面质感：随机斑点 + 起伏
+  function snowSurface(g, y0, y1, lit, rnd) {
+    for (var x = 0; x < PW; x += 1) {
+      var w = noise1(x, 2.1);
+      PS.dt(g, x, y0 + Math.floor(w * 1.4), 1, 1, C.SN7, lit * 0.5);
+    }
+    for (var i = 0; i < 340; i++) {
+      var px = Math.floor(rnd() * PW), py = Math.floor(rnd() * (y1 - y0)) + y0;
+      PS.dt(g, px, py, 1 + Math.floor(rnd() * 2), 1, C.SN6, 0.20 + rnd() * 0.22);
+    }
+    // 长条雪痕（扫过/踩踏）
+    for (var j = 0; j < 22; j++) {
+      var sx = Math.floor(rnd() * PW), sy = Math.floor(rnd() * (y1 - y0 - 2)) + y0;
+      var sw = 6 + Math.floor(rnd() * 46);
+      PS.dt(g, sx, sy, sw, 1, C.SN1, 0.30 + rnd() * 0.2);
+      PS.dt(g, sx, sy + 1, sw, 1, C.SN7, 0.18 + rnd() * 0.16);
+    }
+    // 被踩实的小径（深度自由后，痕迹散布在整个堤岸带里，不再是两条线）
+    var lanes = [G.DEPTH_FAR + 2, G.DEPTH_FAR + 8, G.DEPTH_FAR + 14, G.DEPTH_FAR + 20];
+    lanes.forEach(function (ly) {
+      for (var q = 0; q < PW; q += 3) {
+        PS.dt(g, q, ly - 1, 3, 2, C.SN0, 0.12 + Math.abs(Math.sin(q * 0.07 + ly)) * 0.10);
+      }
+    });
+    // 斜向穿行痕迹：从街道走向堤沿
+    for (var cw = 0; cw < 14; cw++) {
+      var sx0 = Math.floor(rnd() * PW), sy0 = Math.floor(rnd() * 8) + G.DEPTH_FAR;
+      var dxs = (rnd() - 0.5) * 30, dys = 8 + rnd() * 14;
+      for (var step = 0; step < dys; step++) {
+        var tt = step / dys;
+        PS.dt(g, Math.floor(sx0 + dxs * tt), Math.floor(sy0 + step), 2, 1, C.SN0, 0.16);
+      }
+    }
+  }
+
+  /* ---------- 街道道具 · 背景层（在远处敌人之后） ---------- */
+  function propsBack(g, rnd) {
+    /* 路灯 x4 */
+    var lampX = [62, 210, 358, 512];
+    for (var i = 0; i < lampX.length; i++) {
+      streetLamp(g, lampX[i], G.WALK_FRONT - 14, i);
+    }
+
+    /* 长椅 x2 */
+    bench(g, 132, G.WALK_BACK);
+    bench(g, 428, G.WALK_BACK);
+
+    /* 栅栏一段 */
+    fence(g, 248, 56, G.WALK_BACK);
+
+    /* 枯树 x2 */
+    deadTree(g, 285, G.WALK_BACK, 42, rnd);
+    deadTree(g, 470, G.WALK_BACK, 34, rnd);
+
+    /* 电线杆 + 电线 */
+    powerPole(g, 40, G.WALK_BACK);
+    powerPole(g, 400, G.WALK_BACK);
+
+    /* 横幅标语（褪色红条 + 破洞） */
+    banner(g, 448, G.CITY_BASE + 1);
+  }
+
+  /* ---------- 街道道具 · 前景层（画在远处敌人之上、近处敌人之下，
+       形成真正的前后遮挡：近处的人挡住沙袋，沙袋挡住远处的人） ---------- */
+  function propsFront(g, rnd) {
+    /* 雪堆 */
+    mound(g, 82, G.WALK_FRONT - 14, 40, 9);
+    mound(g, 266, G.WALK_FRONT - 14, 62, 12);
+    mound(g, 518, G.WALK_FRONT - 14, 46, 8);
+
+    /* 垃圾桶 x3 */
+    trash(g, 96, G.WALK_FRONT - 13);
+    trash(g, 328, G.WALK_FRONT - 13);
+    trash(g, 566, G.WALK_FRONT - 13);
+
+    /* 停着的拉达 */
+    lada(g, 380, G.WALK_FRONT - 12);
+
+    /* 岗亭（可作掩体） */
+    sentryBox(g, 16, G.WALK_FRONT - 14);
+
+    /* 沙袋堆（掩体） */
+    sandbags(g, 188, G.WALK_FRONT - 8);
+    sandbags(g, 610, G.WALK_FRONT - 8);
+
+    /* 消防栓 + 井盖 */
+    hydrant(g, 262, G.WALK_FRONT - 5);
+    PS.ell(g, 310, G.WALK_FRONT - 4, 6, 1, C.CN2, 0.7);
+  }
+
+  function streetLamp(g, x, base, idx) {
+    var h = 40 - idx * 2;
+    PS.rect(g, x - 1, base - h, 2, h, C.MT1);
+    PS.dt(g, x - 1, base - h, 1, h, C.MT3, 0.5);
+    PS.rect(g, x - 2, base - 1, 4, 2, C.MT0);
+    // 灯臂
+    PS.rect(g, x - 1, base - h, 8, 1, C.MT1);
+    PS.rect(g, x + 6, base - h, 1, 3, C.MT1);
+    // 灯罩
+    PS.rect(g, x + 3, base - h + 3, 7, 3, C.MT2);
+    PS.rect(g, x + 4, base - h + 6, 5, 1, C.LP4);
+    // 基座积雪
+    PS.ell(g, x, base + 1, 4, 1, C.SN6, 0.7);
+    W.lamps.push({ x: x + 6, y: base - h + 6, r: 26, col: C.LP4, ph: idx * 1.4, tiny: false });
+    W.litSpots.push({ x: x + 6, y: base + 1, r: 16, col: C.LP3, lv: 0.16 });
+  }
+
+  function bench(g, x, y) {
+    PS.rect(g, x, y - 6, 22, 2, C.WD2);
+    PS.dt(g, x, y - 6, 22, 1, C.WD3, 0.6);
+    PS.rect(g, x + 1, y - 10, 20, 1, C.WD2);
+    PS.rect(g, x, y - 4, 2, 4, C.MT1);
+    PS.rect(g, x + 20, y - 4, 2, 4, C.MT1);
+    PS.rect(g, x + 1, y - 9, 1, 3, C.MT1);
+    PS.rect(g, x + 20, y - 9, 1, 3, C.MT1);
+    PS.dt(g, x, y - 7, 22, 1, C.SN7, 0.55);
+  }
+
+  function trash(g, x, y) {
+    PS.rect(g, x, y - 9, 7, 9, C.MT2);
+    PS.dt(g, x, y - 9, 2, 9, C.MT3, 0.5);
+    PS.dt(g, x + 5, y - 9, 2, 9, C.VOID, 0.5);
+    PS.rect(g, x - 1, y - 11, 9, 2, C.MT1);
+    PS.rect(g, x - 1, y - 11, 9, 1, C.SN6);
+    PS.rect(g, x + 1, y - 1, 5, 1, C.VOID);
+  }
+
+  function fence(g, x, w, base) {
+    for (var i = 0; i < w; i += 3) {
+      PS.rect(g, x + i, base - 11, 1, 11, C.MT0);
+    }
+    PS.dt(g, x, base - 9, w, 1, C.MT1, 0.7);
+    PS.dt(g, x, base - 4, w, 1, C.MT1, 0.7);
+    PS.dt(g, x, base - 12, w, 1, C.SN6, 0.5);
+  }
+
+  function deadTree(g, x, base, h, rnd) {
+    PS.rect(g, x - 1, base - h, 3, h, C.WD0);
+    PS.dt(g, x - 1, base - h, 1, h, C.WD1, 0.6);
+    // 分枝（逐段）
+    var branches = [
+      [0, -h * 0.55, -0.9, 8], [0, -h * 0.55, 0.8, 7],
+      [0, -h * 0.78, -0.6, 6], [0, -h * 0.78, 0.7, 6],
+      [0, -h * 0.9, -1.1, 5]
+    ];
+    for (var i = 0; i < branches.length; i++) {
+      var b = branches[i];
+      var bx = x + b[0], by = base + b[1];
+      for (var s = 0; s < b[3]; s++) {
+        var nx = Math.floor(bx + Math.cos(b[2]) * s);
+        var ny = Math.floor(by + Math.sin(b[2]) * s - s * 0.25);
+        PS.rect(g, nx, ny, 1, 1, C.WD0);
+      }
+      PS.dt(g, Math.floor(bx + Math.cos(b[2]) * b[3]), Math.floor(by + Math.sin(b[2]) * b[3]), 1, 1, C.SN6, 0.5);
+    }
+    PS.ell(g, x, base + 1, 5, 1, C.SN5, 0.6);
+  }
+
+  function lada(g, x, base) {
+    // 车身
+    PS.rect(g, x, base - 9, 34, 8, C.CN2);
+    PS.rect(g, x + 7, base - 15, 17, 6, C.CN1);
+    PS.rect(g, x + 8, base - 14, 8, 4, C.GLAS1);
+    PS.dt(g, x + 17, base - 14, 6, 4, C.GLAS0, 0.8);
+    PS.dt(g, x, base - 9, 34, 1, C.CN4, 0.6);
+    PS.dt(g, x, base - 2, 34, 2, C.VOID, 0.7);
+    // 轮子
+    PS.rect(g, x + 3, base - 3, 6, 4, C.VOID);
+    PS.rect(g, x + 25, base - 3, 6, 4, C.VOID);
+    PS.ell(g, x + 6, base - 1, 4, 1, C.MT0, 1);
+    PS.ell(g, x + 28, base - 1, 4, 1, C.MT0, 1);
+    // 车灯 / 尾灯
+    PS.rect(g, x + 33, base - 7, 1, 2, C.LP4);
+    // 车顶积雪
+    PS.rect(g, x + 6, base - 16, 19, 1, C.SN7);
+    PS.dt(g, x, base - 10, 34, 1, C.SN7, 0.5);
+    W.covers.push({ x: x, y: base - 15, w: 34, h: 15 });
+  }
+
+  function sentryBox(g, x, base) {
+    PS.rect(g, x, base - 18, 24, 18, C.CN2);
+    PS.dt(g, x, base - 18, 24, 1, C.CN3, 0.6);
+    PS.dt(g, x + 23, base - 18, 1, 18, C.VOID, 0.7);
+    PS.rect(g, x - 2, base - 20, 28, 3, C.CN0);
+    PS.rect(g, x - 2, base - 21, 28, 1, C.SN7);
+    PS.rect(g, x + 3, base - 15, 7, 9, C.GLAS1);
+    PS.dt(g, x + 3, base - 15, 7, 9, C.VOID, 0.35);
+    PS.rect(g, x + 14, base - 14, 6, 10, C.WD1);
+    // 褪色星徽（抽象几何）
+    PS.dt(g, x + 16, base - 11, 3, 3, C.RED, 0.6);
+    PS.dt(g, x + 16, base - 11, 3, 1, C.YEL, 0.5);
+  }
+
+  function sandbags(g, x, base) {
+    for (var row = 0; row < 3; row++) {
+      var w = 34 - row * 6;
+      var y = base - 5 + row * 5;
+      var ox = x + row * 3;
+      for (var i = 0; i < w; i += 7) {
+        PS.rect(g, ox + i, y - 4, 7, 5, row % 2 ? C.WD2 : C.WD1);
+        PS.dt(g, ox + i, y - 4, 7, 1, C.WD3, 0.45);
+        PS.dt(g, ox + i + 6, y - 4, 1, 5, C.VOID, 0.5);
+      }
+      PS.dt(g, ox, y - 5, w, 1, C.SN7, 0.6);
+    }
+  }
+
+  function powerPole(g, x, base) {
+    PS.rect(g, x - 1, base - 46, 3, 46, C.WD1);
+    PS.dt(g, x - 1, base - 46, 1, 46, C.WD2, 0.5);
+    PS.rect(g, x - 8, base - 44, 17, 2, C.WD1);
+    PS.rect(g, x - 6, base - 38, 13, 2, C.WD1);
+    for (var i = 0; i < 4; i++) {
+      PS.rect(g, x - 7 + i * 5, base - 42, 1, 4, C.MT2);
+    }
+    PS.ell(g, x, base + 1, 4, 1, C.SN5, 0.6);
+  }
+
+  function hydrant(g, x, base) {
+    PS.rect(g, x, base - 8, 4, 8, C.RED);
+    PS.dt(g, x, base - 8, 1, 8, C.BL4, 0.5);
+    PS.rect(g, x - 1, base - 9, 6, 2, C.RED);
+    PS.rect(g, x - 1, base - 10, 6, 1, C.SN7);
+  }
+
+  function mound(g, x, base, w, h) {
+    for (var i = 0; i < h; i++) {
+      var t = i / h;
+      var ww = Math.floor(w * Math.sqrt(1 - t * t));
+      PS.rect(g, x + Math.floor(w / 2) - ww, base - i, ww * 2, 1, i === h - 1 ? C.SN7 : C.SN4);
+    }
+  }
+
+  function banner(g, x, y) {
+    PS.rect(g, x, y, 46, 13, C.BR2);
+    PS.dt(g, x, y, 46, 13, C.RED, 0.45);
+    PS.rect(g, x, y, 46, 1, C.SN6);
+    PS.dt(g, x + 2, y + 3, 40, 3, C.SN7, 0.35);
+    PS.dt(g, x + 2, y + 8, 26, 2, C.SN7, 0.22);
+    // 破洞
+    PS.rect(g, x + 33, y + 2, 8, 6, C.CN0);
+    PS.rect(g, x + 34, y + 4, 7, 5, C.VOID);
+  }
+
+  /* ============================================================
+     河
+     ============================================================ */
+  function buildRiverBase(g) {
+    var y0 = G.RIVER_TOP, hgt = G.RIVER_BOT - y0;
+    // 水色：深处暗，近岸略亮
+    PS.rect(g, 0, y0, PW, hgt, C.WT1);
+    PS.dtBand(g, 0, y0, PW, 10, C.WT3, 0.85, 0.25);   // 远岸倒影区稍亮
+    PS.dtBand(g, 0, y0 + hgt - 14, PW, 14, C.VOID, 0.10, 0.55);
+    // 倒影（把城市+石堤翻转下来）
+    var srcY0 = 130, srcH = G.QUAY_BOT - srcY0;
+    for (var i = 0; i < Math.min(hgt - 2, srcH); i++) {
+      var sy = G.QUAY_BOT - 1 - i;
+      var dy = y0 + 2 + i;
+      if (dy >= G.RIVER_BOT - 1) break;
+      for (var x = 0; x < PW; x++) {
+        // 采样上层 1px（简化：直接按 x 的噪声做水平错位）
+        var off = Math.floor(noise1(x + i * 3, 1.9) * 2);
+      }
+      // 用 drawImage 错位复制整行（比逐像素快且保持像素对齐）
+      g.globalAlpha = 1;
+      var wob = Math.floor(noise1(i * 7, 2.3) * 2);
+      g.drawImage(PS.World._cityLayer, 0 + wob, sy, PW, 1, wob, dy, PW, 1);
+      PS.dt(g, 0, dy, PW, 1, C.WT2, 0.55 - i / (hgt) * 0.4);
+    }
+    // 桥
+    drawBridge(g);
+  }
+
+  function drawBridge(g) {
+    var by = 258;
+    // 桥墩
+    [46, 314, 604].forEach(function (px) {
+      PS.rect(g, px - 3, by + 3, 6, G.RIVER_BOT - by - 3, C.CN1);
+      PS.dt(g, px - 3, by + 3, 2, G.RIVER_BOT - by - 3, C.CN2, 0.5);
+      PS.dt(g, px + 1, by + 3, 2, G.RIVER_BOT - by - 3, C.VOID, 0.6);
+      PS.rect(g, px - 4, by + 2, 8, 2, C.CN2);
+      PS.dt(g, px - 4, by + 2, 8, 1, C.SN5, 0.5);
+    });
+    // 桥面
+    PS.rect(g, 0, by, PW, 4, C.CN2);
+    PS.dt(g, 0, by, PW, 1, C.CN3, 0.6);
+    PS.dt(g, 0, by + 3, PW, 1, C.VOID, 0.6);
+    // 栏杆
+    for (var x = 0; x < PW; x += 4) {
+      PS.rect(g, x, by - 6, 1, 6, C.CN1);
+    }
+    PS.rect(g, 0, by - 6, PW, 1, C.CN3);
+    PS.dt(g, 0, by - 7, PW, 1, C.SN6, 0.45);
+    // 桥灯
+    [30, 314, 610].forEach(function (lx) {
+      PS.rect(g, lx, by - 12, 1, 6, C.MT1);
+      PS.rect(g, lx - 1, by - 14, 3, 2, C.LP4);
+      W.lamps.push({ x: lx, y: by - 13, r: 9, col: C.LP4, ph: lx, tiny: true, blink: false });
+    });
+  }
+
+  /* ============================================================
+     近岸（玩家侧）+ 前景掩体
+     ============================================================ */
+  function buildNearBank(g) {
+    var rnd = PS.mulberry32(5150);
+    // 冰层（近岸边缘，参差不齐）
+    PS.rect(g, 0, G.NEAR_TOP, PW, G.NEAR_GND - G.NEAR_TOP, C.IC1);
+    for (var x = 0; x < PW; x++) {
+      var edge = Math.floor(G.NEAR_TOP - noise1(x, 4.4) * 2.5);
+      var colH = Math.floor(1 + Math.abs(noise1(x, 2.8)) * 2);
+      PS.rect(g, x, edge, 1, colH, C.IC4);
+      PS.dt(g, x, edge, 1, 1, C.SN8, 0.8);
+    }
+    PS.dtBand(g, 0, G.NEAR_TOP + 2, PW, G.NEAR_GND - G.NEAR_TOP - 2, C.IC2, 0.5, 0.9);
+    // 冰面裂纹
+    for (var i = 0; i < 18; i++) {
+      var cx = Math.floor(rnd() * PW), cy = G.NEAR_TOP + 2 + Math.floor(rnd() * 8);
+      var len = 4 + Math.floor(rnd() * 14), dir = rnd() < 0.5 ? 1 : -1;
+      for (var s = 0; s < len; s++) {
+        PS.dt(g, cx + s * dir, cy + Math.floor(Math.sin(s * 0.6) * 1.5), 1, 1, C.IC4, 0.45);
+      }
+    }
+    // 岸上积雪带
+    PS.rect(g, 0, G.NEAR_GND - 3, PW, 3 + (PH - G.NEAR_GND), C.SN2);
+    PS.rect(g, 0, G.NEAR_GND - 4, PW, 1, C.SN6);
+    snowSurface(g, G.NEAR_GND - 3, PH, 0.45, rnd);
+
+    // 枯草丛
+    for (var t = 0; t < 70; t++) {
+      var gx = Math.floor(rnd() * PW);
+      var gy = G.NEAR_GND - 3 - Math.floor(rnd() * 7);
+      var gh = 3 + Math.floor(rnd() * 7);
+      for (var s2 = 0; s2 < gh; s2++) {
+        PS.dt(g, gx + Math.floor(Math.sin(s2 * 0.8) * s2 * 0.35), gy - s2, 1, 1, C.GR1, 0.7);
+      }
+      PS.dt(g, gx, gy - gh + 1, 1, 1, C.SN6, 0.5);
+    }
+    // 石头
+    for (var st = 0; st < 12; st++) {
+      var rx = Math.floor(rnd() * PW), ry = G.NEAR_GND - 3 - Math.floor(rnd() * 2);
+      PS.ell(g, rx, ry, 2 + Math.floor(rnd() * 3), 1 + Math.floor(rnd() * 2), C.CN3, 1);
+      PS.dt(g, rx - 1, ry - 1, 3, 1, C.SN7, 0.6);
+    }
+    // 玩家侧沙袋掩体（画面底部两角）
+    sandbags(g, -2, PH - 2);
+    sandbags(g, 452, PH - 2);
+    // 铁丝网（在掩体间横跨）
+    barbedWire(g, 0, PH - 22, PW, 5);
+  }
+
+  function barbedWire(g, x, y, w, h) {
+    for (var i = 0; i < w; i += 6) {
+      PS.rect(g, x + i, y + h - 1, 1, -h, C.MT0);
+    }
+    for (var r = 0; r < h; r += 2) {
+      PS.dt(g, x, y + r, w, 1, C.MT1, 0.55);
+    }
+    for (var k = 0; k < w; k += 9) {
+      PS.dt(g, x + k, y, 3, 1, C.MT3, 0.5);
+      PS.dt(g, x + k + 4, y + 2, 3, 1, C.MT3, 0.5);
+    }
+    PS.dt(g, x, y - 1, w, 1, C.SN7, 0.35);
+  }
+
+  /* ============================================================
+     构建入口
+     ============================================================ */
+  W.build = function () {
+    W.windows.length = 0;
+    W.lamps.length = 0;
+    W.covers.length = 0;
+    W.smokes.length = 0;
+    W.litSpots.length = 0;
+
+    W.sky = PS.layer(PW, PH, buildSky);
+    W.clouds = PS.layer(PW, PH, buildClouds);
+
+    W.city = PS.layer(PW, PH, buildCity);
+    W._cityLayer = W.city;
+
+    W.street = PS.layer(PW, PH, buildStreet);
+    W.riverBase = PS.layer(PW, PH, buildRiverBase);
+    W.nearBank = PS.layer(PW, PH, buildNearBank);
+
+    // 前景道具层：夹在「远处敌人」和「近处敌人」之间，制造前后遮挡
+    W.propsF = PS.layer(PW, PH, propsFront);
+    W.covers.push({ x: 14, y: G.WALK_FRONT - 34, w: 32, h: 22 });    // 岗亭
+    W.covers.push({ x: 186, y: G.WALK_FRONT - 19, w: 42, h: 19 });   // 沙袋
+    W.covers.push({ x: 608, y: G.WALK_FRONT - 19, w: 36, h: 19 });   // 沙袋
+
+    // 浮冰
+    W.floes = [];
+    var rnd = PS.mulberry32(9001);
+    for (var i = 0; i < 11; i++) {
+      W.floes.push(makeFloe(rnd, PS.MR(G.RIVER_TOP + 14, G.RIVER_BOT - 6)));
+    }
+    return W;
+  };
+
+  function makeFloe(rnd, y) {
+    var size = 3 + Math.floor((rnd ? rnd() : Math.random()) * 6);
+    return {
+      x: Math.random() * PW, y: y,
+      w: size + Math.floor(Math.random() * 8),
+      vy: 0.18 + Math.random() * 0.5,
+      vx: (Math.random() - 0.5) * 1.2,
+      ph: Math.random() * 6.28
+    };
+  }
+
+  /* ---------- 动态元素绘制 ---------- */
+  W.drawClouds = function (ctx, t) {
+    var o1 = Math.floor(t * 3.2) % PW;
+    var o2 = Math.floor(t * 6.5) % PW;
+    ctx.drawImage(W.clouds, o1 - PW, 0); ctx.drawImage(W.clouds, o1, 0);
+    ctx.drawImage(W.clouds, -PW + o2, 0); ctx.drawImage(W.clouds, o2, 0);
+  };
+
+  W.drawWindows = function (ctx, t) {
+    for (var i = 0; i < W.windows.length; i++) {
+      var w = W.windows[i];
+      var a = w.base * (0.78 + 0.22 * Math.sin(t * w.spd + w.ph));
+      if (w.fl) {
+        var k = Math.sin(t * w.fl + w.ph);
+        a *= k > 0.15 ? 1 : 0.12;
+      }
+      PS.dt(ctx, w.x, w.y, w.w, w.h, w.col, Math.min(1, a));
+      // 窗框阴影
+      PS.dt(ctx, w.x, w.y, w.w, 1, C.VOID, 0.5);
+      PS.dt(ctx, w.x, w.y + w.h - 1, w.w, 1, C.VOID, 0.35);
+    }
+  };
+
+  // 灯：光晕 + 地面光斑（抖动，非 radial gradient）
+  W.drawLamps = function (ctx, t) {
+    for (var i = 0; i < W.lamps.length; i++) {
+      var L = W.lamps[i];
+      var on = 1;
+      if (L.blink) on = (Math.sin(t * 2.2 + L.ph) > 0.2) ? 1 : 0.15;
+      if (L.tiny) {
+        PS.disc(ctx, L.x, L.y, L.r, L.col, 0.30 * on);
+        PS.disc(ctx, L.x, L.y, 2, L.col, 0.95 * on);
+      } else {
+        PS.disc(ctx, L.x, L.y, L.r, L.col, 0.13 * on);
+        PS.disc(ctx, L.x, L.y, Math.floor(L.r * 0.6), L.col, 0.16 * on);
+        PS.disc(ctx, L.x, L.y, 4, C.LP5, 0.9 * on);
+        PS.disc(ctx, L.x, L.y, 2, C.WHT, 1 * on);
+        // 向下的光锥（雪夜里可见的光柱）
+        for (var k = 0; k < 22; k++) {
+          var ty = L.y + 3 + k;
+          var halfw = Math.floor(2 + k * 1.25);
+          PS.dt(ctx, L.x - halfw, ty, halfw * 2, 1, C.LP3, 0.11 * (1 - k / 24) * on);
+        }
+      }
+    }
+    // 地面光斑
+    for (var s = 0; s < W.litSpots.length; s++) {
+      var sp = W.litSpots[s];
+      PS.ell(ctx, sp.x, sp.y, sp.r, Math.floor(sp.r * 0.35), sp.col, sp.lv);
+    }
+  };
+
+  W.drawRiverFx = function (ctx, t) {
+    // 水面横波纹
+    for (var y = G.RIVER_TOP + 3; y < G.RIVER_BOT - 2; y += 2) {
+      var ph = Math.sin(y * 0.7 + t * 0.9) * 6;
+      var lv = 0.10 + 0.10 * Math.sin(y * 0.31 + t * 1.4);
+      var seg = 0;
+      while (seg < PW) {
+        var len = 3 + Math.floor(Math.abs(Math.sin((y + seg) * 0.4 + t)) * 12);
+        var xx = Math.floor(seg + ph + Math.sin((y * 3 + seg) * 0.08 + t * 0.7) * 3);
+        PS.dt(ctx, xx, y, len, 1, y % 4 === 0 ? C.WT5 : C.WT6, lv);
+        seg += len + 4 + Math.floor(Math.abs(Math.sin(seg * 0.2 + y)) * 14);
+      }
+    }
+    // 月光在水面的一道竖光带
+    for (var m = G.RIVER_TOP + 2; m < G.RIVER_BOT - 3; m++) {
+      var w2 = Math.floor(3 + Math.sin(m * 0.5 + t * 1.1) * 3 + 2);
+      PS.dt(ctx, 396 + Math.floor(Math.sin(m * 0.6 + t) * 4), m, w2, 1, C.SN6, 0.13);
+    }
+    // 浮冰
+    for (var i = 0; i < W.floes.length; i++) {
+      var f = W.floes[i];
+      f.vx = Math.sin(t * 0.3 + f.ph) * 1.1;
+      f.x += f.vx * 0.016; f.y += f.vy * 0.016;
+      if (f.x > PW + 8) f.x = -f.w - 2;
+      if (f.x < -f.w - 8) f.x = PW + 2;
+      if (f.y > G.RIVER_BOT - 2) f.y = G.RIVER_TOP + 6;
+      drawFloe(ctx, f);
+    }
+  };
+
+  function drawFloe(ctx, f) {
+    var x = Math.floor(f.x), y = Math.floor(f.y), w = f.w;
+    PS.rect(ctx, x, y, w, 1, C.IC4);
+    PS.rect(ctx, x + 1, y + 1, Math.max(1, w - 3), 1, C.IC3);
+    PS.dt(ctx, x, y + 2, w, 1, C.WT4, 0.5);
+    PS.rect(ctx, x, y, 1, 1, C.SN7);
+    PS.rect(ctx, x + w - 1, y, 1, 1, C.SN6);
+  }
+
+  /* 敌方探照灯（从对岸楼顶扫向河面） */
+  W.drawSearchlight = function (ctx, t) {
+    var ox = 232, oy = G.CITY_BASE - 76;
+    var ang = -Math.PI / 2 + Math.sin(t * 0.11) * 0.55 - 0.12;
+    var len = 230, hw = 0.066;
+    for (var k = 0; k < len; k += 1) {
+      var ty = oy + Math.sin(ang) * k + 1;
+      if (ty < 0) continue;
+      var hwid = Math.floor(k * hw);
+      var fade = 1 - k / len;
+      PS.dt(ctx, ox + Math.cos(ang) * k - hwid, Math.floor(ty), hwid * 2 + 1, 1, C.SN6, 0.10 * fade * fade);
+    }
+    PS.disc(ctx, ox, oy, 3, C.WHT, 0.8);
+  };
+
+  /* 烟囱冒烟 */
+  W.drawSmoke = function (ctx, t) {
+    for (var i = 0; i < W.smokes.length; i++) {
+      var s = W.smokes[i];
+      for (var k = 0; k < 6; k++) {
+        var ty = s.y - k * 5 - ((t * 6 + i * 3) % 5);
+        var tw = 3 + k;
+        var tx = s.x + Math.sin(t * 0.5 + k * 0.8 + i) * (2 + k * 1.2) + k * 1.5;
+        if (ty < -4) continue;
+        PS.dt(ctx, Math.floor(tx), Math.floor(ty), tw, 4, C.NG5, 0.30 * (1 - k / 6));
+      }
+    }
+  };
+
+})(window.PS);
+
+</script>
+  <!-- ==== fx.js ==== -->
+<script>
+/* ============================================================
+   FX — 血液动力学 / 弹道冲击特效 / 持久痕迹
+   · 血液：按弹道方向喷射 → 重力飞行 → 落地成溅 → 血泊随时间生长 → 逐级氧化变暗
+   · 弹着：雪 / 冰 / 水 / 石 / 金属，各有独立粒子与痕迹
+   · 脚印：踩雪痕迹，随时间被风雪缓慢抹平
+   ============================================================ */
+(function (PS) {
+  'use strict';
+  var C = PS.C, PW = PS.PW, PH = PS.PH;
+
+  var FX = PS.FX = {};
+
+  /* ---------- 画布层 ---------- */
+  var stepsCv, stepsCtx;        // 脚印（会淡出）
+  var decalCv, decalCtx;        // 永久痕迹：弹孔 / 石屑 / 焦痕
+  var bloodCv, bloodCtx;        // 血迹（可重建，用于老化）
+  FX.bloodList = [];            // {x,y,w,h,born}
+  var pools = [];               // 生长中的血泊
+  var parts = [];               // 飞行粒子
+  var ripples = [];             // 水面涟漪
+  var bloodDirty = true, lastRebuild = 0, lastPulse = 0;
+
+  FX.init = function () {
+    stepsCv = PS.layer(PW, PH, function () { });
+    stepsCtx = stepsCv.getContext('2d');
+    decalCv = PS.layer(PW, PH, function () { });
+    decalCtx = decalCv.getContext('2d');
+    bloodCv = PS.layer(PW, PH, function () { });
+    bloodCtx = bloodCv.getContext('2d');
+    FX.bloodList.length = 0; pools.length = 0; parts.length = 0; ripples.length = 0;
+    bloodDirty = true;
+  };
+  FX.reset = FX.init;
+
+  /* ---------- 血液：按氧化时间分级 ---------- */
+  function bloodColor(age) {
+    if (age < 1.5) return C.BL6;      // 新鲜，鲜红
+    if (age < 3.5) return C.BL5;
+    if (age < 8) return C.BL4;
+    if (age < 18) return C.BL3;
+    if (age < 35) return C.BL2;
+    if (age < 60) return C.BL1;
+    return C.BL0;                      // 完全干涸（黑红）
+  }
+  function tierIndex(age) {
+    if (age < 1.5) return 0;
+    if (age < 3.5) return 1;
+    if (age < 8) return 2;
+    if (age < 18) return 3;
+    if (age < 35) return 4;
+    if (age < 60) return 5;
+    return 6;
+  }
+
+  function addBlood(x, y, w, h, lv) {
+    x = x | 0; y = y | 0;
+    if (x < -4 || x > PW + 4 || y < -4 || y > PH + 4) return;
+    FX.bloodList.push({ x: x, y: y, w: w, h: h, born: FX._now, lv: lv === undefined ? 1 : lv });
+    bloodDirty = true;
+  }
+  FX.addBlood = addBlood;
+
+  function rebuildBlood() {
+    var now = FX._now;
+    bloodCtx.clearRect(0, 0, PW, PH);
+    // 按氧化级别分组，减少填充状态切换
+    var groups = [[], [], [], [], [], [], []];
+    var list = FX.bloodList;
+    for (var i = 0; i < list.length; i++) {
+      var d = list[i];
+      groups[tierIndex(now - d.born)].push(d);
+    }
+    for (var t = 0; t < 7; t++) {
+      var col = bloodColor(0);
+      switch (t) { case 0: col = C.BL6; break; case 1: col = C.BL5; break; case 2: col = C.BL4; break; case 3: col = C.BL3; break; case 4: col = C.BL2; break; case 5: col = C.BL1; break; default: col = C.BL0; }
+      var arr = groups[t];
+      for (var j = 0; j < arr.length; j++) {
+        var b = arr[j];
+        PS.dt(bloodCtx, b.x, b.y, b.w, b.h, col, b.lv);
+      }
+    }
+    bloodDirty = false;
+  }
+  FX.rebuildBlood = rebuildBlood;
+
+  /* ---------- 核心：喷射 ---------- */
+  // kind: 'head' | 'torso' | 'limb' | 'graze'
+  // dirx/diry：子弹飞行方向（决定喷溅朝向）
+  FX.sprayBlood = function (x, y, dirx, diry, power, kind, groundY) {
+    var n = kind === 'head' ? 22 : kind === 'torso' ? 15 : kind === 'graze' ? 5 : 9;
+    var baseAng = Math.atan2(diry, dirx);
+    // 命中处的即时喷射残留
+    addBlood(x - 1, y - 1, 2, 2, 0.9);
+    for (var i = 0; i < n; i++) {
+      var spread = kind === 'head' ? 1.15 : 0.62;
+      var ang = baseAng + (Math.random() - 0.5) * spread;
+      // 少量反向回溅（空腔效应的视觉暗示）
+      if (Math.random() < 0.14) ang = baseAng + Math.PI + (Math.random() - 0.5) * 0.9;
+      var sp = power * (0.35 + Math.random() * 1.3);
+      if (kind === 'head') sp *= 1.35;
+      parts.push({
+        x: x, y: y,
+        vx: Math.cos(ang) * sp,
+        vy: Math.sin(ang) * sp - Math.random() * 22,
+        g: 210 + Math.random() * 90,
+        gy: groundY + Math.round((Math.random() - 0.5) * 3),
+        life: 0, max: 1.6 + Math.random() * 1.4,
+        sz: Math.random() < 0.25 ? 2 : 1,
+        col: Math.random() < 0.4 ? C.BL5 : (Math.random() < 0.5 ? C.BL6 : C.BL4),
+        type: 'blood',
+        wet: kind === 'head' ? 0.5 : 0.25
+      });
+    }
+    // 雾状血滴（近距离悬浮感）
+    if (kind === 'head') {
+      for (var m = 0; m < 14; m++) {
+        parts.push({
+          x: x, y: y - Math.random() * 3,
+          vx: Math.cos(baseAng) * sp * 0.4 + (Math.random() - 0.5) * 40,
+          vy: (Math.random() - 0.8) * 30,
+          g: 40, gy: groundY, life: 0, max: 0.5 + Math.random() * 0.4,
+          sz: 1, col: C.BL6, type: 'mist', wet: 0
+        });
+      }
+    }
+  };
+
+  /* ---------- 血泊（随时间生长） ---------- */
+  FX.addPool = function (x, y, scale, rate) {
+    // 中心饱和区（保证血泊有实心核）
+    var core = Math.max(3, Math.round(4 * (scale || 1)));
+    for (var cy = -core; cy <= core; cy++) {
+      var dx = Math.round(Math.sqrt(Math.max(0, core * core - cy * cy)));
+      for (var cx = -dx; cx <= dx; cx++) {
+        if (Math.random() < 0.82) addBlood((x | 0) + cx, (y | 0) + Math.round(cy * 0.5), 1, 1, 1);
+      }
+    }
+    pools.push({
+      x: x | 0, y: y | 0,
+      r: 1, maxR: (5 + Math.random() * 3) * (scale || 1),
+      rate: rate || 1, acc: 0, life: 0,
+      seed: Math.random() * 1000
+    });
+  };
+
+  /* ---------- 暂停/滴血 ---------- */
+  FX.drip = function (x, y, groundY, amount) {
+    for (var i = 0; i < (amount || 1); i++) {
+      parts.push({
+        x: x + (Math.random() - 0.5) * 3, y: y,
+        vx: (Math.random() - 0.5) * 12, vy: 6 + Math.random() * 14,
+        g: 220, gy: groundY + Math.round((Math.random() - 0.5) * 2),
+        life: 0, max: 2.2, sz: Math.random() < 0.3 ? 2 : 1,
+        col: C.BL5, type: 'blood', wet: 0.4
+      });
+    }
+  };
+
+  /* ---------- 拖行血痕（重伤爬行 / 被拖动的尸体） ---------- */
+  FX.smear = function (x, y, dir, scale) {
+    var w = Math.max(1, Math.round(2 * (scale || 1)));
+    for (var i = 0; i < w; i++) {
+      addBlood(Math.round(x + (Math.random() - 0.5) * 4), Math.round(y) - Math.round(Math.random() * 2),
+        1 + (Math.random() < 0.4 ? 1 : 0), 1, 0.85);
+    }
+    var len = 2 + Math.floor(Math.random() * 3);
+    for (var k = 0; k < len; k++) {
+      addBlood(Math.round(x - (dir || 1) * k), Math.round(y), 1, 1, 0.55);
+    }
+  };
+
+  /* ---------- 通用粒子 ---------- */
+  function p(x, y, vx, vy, g, gy, max, sz, col, type, extra) {
+    var o = { x: x, y: y, vx: vx, vy: vy, g: g, gy: gy, life: 0, max: max, sz: sz, col: col, type: type };
+    if (extra) for (var k in extra) o[k] = extra[k];
+    parts.push(o);
+  }
+
+  FX.snowBurst = function (x, y, n, spreadUp) {
+    for (var i = 0; i < n; i++) {
+      p(x, y, (Math.random() - 0.5) * 70, -Math.random() * (spreadUp || 60),
+        170, y + 1, 0.5 + Math.random() * 0.7, Math.random() < 0.3 ? 2 : 1,
+        Math.random() < 0.5 ? C.SN8 : C.SN6, 'snow');
+    }
+  };
+  FX.waterSplash = function (x, y, n) {
+    for (var i = 0; i < n; i++) {
+      p(x, y, (Math.random() - 0.5) * 60, -Math.random() * 70, 200, y + 1,
+        0.4 + Math.random() * 0.5, 1, Math.random() < 0.4 ? C.SN7 : C.WT6, 'water');
+    }
+    ripples.push({ x: x | 0, y: y | 0, r: 1, max: 7 + Math.random() * 5, life: 0, max2: 1.1 });
+  };
+  FX.stoneChips = function (x, y, n, dirx) {
+    for (var i = 0; i < n; i++) {
+      p(x, y, (Math.random() - 0.3) * 90 * (dirx || 1), -Math.random() * 70, 220, y + 2,
+        0.4 + Math.random() * 0.6, 1, Math.random() < 0.5 ? C.CN4 : C.CN5, 'dust');
+    }
+    // 弹孔：黑洞 + 白霜崩边
+    PS.rect(decalCtx, x - 1, y - 1, 2, 2, C.VOID);
+    PS.dt(decalCtx, x - 2, y - 2, 4, 1, C.SN7, 0.4);
+    PS.dt(decalCtx, x - 2, y + 1, 4, 1, C.SN6, 0.3);
+  };
+  FX.metalSpark = function (x, y, n, dirx) {
+    for (var i = 0; i < n; i++) {
+      p(x, y, (0.3 + Math.random()) * 120 * (dirx || 1), -(Math.random() - 0.2) * 90, 260, y + 2,
+        0.25 + Math.random() * 0.4, 1, Math.random() < 0.5 ? C.LP5 : C.LP3, 'spark');
+    }
+    PS.rect(decalCtx, x, y, 1, 1, C.VOID);
+    PS.dt(decalCtx, x - 1, y - 1, 3, 3, C.MT3, 0.5);
+  };
+  FX.iceShards = function (x, y, n) {
+    for (var i = 0; i < n; i++) {
+      p(x, y, (Math.random() - 0.5) * 80, -Math.random() * 60, 200, y + 1,
+        0.4 + Math.random() * 0.5, 1, Math.random() < 0.6 ? C.IC5 : C.SN8, 'ice');
+    }
+    // 冰裂纹
+    for (var k = 0; k < 5; k++) {
+      var ang = Math.random() * 6.28, len = 3 + Math.random() * 7;
+      for (var s = 0; s < len; s++) {
+        PS.dt(decalCtx, Math.floor(x + Math.cos(ang) * s), Math.floor(y + Math.sin(ang) * s), 1, 1, C.IC5, 0.5);
+      }
+    }
+  };
+  FX.dustPuff = function (x, y, n, col) {
+    for (var i = 0; i < n; i++) {
+      p(x, y, (Math.random() - 0.5) * 40, -Math.random() * 30, 60, y,
+        0.5 + Math.random() * 0.6, 1, col || C.SN5, 'puff');
+    }
+  };
+  FX.shell = function (x, y, dirx) {
+    parts.push({
+      x: x, y: y, vx: 55 * dirx + Math.random() * 20, vy: -60 - Math.random() * 20,
+      g: 260, gy: PH - 4, life: 0, max: 2.4, sz: 2, col: C.BR2M, type: 'shell', spin: 0
+    });
+  };
+  FX.breathe = function (x, y) {
+    parts.push({
+      x: x, y: y, vx: (Math.random() - 0.5) * 8, vy: -6 - Math.random() * 6,
+      g: -4, gy: -99, life: 0, max: 1.4 + Math.random() * 0.8, sz: 1, col: C.SN6, type: 'puff'
+    });
+  };
+
+  /* ---------- 脚印 ---------- */
+  FX.footprint = function (x, y, dir, scale) {
+    var w = Math.max(1, Math.round(2 * (scale || 1)));
+    PS.dt(stepsCtx, x - w, y, w * 2, 1, C.SN0, 0.55);
+    PS.dt(stepsCtx, x - w, y - 1, w * 2, 1, C.SN6, 0.30);
+  };
+  FX.fadeSteps = function (amount) {
+    stepsCtx.globalCompositeOperation = 'destination-out';
+    stepsCtx.fillStyle = 'rgba(0,0,0,' + amount + ')';
+    stepsCtx.fillRect(0, 0, PW, PH);
+    stepsCtx.globalCompositeOperation = 'source-over';
+  };
+
+  /* ---------- 命中材料判定 → 对应的冲击特效 ---------- */
+  FX.impact = function (x, y, mat, dirx) {
+    switch (mat) {
+      case 'snow': FX.snowBurst(x, y, 16, 70); PS.rect(decalCtx, x - 1, y, 3, 1, C.SN0); break;
+      case 'ice': FX.iceShards(x, y, 12); break;
+      case 'water': FX.waterSplash(x, y, 14); break;
+      case 'stone': FX.stoneChips(x, y, 12, dirx); FX.dustPuff(x, y, 6, C.CN4); break;
+      case 'metal': FX.metalSpark(x, y, 14, dirx); break;
+      case 'wood': FX.stoneChips(x, y, 8, dirx); FX.dustPuff(x, y, 5, C.WD3); break;
+      default: FX.stoneChips(x, y, 10, dirx);
+    }
+  };
+
+  /* ---------- 更新 ---------- */
+  FX.update = function (dt, now) {
+    FX._now = now;
+
+    // 粒子
+    for (var i = parts.length - 1; i >= 0; i--) {
+      var q = parts[i];
+      q.life += dt;
+      q.vy += q.g * dt;
+      q.x += q.vx * dt;
+      q.y += q.vy * dt;
+      if (q.type === 'shell') q.spin += dt * 14;
+      if (q.type === 'puff' || q.type === 'mist') q.vx *= 0.94;
+      var out = q.life > q.max || q.x < -8 || q.x > PW + 8 || q.y > PH + 8;
+      // 落地
+      if (!out && q.gy > -90 && q.y >= q.gy) {
+        q.y = q.gy;
+        if (q.type === 'blood') {
+          // 落点溅开：主点 + 卫星
+          addBlood(q.x, q.gy, q.sz, q.sz, 0.95);
+          if (q.sz > 1 || Math.random() < (q.wet || 0.3)) {
+            for (var s = 0; s < 2 + Math.floor(Math.random() * 3); s++) {
+              var dx = Math.round((Math.random() - 0.5) * 7), dy = Math.round((Math.random() - 0.5) * 2);
+              addBlood(q.x + dx, q.gy + dy, 1, 1, 0.75);
+            }
+          }
+        } else if (q.type === 'water') {
+          ripples.push({ x: q.x | 0, y: q.gy | 0, r: 1, max: 3, life: 0, max2: 0.6 });
+        } else if (q.type === 'shell') {
+          PS.rect(decalCtx, q.x | 0, q.gy | 0, 2, 1, C.BR1M);
+          PS.dt(decalCtx, q.x | 0, (q.gy | 0) - 1, 2, 1, C.BR3M, 0.6);
+        } else if (q.type === 'snow') {
+          PS.dt(decalCv ? decalCtx : null, 0, 0, 0, 0, C.SN8, 0);
+        }
+        parts.splice(i, 1);
+        continue;
+      }
+      if (out) parts.splice(i, 1);
+    }
+
+    // 血泊生长
+    for (var k = pools.length - 1; k >= 0; k--) {
+      var po = pools[k];
+      po.life += dt;
+      if (po.r < po.maxR) {
+        po.acc += dt * (7 + po.r * 1.4) * po.rate;
+        while (po.acc >= 1 && po.r < po.maxR) {
+          po.acc -= 1;
+          var ang = Math.random() * 6.28;
+          // 半径加噪声 → 不规则血泊轮廓（而非圆形）
+          var wobble = 0.72 + 0.34 * Math.abs(Math.sin(ang * 2.7 + po.seed)) + 0.14 * Math.sin(ang * 6.1 + po.seed * 2);
+          var rr = po.r * wobble;
+          var px = Math.round(po.x + Math.cos(ang) * rr);
+          var py = Math.round(po.y + Math.sin(ang) * rr * 0.40);
+          var edge = rr / po.r;
+          var lv = edge > 0.82 ? 0.55 : (edge > 0.66 ? 0.85 : 1);
+          addBlood(px, py, Math.random() < 0.30 ? 2 : 1, 1, lv);
+          // 内侧补一层，保证血泊是实心的
+          var ix = Math.round(po.x + Math.cos(ang) * rr * 0.55);
+          var iy = Math.round(po.y + Math.sin(ang) * rr * 0.22);
+          addBlood(ix, iy, 1, 1, 1);
+          po.r += 0.05;
+        }
+      } else {
+        if (po.life > 14) pools.splice(k, 1);
+      }
+    }
+
+    // 涟漪
+    for (var r2 = ripples.length - 1; r2 >= 0; r2--) {
+      ripples[r2].life += dt;
+      ripples[r2].r += dt * 14;
+      if (ripples[r2].life > ripples[r2].max2) ripples.splice(r2, 1);
+    }
+
+    // 脚印缓慢被雪覆盖
+    if (Math.random() < dt * 3) FX.fadeSteps(0.04);
+
+    // 血迹老化重建（限频）
+    if (bloodDirty && (now - lastRebuild) > 0.12) {
+      rebuildBlood();
+      lastRebuild = now;
+    } else if ((now - lastRebuild) > 1.0) {
+      rebuildBlood();
+      lastRebuild = now;
+    }
+  };
+
+  /* ---------- 绘制 ---------- */
+  FX.drawDecals = function (ctx) {
+    // 脚印在最底
+    ctx.drawImage(stepsCv, 0, 0);
+    ctx.drawImage(decalCv, 0, 0);
+    // 血迹 + 正在融化的边缘高光
+    ctx.drawImage(bloodCv, 0, 0);
+  };
+
+  FX.drawParts = function (ctx) {
+    for (var i = 0; i < parts.length; i++) {
+      var q = parts[i];
+      var a = 1 - q.life / q.max;
+      if (a <= 0) continue;
+      if (q.type === 'shell') {
+        // 抛壳在空中翻转：用长宽交替表现旋转（保持像素对齐）
+        var flip = Math.floor(q.spin) % 2 === 0;
+        PS.dt(ctx, q.x | 0, q.y | 0, flip ? 3 : 1, flip ? 1 : 3, q.col, Math.min(1, a * 1.4));
+        continue;
+      }
+      if (q.type === 'mist' || q.type === 'puff') {
+        PS.dt(ctx, q.x | 0, q.y | 0, 1, 1, q.col, a * 0.7);
+        continue;
+      }
+      PS.dt(ctx, q.x | 0, q.y | 0, q.sz, q.sz, q.col, q.type === 'blood' ? Math.min(1, a * 2) : Math.min(1, a * 1.5));
+    }
+    // 涟漪（水面）
+    for (var k = 0; k < ripples.length; k++) {
+      var rp = ripples[k];
+      var al = 1 - rp.life / rp.max2;
+      var rr = Math.floor(rp.r);
+      PS.dt(ctx, rp.x - rr, rp.y, rr * 2, 1, C.SN7, al * 0.35);
+      PS.dt(ctx, rp.x, rp.y - Math.floor(rr * 0.3), 1, Math.max(1, Math.floor(rr * 0.6)), C.SN7, al * 0.25);
+    }
+  };
+
+  FX.count = function () { return parts.length; };
+
+})(window.PS);
+
+</script>
+  <!-- ==== enemy.js ==== -->
+<script>
+/* ============================================================
+   ENEMY v2 — 自由深度行走 / 大量外观变种 / 多种死亡方式
+   · 深度轴 z∈[0,1] 连续分布：脚底 Y、体型缩放、移动视差、
+     绘制排序、雾化程度全部由 z 驱动（不再只有固定两排）
+   · 外观：体型 × 外套款式 × 色系 × 帽子 × 脸 × 携带物 × 职业
+   · 死亡：back / forward / spin / crumble / kneel / fling /
+           trip / slide / crawlDeath / overQuay 共 10 种
+   ============================================================ */
+(function (PS) {
+  'use strict';
+  var C = PS.C, PW = PS.PW, PH = PS.PH, FX = PS.FX, G = PS.GEO;
+
+  var E = PS.Enemy = {};
+  var list = E.list = [];
+
+  /* ============================================================
+     工具
+     ============================================================ */
+  function rnd(a, b) { return a + Math.random() * (b - a); }
+  function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+  function chance(p) { return Math.random() < p; }
+
+  function linePx(ctx, x0, y0, x1, y1, w, color, level) {
+    x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
+    var dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+    var sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+    var err = dx - dy, guard = 0, hw = Math.floor((w - 1) / 2);
+    for (; ;) {
+      PS.dt(ctx, x0 - hw, y0 - hw, w, w, color, level === undefined ? 1 : level);
+      if ((x0 === x1 && y0 === y1) || ++guard > 400) break;
+      var e2 = err * 2;
+      if (e2 > -dy) { err -= dy; x0 += sx; }
+      if (e2 < dx) { err += dx; y0 += sy; }
+    }
+  }
+  E.linePx = linePx;
+
+  /* 沿任意线段绘制变宽色带（躯干用：能随身体一起旋转）
+     opt.waist = 0~1，在 t=waist 处收腰到 opt.waistW 宽度，
+     形成「下摆宽 → 收腰 → 肩略宽 → 顶端收口」的人体轮廓。
+     不设 waist 时退化为原来的简单线性插值。 */
+  function band(ctx, x0, y0, x1, y1, w0, w1, col, litCol, darkCol, opt) {
+    var dx = x1 - x0, dy = y1 - y0;
+    var len = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+    var nx = -dy / len, ny = dx / len;
+    var n = Math.max(1, Math.ceil(len));
+    opt = opt || {};
+    var aLit = (ny < -0.02) || (Math.abs(ny) <= 0.02);   // 朝上那一侧受月光
+    var waist = opt.waist === undefined ? -1 : opt.waist;
+    var waistW = opt.waistW === undefined ? w1 : opt.waistW;
+    for (var i = 0; i <= n; i++) {
+      var t = i / n;
+      var cx = x0 + dx * t, cy = y0 + dy * t;
+      var full;
+      if (waist >= 0 && t < waist) {
+        // 下摆 → 腰：下摆最宽，向上收到 waistW
+        var u = t / Math.max(1e-6, waist);
+        full = w0 + (waistW - w0) * (1 - Math.pow(1 - u, 2));
+      } else if (waist >= 0) {
+        // 腰 → 肩：先微微外扩到 w1，再在最后 18% 收口成圆肩
+        var u2 = (t - waist) / Math.max(1e-6, 1 - waist);
+        var body = waistW + (w1 - waistW) * u2;
+        var cap = u2 > 0.82 ? (1 - (u2 - 0.82) / 0.18) * 0.34 : 0;
+        full = body * (1 - cap);
+      } else {
+        var pw = opt.pow ? Math.pow(t, opt.pow) : t;
+        full = w0 + (w1 - w0) * pw;
+      }
+      var w = Math.max(0.5, full) / 2;
+      var ax = cx - nx * w, ay = cy - ny * w;
+      var bx = cx + nx * w, by = cy + ny * w;
+      linePx(ctx, ax, ay, bx, by, 1, col, 1);
+      if (litCol) PS.dt(ctx, Math.round(aLit ? ax : bx), Math.round(aLit ? ay : by), 1, 1, litCol, opt.lit === undefined ? 0.7 : opt.lit);
+      if (darkCol) PS.dt(ctx, Math.round(aLit ? bx : ax), Math.round(aLit ? by : ay), 1, 1, darkCol, opt.dark === undefined ? 0.7 : opt.dark);
+    }
+  }
+
+  /* ============================================================
+     外观基因库
+     ============================================================ */
+  // 每套色阶：[最深, 暗, 主, 亮, 高光]
+  var RAMP = {
+    green: [C.CT0, C.CT1, C.CT2, C.CT3, C.CT4],
+    blue: [C.IC0, C.IC1, C.IC2, C.IC3, C.IC4],
+    grey: [C.CN0, C.CN1, C.CN2, C.CN3, C.CN4],
+    brown: [C.WD0, C.WD1, C.WD2, C.WD3, C.WD4],
+    brick: [C.BR0, C.BR1, C.BR2, C.BR3, C.BR4],
+    snow: [C.SN2, C.SN3, C.SN4, C.SN5, C.SN6]
+  };
+  var RAMP_KEYS = ['green', 'green', 'green', 'blue', 'grey', 'brown', 'brick', 'snow'];
+
+  // 外套款式：sk = 下摆相对宽度，len = 衣长系数（1 = 常规）
+  // 注意：sk 是「相对肩宽」的倍数，1.0~1.4 为合理区间，
+  // 超过 1.5 会变成斗篷/裙子，人看起来就不像人了。
+  var COATS = [
+    { id: 'greatcoat', sk: 1.22, len: 1.00 },
+    { id: 'padded', sk: 1.06, len: 0.86 },
+    { id: 'leather', sk: 0.96, len: 0.80 },
+    { id: 'wool', sk: 1.14, len: 1.00 },
+    { id: 'parka', sk: 1.10, len: 0.92 },
+    { id: 'camo', sk: 1.18, len: 1.00 }
+  ];
+  // 职业：speed 系数 + 行为倾向
+  var JOBS = [
+    { id: 'patrol', sp: 1.00 },
+    { id: 'patrol', sp: 1.00 },
+    { id: 'guard', sp: 0.80 },
+    { id: 'smoker', sp: 0.90 },
+    { id: 'sweeper', sp: 0.85 },
+    { id: 'water', sp: 0.95 },
+    { id: 'jogger', sp: 1.85 },
+    { id: 'walker', sp: 0.78 }
+  ];
+  var BUILDS = [
+    { id: 'thin', h: 1.10, w: 0.80 },
+    { id: 'normal', h: 1.00, w: 1.00 },
+    { id: 'normal', h: 1.00, w: 1.00 },
+    { id: 'stocky', h: 0.90, w: 1.30 },
+    { id: 'tall', h: 1.18, w: 0.90 },
+    { id: 'short', h: 0.84, w: 1.08 },
+    { id: 'hunched', h: 0.86, w: 1.12 }
+  ];
+  var HATS = ['ushanka', 'ushanka', 'helmet', 'beanie', 'cap', 'hood', 'scarf', 'bald', 'bandage', 'babushka'];
+  var FACES = ['clean', 'clean', 'stubble', 'beard', 'beard', 'mustache', 'scarfMask', 'goggles'];
+  var CARRY = ['none', 'none', 'none', 'backpack', 'satchel', 'bucket', 'lantern', 'crutch', 'shovel', 'radio', 'jerrycan', 'dog'];
+  var PANTS = [C.CN0, C.CN1, C.CT0, C.WD0, C.MT1];
+
+  /* ============================================================
+     建立一名敌人
+     ============================================================ */
+  function make(z, dir, x) {
+    if (z === undefined) z = Math.random();
+    var build = pick(BUILDS);
+    var job = pick(JOBS);
+    var female = chance(0.18);
+    var coat = pick(COATS);
+    var ramp = RAMP[pick(RAMP_KEYS)];
+    if (coat.id === 'camo') ramp = RAMP.snow;
+    var carry = pick(CARRY);
+    if (job.id === 'sweeper') carry = 'shovel';
+    if (job.id === 'water') carry = 'bucket';
+
+    var e = {
+      z: z, zv: 0, baseY: 216, S: 1,
+      x: x, dir: dir || (chance(0.5) ? 1 : -1),
+      state: 'walk', t: 0, timer: 0, phase: Math.random() * 6.28,
+      hp: 100, dead: false, wounded: false,
+      build: build, job: job, female: female,
+      coat: coat, ramp: ramp, carry: carry,
+      hat: pick(HATS), face: pick(FACES),
+      pants: pick(PANTS),
+      fur: chance(0.5) ? [C.FR0, C.FR1, C.FR2, C.SK0] : [C.CN0, C.CN1, C.CN2, C.CN3],
+      skin: chance(0.25) ? C.SK2 : C.SK1,
+      bag: false, beard: false,
+      limp: 0, lean: 0,
+      wound: { head: 0, torso: 0, arm: 0, leg: 0 },
+      panic: 0, targetX: null, fleeDir: 0, zig: 0, zigT: 0,
+      bleed: 0, seen: false,
+      seed: Math.random() * 1000,
+      breath: Math.random() * 4, stepAcc: 0,
+      // 死亡
+      deathType: null, deathT: 0, deathDur: 1, deathDir: 1, lay: 0,
+      corpseSnow: 0, deadT: 0,
+      dog: null
+    };
+    if (female) { e.hat = chance(0.7) ? 'babushka' : pick(['scarf', 'hood', 'beanie']); e.build = chance(0.6) ? { id: 'normal', h: 0.95, w: 1.0 } : e.build; }
+    if (e.build.id === 'hunched') e.face = chance(0.7) ? 'beard' : e.face;
+    if (e.hat === 'bald' && e.face === 'scarfMask') e.face = 'clean';
+
+    e.speed = (job.id === 'jogger' ? 30 : 15) * job.sp * rnd(0.78, 1.22) * build.w;
+    if (carry === 'crutch') e.speed *= 0.55;
+    if (carry === 'dog') {
+      e.dog = { dx: -6 - rnd(0, 4), y: 0, ph: Math.random() * 6.28, state: 'follow', t: 0 };
+    }
+    applyDepth(e);
+    list.push(e);
+    return e;
+  }
+  E.make = make;
+  E.reset = function () { list.length = 0; };
+
+  function applyDepth(e) {
+    e.z = clamp(e.z, 0, 1);
+    e.baseY = Math.round(lerp(G.DEPTH_FAR, G.DEPTH_NEAR, e.z));
+    e.depthS = lerp(0.70, 1.16, e.z);
+    e.S = e.depthS * e.build.h * (e.female ? 0.96 : 1);
+  }
+
+  /* ============================================================
+     体型尺寸
+     ============================================================ */
+  function dims(e) {
+    var S = e.S, b = e.build;
+    var sk = e.coat.sk * (e.female ? 1.12 : 1);
+    // 人体比例校准：全身 ≈ 7 个头高。之前头高 6*S 而躯干仅 10*S，
+    // 导致「大头娃娃」——头几乎和肩同宽，看着不真实。
+    var torsoW = Math.max(4, Math.round(9 * S * b.w));
+    return {
+      headW: Math.max(3, Math.round(4.2 * S * (0.88 + b.w * 0.12))),
+      headH: Math.max(3, Math.round(5.0 * S * b.h)),
+      torsoH: Math.max(5, Math.round(12 * S * b.h * e.coat.len)),
+      torsoW: torsoW,
+      // 下摆：以肩宽为基准外扩，而不是乘一个大基数，否则整个人变成斗篷
+      skirtW: Math.max(torsoW, Math.round(torsoW * sk) + 1),
+      armL: Math.max(3, Math.round(9 * S * b.h)),
+      legL: Math.max(4, Math.round(13 * S * b.h)),
+      stride: Math.max(2, Math.round(4 * S)),
+      lift: Math.max(1, Math.round(2 * S))
+    };
+  }
+
+  /* ============================================================
+     统一姿态骨架（渲染 / 命中框共用）
+     ============================================================ */
+  function pose(e) {
+    var d = dims(e), S = e.S;
+    var low = 0;
+    if (e.state === 'cower') low = Math.round(7 * S);
+    if (e.state === 'crawl') low = Math.round(10 * S);
+    if (e.state === 'sweep') low = Math.round(2 * S);
+    if (e.state === 'draw') low = Math.round(5 * S);
+    var legL = Math.max(2, d.legL - low);
+    var footY = Math.round(e.baseY);
+    var hipY = footY - legL;
+    var shoulderY = hipY - d.torsoH;
+    var headY = shoulderY - d.headH;
+    return {
+      S: S, d: d, low: low, legL: legL, footY: footY,
+      hipY: hipY, shoulderY: shoulderY, headY: headY,
+      cx: Math.round(e.x)
+    };
+  }
+  E.pose = pose;
+
+  /* ============================================================
+     更新
+     ============================================================ */
+  E.update = function (dt, t) {
+    for (var i = list.length - 1; i >= 0; i--) {
+      var e = list[i];
+      upd(e, dt, t);
+      if (!e.dead && (e.x < -30 || e.x > PW + 30)) list.splice(i, 1);
+    }
+  };
+
+  function upd(e, dt, t) {
+    e.t += dt;
+
+    if (e.state === 'corpse') {
+      e.deadT += dt;
+      // 尸体渐渐被落雪覆盖
+      if (e.deadT > 6 && Math.random() < dt * 0.7 && e.corpseSnow < 1) e.corpseSnow = Math.min(1, e.corpseSnow + 0.02);
+      return;
+    }
+
+    // 深度漫游：在堤岸上自由地前后走动（不是固定两排）
+    roamDepth(e, dt);
+
+    if (e.panic > 0) e.panic -= dt;
+
+    var moving = false, vx = 0;
+    switch (e.state) {
+      case 'walk':
+        vx = e.dir * e.speed * (e.limp > 0 ? 0.5 : 1);
+        moving = true;
+        if (Math.random() < dt * (e.job.id === 'guard' ? 0.18 : 0.07)) {
+          var roll = Math.random();
+          if (roll < 0.30) { e.state = 'idle'; e.timer = 1.5 + Math.random() * 3.5; }
+          else if (roll < 0.52 || e.job.id === 'smoker') { e.state = 'smoke'; e.timer = 3 + Math.random() * 4; }
+          else if (roll < 0.70) { e.state = 'talk'; e.timer = 2 + Math.random() * 3; }
+          else if (e.job.id === 'sweeper') { e.state = 'sweep'; e.timer = 3 + Math.random() * 4; }
+          else if (e.job.id === 'water') { e.state = 'draw'; e.timer = 3 + Math.random() * 3; }
+          else { e.state = 'idle'; e.timer = 1.5 + Math.random() * 3.5; }
+        }
+        // 提水的会往河边走
+        if (e.job.id === 'water' && Math.random() < dt * 0.25) e.zv = rnd(0.03, 0.09) * (e.z < 0.8 ? 1 : -1);
+        break;
+      case 'idle':
+        e.timer -= dt;
+        if (Math.random() < dt * 0.7) FX.breathe(e.x + e.dir * 2, e.baseY - Math.round(20 * e.S));
+        if (e.timer <= 0) { e.state = 'walk'; if (chance(0.18)) e.dir = -e.dir; }
+        break;
+      case 'smoke':
+        e.timer -= dt;
+        if (Math.random() < dt * 2.5) FX.breathe(e.x + e.dir * 2, e.baseY - Math.round(22 * e.S));
+        if (e.timer <= 0) e.state = 'walk';
+        break;
+      case 'talk':
+        e.timer -= dt; if (e.timer <= 0) e.state = 'walk';
+        break;
+      case 'sweep':
+        e.timer -= dt;
+        if (Math.random() < dt * 1.6) {
+          FX.snowBurst(e.x + e.dir * Math.round(5 * e.S), e.baseY, 3, 22);
+        }
+        if (e.timer <= 0) e.state = 'walk';
+        break;
+      case 'draw':
+        e.timer -= dt;
+        if (e.timer <= 0) { e.state = 'walk'; if (chance(0.5)) e.dir = -e.dir; }
+        break;
+      case 'startle':
+        e.timer -= dt;
+        if (e.timer <= 0) {
+          e.panic = Math.max(e.panic, 3);
+          if (chance(0.6)) {
+            e.state = 'run';
+            e.dir = e.fleeDir || e.dir;    // 从「看向声源」转为「背对声源逃跑」
+          } else { e.state = 'cower'; e.timer = 2 + Math.random() * 3; }
+        }
+        break;
+      case 'run':
+        e.zigT += dt;
+        e.zig = Math.sin(e.zigT * 3.2) * 0.45;
+        vx = e.fleeDir * e.speed * (2.3 + e.zig) * (e.limp > 0 ? 0.6 : 1);
+        moving = true;
+        // 逃跑时也会往堤岸深处/浅处乱窜
+        e.z += Math.sin(e.zigT * 1.7 + e.seed) * dt * 0.10;
+        if (e.panic <= 0) { e.state = 'walk'; e.dir = e.fleeDir; }
+        break;
+      case 'hide':
+        vx = e.fleeDir * e.speed * 2.0 * (e.limp > 0 ? 0.6 : 1);
+        moving = true;
+        if (e.targetX !== null) {
+          if ((e.fleeDir > 0 && e.x >= e.targetX - 2) || (e.fleeDir < 0 && e.x <= e.targetX + 2)) {
+            e.state = 'cower'; e.timer = 3 + Math.random() * 4;
+          }
+        }
+        if (e.panic <= 0 && e.state === 'hide') e.state = 'walk';
+        break;
+      case 'cower':
+        e.timer -= dt;
+        if (e.timer <= 0 && e.panic <= 0) e.state = 'walk';
+        else if (e.timer <= 0) e.timer = 1 + Math.random() * 2;
+        break;
+      case 'stagger':
+        e.timer -= dt;
+        if (e.timer <= 0) {
+          if (e.hp <= 0) startDeath(e, null);
+          else if (e.hp < 45) { e.state = 'crawl'; e.timer = 99; }
+          else {
+            e.panic = Math.max(e.panic, 4);
+            // 受伤后往远离枪口的方向撤：朝向与移动方向必须一致
+            if (!e.fleeDir) e.fleeDir = chance(0.5) ? -1 : 1;
+            e.dir = e.fleeDir;
+            e.state = chance(0.6) ? 'run' : 'hide';
+            e.targetX = nearestCover(e.x);
+            if (e.state === 'hide' && e.targetX !== null) {
+              e.fleeDir = (e.targetX < e.x) ? -1 : 1;
+              e.dir = e.fleeDir;
+            }
+          }
+        }
+        break;
+      case 'limp':
+        vx = e.dir * e.speed * 0.45; moving = true;
+        if (e.panic <= 0 && Math.random() < dt * 0.2) e.state = 'walk';
+        break;
+      case 'crawl':
+        vx = e.dir * 3.2 * e.S; moving = true;
+        // 爬行留下血痕
+        if (Math.random() < dt * 6) FX.smear(e.x, e.baseY, e.dir, e.S);
+        break;
+      case 'fall':
+        stepDeath(e, dt);
+        return;
+    }
+
+    if (moving) {
+      e.x += vx * dt;
+      e.stepAcc += Math.abs(vx * dt);
+      if (e.stepAcc > 6) {
+        e.stepAcc = 0;
+        if (e.state !== 'crawl') FX.footprint(e.x, e.baseY, e.dir, e.S * 0.9);
+      }
+    }
+    e.phase += (moving ? dt * (e.state === 'run' || e.state === 'hide' ? 13 : e.state === 'crawl' ? 5 : 7.5) : 0);
+
+    // 呼吸白气
+    e.breath -= dt;
+    if (e.breath <= 0) {
+      e.breath = 2.5 + Math.random() * 3.5;
+      if (e.state !== 'fall') FX.breathe(e.x + e.dir * 3, e.baseY - Math.round(24 * e.S));
+    }
+
+    // 狗
+    if (e.dog) updDog(e, dt);
+
+    // 失血
+    if (e.hp < 100 && e.hp > 0) {
+      e.bleed -= dt;
+      var sev = 1 - e.hp / 100;
+      if (e.bleed <= 0) {
+        e.bleed = 1.1 - sev * 0.7;
+        FX.drip(e.x + (Math.random() - 0.5) * 4, e.baseY - Math.round(14 * e.S), e.baseY, 1 + (sev > 0.6 ? 1 : 0));
+        e.hp -= 3 + sev * 5;
+        if (e.hp <= 0) { e.hp = 0; startDeath(e, e.state === 'crawl' ? 'crawlDeath' : null); }
+      }
+    }
+    if (e.limp > 0) e.limp -= dt * 0.2;
+  }
+
+  /* 深度漫游：让敌人在堤岸上前后自由移动 */
+  function roamDepth(e, dt) {
+    var st = e.state;
+    if (st === 'fall' || st === 'corpse' || st === 'crawl' || st === 'cower') return;
+    if (Math.random() < dt * 0.35) {
+      var want = rnd(-0.05, 0.05);
+      if (e.z > 0.85) want = -Math.abs(want);
+      if (e.z < 0.15) want = Math.abs(want);
+      e.zv = want;
+    }
+    e.z += e.zv * dt;
+    if (e.z < 0.05) { e.z = 0.05; e.zv = Math.abs(e.zv) * 0.8; }
+    if (e.z > 0.95) { e.z = 0.95; e.zv = -Math.abs(e.zv) * 0.8; }
+    applyDepth(e);
+  }
+
+  function updDog(e, dt) {
+    var dg = e.dog;
+    dg.t += dt;
+    if (e.dead) {
+      dg.state = 'mourn';
+      dg.ph += dt * 1.2;
+    } else {
+      dg.ph += dt * 8;
+      if (Math.random() < dt * 0.12) dg.state = 'sniff';
+      if (dg.state === 'sniff' && Math.random() < dt * 0.4) dg.state = 'follow';
+    }
+  }
+
+  /* ============================================================
+     死亡：10 种方式
+     ============================================================ */
+  var DEATH_DEF = {
+    back: { dur: 0.85 },
+    forward: { dur: 0.72 },
+    spin: { dur: 1.05 },
+    crumble: { dur: 1.15 },
+    kneel: { dur: 1.45 },
+    fling: { dur: 0.95 },
+    trip: { dur: 1.00 },
+    slide: { dur: 1.25 },
+    crawlDeath: { dur: 1.10 },
+    overQuay: { dur: 1.55 }
+  };
+
+  function pickDeath(e, part) {
+    // 站在堤沿（最靠前）的人有机会翻下河堤
+    if (e.z > 0.88 && chance(0.32)) return 'overQuay';
+    if (part === 'head') {
+      var r = Math.random();
+      if (r < 0.42) return 'crumble';
+      if (r < 0.72) return 'back';
+      if (r < 0.88) return 'fling';
+      return 'spin';
+    }
+    if (e.state === 'crawl') return 'crawlDeath';
+    if (e.state === 'cower' || e.state === 'draw') return chance(0.6) ? 'slide' : 'crumble';
+    if (e.state === 'run' || e.state === 'hide') {
+      var q = Math.random();
+      if (q < 0.42) return 'trip';
+      if (q < 0.72) return 'forward';
+      if (q < 0.90) return 'fling';
+      return 'spin';
+    }
+    if (part === 'leg') return chance(0.5) ? 'kneel' : 'crawlDeath';
+    var s = Math.random();
+    if (s < 0.30) return 'back';
+    if (s < 0.48) return 'spin';
+    if (s < 0.64) return 'kneel';
+    if (s < 0.80) return 'forward';
+    if (s < 0.92) return 'fling';
+    return 'crumble';
+  }
+
+  function startDeath(e, forced) {
+    if (e.state === 'fall' || e.state === 'corpse') return;
+    var type = forced || pickDeath(e, e.lastPart || 'torso');
+    e.deathType = type;
+    e.deathT = 0;
+    e.deathDur = (DEATH_DEF[type] || { dur: 1 }).dur;
+    e.lay = 0;
+    e.state = 'fall';
+    e.dead = true;
+    e.fatal = true;
+    e.deathDir = (type === 'forward' || type === 'trip') ? e.dir : -e.dir;
+    if (type === 'overQuay') e.deathDir = chance(0.5) ? 1 : -1;
+    e.deathSeed = Math.random() * 100;
+    // 起手血
+    if (type !== 'crumble') FX.addPool(e.x, e.baseY, e.S * 1.1, 1.1);
+    if (e.dog) e.dog.state = 'mourn';
+  }
+  E.startDeath = startDeath;
+
+  function stepDeath(e, dt) {
+    e.deathT += dt;
+    e.lay = clamp(e.deathT / e.deathDur, 0, 1);
+    var t = e.lay;
+
+    // 各类型特有的位移
+    if (e.deathType === 'fling') {
+      e.x += e.deathDir * 34 * dt * (1 - t);
+      e.dy = -Math.sin(t * Math.PI) * 16 * e.S;
+    } else if (e.deathType === 'trip') {
+      e.x += e.dir * 26 * dt * (1 - t * 0.6);
+      e.dy = -Math.sin(t * Math.PI) * 5 * e.S;
+    } else if (e.deathType === 'overQuay') {
+      // 翻过石堤，坠向河面
+      if (t < 0.55) {
+        e.x += e.deathDir * 10 * dt;
+        e.dy = t / 0.55 * 8;
+      } else {
+        var k = (t - 0.55) / 0.45;
+        e.dy = 8 + k * k * (G.RIVER_TOP + 5 - e.baseY);
+        if (chance(dt * 8)) FX.snowBurst(e.x, e.baseY + e.dy, 2, 12);
+      }
+    } else {
+      e.dy = 0;
+    }
+    if (e.dy === undefined) e.dy = 0;
+
+    // 落地冲击（身体拍在雪地上）
+    var landT = e.deathType === 'crumble' ? 0.85 : (e.deathType === 'kneel' ? 0.55 : 0.62);
+    if (!e.landed && t >= landT) {
+      e.landed = true;
+      var ly = e.baseY + (e.dy || 0);
+      if (e.deathType === 'overQuay') {
+        FX.waterSplash(e.x, Math.min(ly, G.RIVER_TOP + 4), 16);
+        FX.iceShards(e.x, G.RIVER_TOP + 2, 8);
+        FX.addPool(e.x, G.RIVER_TOP + 3, e.S, 1.4);
+        PS.Audio && PS.Audio.splash && PS.Audio.splash();
+      } else {
+        FX.snowBurst(e.x, ly, 16, 52);
+        FX.addPool(e.x + Math.round(e.deathDir * 6 * e.S), ly, e.S * 1.3, 1.9);
+        if (e.deathType === 'fling' || e.deathType === 'trip') FX.snowBurst(e.x, ly, 14, 40);
+      }
+    }
+
+    if (e.lay >= 1) {
+      e.state = 'corpse';
+      e.deadT = 0;
+      e.finalY = e.baseY + (e.dy || 0);
+      if (e.deathType === 'kneel' || e.deathType === 'slide') {
+        FX.addPool(e.x + Math.round(e.deathDir * 4 * e.S), e.finalY, e.S * 0.9, 0.9);
+      }
+    }
+  }
+
+  /* ============================================================
+     受伤接口
+     ============================================================ */
+  E.hurt = function (e, part, dmg, dirx, diry) {
+    if (e.dead || e.state === 'fall' || e.state === 'corpse') return false;
+    e.hp -= dmg;
+    e.lastPart = part;
+    e.wound[part === 'arm' ? 'arm' : part] = (e.wound[part] || 0) + 1;
+    var hx = e.x, hy = e.baseY - Math.round((part === 'head' ? 24 : part === 'torso' ? 15 : part === 'arm' ? 16 : 8) * e.S);
+
+    if (part === 'head') {
+      FX.sprayBlood(hx, hy, dirx, diry, 130, 'head', e.baseY);
+      FX.addPool(e.x, e.baseY, e.S * 1.1, 0.8);
+      e.hp = 0;
+    } else if (part === 'torso') {
+      FX.sprayBlood(hx, hy, dirx, diry, 85, 'torso', e.baseY);
+      FX.addPool(e.x, e.baseY, e.S * 0.85, 0.5);
+    } else if (part === 'arm') {
+      FX.sprayBlood(hx, hy, dirx, diry, 40, 'limb', e.baseY);
+      e.limp = 2;
+    } else {
+      FX.sprayBlood(hx, hy, dirx, diry, 55, 'limb', e.baseY);
+      e.limp = 4;
+    }
+
+    if (e.hp <= 0) {
+      e.hp = 0; e.bleed = 0;
+      startDeath(e, null);
+      return true;
+    }
+    e.state = 'stagger'; e.timer = 0.22;
+    e.panic = Math.max(e.panic, 6);
+    return false;
+  };
+
+  /* ============================================================
+     噪声 / 恐慌
+     ============================================================ */
+  E.noise = function (nx, ny, power, onHit) {
+    for (var i = 0; i < list.length; i++) {
+      var e = list[i];
+      if (e.dead || e.state === 'fall' || e.state === 'corpse') continue;
+      var d = Math.hypot(e.x - nx, (e.baseY - ny) * 2.2);
+      var reach = power * (onHit ? 1.5 : 1.0);
+      if (d > reach) continue;
+      var intensity = 1 - d / reach;
+      e.seen = true;
+      if (e.panic > 0 && chance(0.4)) continue;
+      e.panic = Math.max(e.panic, 2.5 + intensity * 6);
+      var roll = Math.random();
+      if (roll < 0.42) {
+        e.state = 'run';
+        e.fleeDir = (e.x < nx) ? -1 : 1;
+        e.dir = e.fleeDir;                 // 朝向必须跟着跑的方向，否则就是倒着跑
+        if (chance(0.35)) {
+          var sp = nearestCover(e.x);
+          if (sp !== null) {
+            e.state = 'hide'; e.targetX = sp;
+            e.fleeDir = (sp < e.x) ? -1 : 1;
+            e.dir = e.fleeDir;
+          }
+        }
+      } else if (roll < 0.72) {
+        e.state = 'cower'; e.timer = 1.5 + Math.random() * 3;
+      } else {
+        // 惊觉：先扭头看向声音来源（还没决定往哪跑）
+        e.state = 'startle'; e.timer = 0.35 + Math.random() * 0.3;
+        e.fleeDir = (e.x < nx) ? -1 : 1;
+        e.dir = (e.x < nx) ? 1 : -1;
+      }
+      e.zigT = 0;
+      if (e.dog) e.dog.state = 'flee';
+    }
+  };
+
+  function nearestCover(x) {
+    var best = null, bd = 1e9;
+    var cs = PS.World.covers;
+    for (var i = 0; i < cs.length; i++) {
+      var cx = cs[i].x + cs[i].w / 2;
+      var d = Math.abs(cx - x);
+      if (d < bd && d < 130) { bd = d; best = cx; }
+    }
+    return best;
+  }
+
+  /* ============================================================
+     命中判定（近的优先）
+     ============================================================ */
+  E.hitTest = function (px, py) {
+    var order = list.slice().sort(function (a, b) { return b.z - a.z; });
+    for (var i = 0; i < order.length; i++) {
+      var e = order[i];
+      if (e.dead) continue;
+      var h = boxes(e);
+      if (inBox(h.head, px, py)) return { e: e, part: 'head' };
+      if (inBox(h.torso, px, py)) return { e: e, part: 'torso' };
+      if (inBox(h.armA, px, py) || inBox(h.armB, px, py)) return { e: e, part: 'arm' };
+      if (inBox(h.legs, px, py)) return { e: e, part: 'leg' };
+    }
+    return null;
+  };
+  function inBox(b, x, y) { return b && x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h; }
+
+  E.boxes = boxes;
+  function boxes(e) {
+    var zero = { x: -999, y: -999, w: 0, h: 0 };
+    if (e.state === 'fall' || e.state === 'corpse' || e.dead) {
+      return { head: zero, torso: zero, legs: zero, armA: zero, armB: zero };
+    }
+    var p = pose(e), d = p.d, cx = p.cx, S = p.S;
+    var hw = d.headW, hh = d.headH;
+    var armW = Math.max(2, Math.round(3 * S));
+    return {
+      head: { x: cx - Math.floor(hw / 2) - 1, y: p.headY - 1, w: hw + 2, h: hh + 2 },
+      torso: { x: cx - Math.floor(d.torsoW / 2), y: p.shoulderY, w: d.torsoW, h: p.hipY - p.shoulderY },
+      armA: { x: cx - Math.floor(d.torsoW / 2) - armW, y: p.shoulderY + 2, w: armW, h: Math.max(3, d.armL) },
+      armB: { x: cx + Math.floor(d.torsoW / 2), y: p.shoulderY + 2, w: armW, h: Math.max(3, d.armL) },
+      legs: { x: cx - Math.floor(d.skirtW / 2), y: p.hipY, w: d.skirtW, h: p.legL }
+    };
+  }
+
+  /* ============================================================
+     绘制
+     ============================================================ */
+  E.draw = function (ctx, t) { drawRange(ctx, t, -1, 2); };
+  E.drawRange = drawRange;
+  function drawRange(ctx, t, z0, z1) {
+    var order = list.slice().sort(function (a, b) { return a.z - b.z; });
+    for (var i = 0; i < order.length; i++) {
+      var e = order[i];
+      if (e.z < z0 || e.z >= z1) continue;
+      drawOne(ctx, e, t);
+    }
+  }
+
+  function drawOne(ctx, e, t) {
+    var d = dims(e);
+    var x = Math.round(e.x);
+
+    if (e.dog && e.dog.state !== 'mourn') drawDog(ctx, e, x, e.baseY);
+
+    // 接地阴影（深度越浅越大越淡）
+    if (e.state !== 'corpse') {
+      var shR = Math.max(2, Math.round(5 * e.S));
+      PS.ell(ctx, x, Math.round(e.baseY) + 1, shR, Math.max(1, Math.round(1.2 * e.S)), C.VOID, 0.34);
+    }
+
+    if (e.state === 'corpse') { drawCorpse(ctx, e, x, t); }
+    else if (e.state === 'fall') { drawFalling(ctx, e, x, t); }
+    else { drawUpright(ctx, e, x, t, d); }
+
+    if (e.dog && e.dog.state === 'mourn') drawDog(ctx, e, x, e.baseY);
+
+    // 远处的人被河雾/空气透视削弱
+    if (e.z < 0.45) {
+      var lv = (0.45 - e.z) * 0.42;
+      var p = pose(e);
+      var hgt = Math.round((p.footY - p.headY) + 8);
+      PS.dt(ctx, x - Math.round(9 * e.S), p.headY - 4, Math.round(18 * e.S), hgt, C.NG5, lv);
+    }
+  }
+
+  /* ---------- 直立：把姿态算成骨架点，再交给通用身体绘制 ---------- */
+  function drawUpright(ctx, e, x, t, d) {
+    var p = pose(e);
+    var S = e.S;
+    var moving = (e.state === 'walk' || e.state === 'run' || e.state === 'hide' || e.state === 'limp');
+    var footY = p.footY;
+    var breath = Math.round(Math.sin(t * 1.8 + e.seed) * (S > 0.9 ? 1 : 0));
+
+    // 行走相位：腿
+    var hipY = p.hipY, kneeY = (hipY + footY) / 2;
+    var ph = e.phase;
+    var stride = d.stride * (e.state === 'run' || e.state === 'hide' ? 1.5 : 1);
+    var a = Math.sin(ph), b = Math.sin(ph + Math.PI);
+    var liftA = Math.max(0, Math.cos(ph)) * d.lift;
+    var liftB = Math.max(0, Math.cos(ph + Math.PI)) * d.lift;
+    if (!moving) { a = 0.55; b = -0.55; liftA = liftB = 0; stride = d.stride * 0.5; }
+    if (e.state === 'crawl') { a = 0.9; b = -0.9; stride = d.stride * 1.2; }
+
+    // 前倾/后仰一律沿「行进方向」，否则向左走的人会呈现向后仰的倒走感
+    var lean = 0;
+    if (e.state === 'stagger') lean = -e.dir * 2.5;
+    else {
+      if (moving) lean += e.dir * 1.3;                 // 走路时上身朝前倾
+      if (e.build.id === 'hunched') lean += e.dir * 2.2;
+      if (e.carry === 'crutch') lean += e.dir * 1.2;
+    }
+    var lx = Math.round(lean);
+
+    // 迈步方向必须跟随朝向：向左走时腿往左迈，否则就是「倒着走」
+    var sd = stride * e.dir;
+    var legLead = e.dir > 0 ? 1 : -1;                  // 前脚在行进方向一侧
+
+    var pts = {
+      footA: { x: x - legLead + Math.round(b * sd), y: footY - Math.round(liftB) },
+      footB: { x: x + legLead + Math.round(a * sd), y: footY - Math.round(liftA) },
+      kneeA: { x: x - legLead + Math.round(b * sd * 0.5), y: kneeY },
+      kneeB: { x: x + legLead + Math.round(a * sd * 0.5), y: kneeY - Math.round(liftA * 0.5) },
+      hip: { x: x + Math.round(lx * 0.25), y: hipY },
+      // 头部只比肩再前移一点点：1.1 倍会让脖子脱开肩膀，朝左时尤其明显
+      sh: { x: x + Math.round(lx * 0.7), y: p.shoulderY + breath },
+      head: { x: x + Math.round(lx * 0.8), y: p.headY + Math.round(d.headH * 0.5) + breath }
+    };
+
+    // 手臂目标
+    var arms = armTargets(e, pts, d, t, x);
+    drawFigure(ctx, e, pts, arms, { d: d, t: t });
+
+    // 携带物
+    drawCarry(ctx, e, pts, arms, d, t);
+  }
+
+  function armTargets(e, pts, d, t, x) {
+    var S = e.S, sh = pts.sh, hip = pts.hip, head = pts.head;
+    var sw = (e.state === 'walk' || e.state === 'run' || e.state === 'hide' || e.state === 'limp');
+    var A, B;
+    var armReach = Math.round(3 * S);
+    if (e.state === 'cower') {
+      A = { x: head.x - Math.round(3 * S), y: head.y - Math.round(1 * S) };
+      B = { x: head.x + Math.round(3 * S), y: head.y - Math.round(1 * S) };
+    } else if (e.state === 'crawl') {
+      A = { x: sh.x - Math.round(5 * S), y: pts.footA.y - 1 };
+      B = { x: sh.x + Math.round(5 * S), y: pts.footB.y - 1 };
+    } else if (e.state === 'smoke') {
+      A = { x: sh.x - Math.round(3 * S), y: hip.y + 1 };
+      B = { x: head.x + Math.round(2 * S), y: head.y + Math.round(1 * S) };
+    } else if (e.state === 'talk') {
+      var g = Math.sin(t * 6 + e.seed) > 0 ? 1 : -1;
+      A = { x: sh.x - Math.round(3 * S), y: hip.y + 1 };
+      B = { x: sh.x + Math.round(4 * S), y: sh.y + Math.round(4 * S) + g };
+    } else if (e.state === 'sweep') {
+      var sw2 = Math.sin(t * 4.2 + e.seed);
+      A = { x: sh.x - Math.round(2 * S), y: hip.y + 2 };
+      B = { x: sh.x + Math.round(4 * S) * e.dir, y: hip.y + Math.round(6 * S) + Math.round(sw2 * 3) };
+    } else if (e.state === 'draw') {
+      A = { x: sh.x - Math.round(3 * S), y: hip.y + 2 };
+      B = { x: sh.x + Math.round(3 * S), y: hip.y + Math.round(5 * S) };
+    } else if (e.state === 'stagger') {
+      A = { x: sh.x - Math.round(4 * S), y: sh.y + Math.round(4 * S) };
+      B = { x: sh.x + Math.round(4 * S), y: sh.y + Math.round(3 * S) };
+    } else if (sw) {
+      // 手臂与同侧腿反相摆动，且摆动方向跟随朝向
+      var sa = Math.sin(e.phase), sb = Math.sin(e.phase + Math.PI);
+      A = { x: sh.x - armReach + Math.round(sa * d.stride * 0.8 * e.dir), y: hip.y + Math.round(2 * S) };
+      B = { x: sh.x + armReach + Math.round(sb * d.stride * 0.8 * e.dir), y: hip.y + Math.round(2 * S) };
+    } else {
+      A = { x: sh.x - armReach, y: hip.y + 1 };
+      B = { x: sh.x + armReach, y: hip.y + 1 };
+    }
+    // 手臂受伤 → 垂着不动
+    if (e.wound.arm > 0) A = { x: sh.x - Math.round(2 * S), y: hip.y + Math.round(3 * S) };
+    return { A: A, B: B };
+  }
+
+  /* ---------- 通用身体绘制（骨架点驱动，直立与倒地共用） ---------- */
+  function drawFigure(ctx, e, pts, arms, o) {
+    var S = e.S, d = o.d, R = e.ramp;
+    var main = R[2], dark = R[1], deep = R[0], lit = R[3], hi = R[4];
+    var pants = e.pants;
+    var hip = pts.hip, sh = pts.sh, head = pts.head;
+    var legW = Math.max(1, Math.round(3 * S * e.build.w));
+    var armW = Math.max(1, Math.round(2 * S));
+
+    /* 后腿：比前腿暗一档、细一档，制造前后景深；但不能用外套最深色，
+       否则和裤子色相差太大，膝盖处会「断开」成两根独立棍子 */
+    var backW = Math.max(1, legW - 1);
+    var backCol = shadeDown(pants);
+    linePx(ctx, hip.x - 1, hip.y, pts.kneeA.x, pts.kneeA.y, backW, backCol, 1);
+    linePx(ctx, pts.kneeA.x, pts.kneeA.y, pts.footA.x, pts.footA.y, backW, backCol, 1);
+    boot(ctx, pts.footA.x, pts.footA.y, S, e.dir, C.MT0);
+
+    /* 后臂（暗 + 细一档，与后腿一致地后退） */
+    linePx(ctx, sh.x - Math.round(2 * S), sh.y + 2, arms.A.x, arms.A.y, Math.max(1, armW - 1), deep, 1);
+    PS.dt(ctx, arms.A.x - 1, arms.A.y - 1, Math.max(1, Math.round(2 * S)), Math.max(1, Math.round(2 * S)), C.SK0, 1);
+
+    /* 背包 / 电台（在躯干之后） */
+    if (e.carry === 'backpack' || e.carry === 'radio') drawBackRig(ctx, e, sh, hip, S);
+
+    /* 躯干：下摆宽 → 收腰 → 肩略宽 → 圆肩收口 */
+    var tw = d.torsoW, skw = d.skirtW;
+    band(ctx, hip.x, hip.y, sh.x, sh.y, skw, tw, main, lit, deep, {
+      waist: 0.55, waistW: Math.max(3, Math.round(tw * 0.86)),
+      lit: 0.55, dark: 0.75
+    });
+    coatDetail(ctx, e, hip, sh, d, S);
+
+    /* 前腿（比后腿亮一档 + 粗一档，形成明确的前后关系） */
+    linePx(ctx, hip.x + 1, hip.y, pts.kneeB.x, pts.kneeB.y, legW, shadeOf(pants), 1);
+    linePx(ctx, pts.kneeB.x, pts.kneeB.y, pts.footB.x, pts.footB.y, legW, shadeOf(pants), 1);
+    boot(ctx, pts.footB.x, pts.footB.y, S, e.dir, C.MT1);
+
+    /* 头 + 帽子 + 脸 */
+    drawHead(ctx, e, head, sh, d, S, o.t);
+
+    /* 前臂 */
+    linePx(ctx, sh.x + Math.round(2 * S), sh.y + 2, arms.B.x, arms.B.y, armW, main, 1);
+    PS.dt(ctx, arms.B.x - 1, arms.B.y - 1, Math.max(1, Math.round(2 * S)), Math.max(1, Math.round(2 * S)), e.skin, 1);
+
+    /* 伤口血迹 */
+    var dmg = 1 - e.hp / 100;
+    if (dmg > 0.15) {
+      var spots = Math.floor(dmg * 6);
+      for (var k = 0; k < spots; k++) {
+        var ang = k * 2.3 + e.seed;
+        PS.dt(ctx, sh.x + Math.round(Math.sin(ang) * 3 * S), sh.y + 2 + k * 2,
+          Math.max(1, Math.round(2 * S)), Math.max(1, Math.round(2 * S)), C.BL2, 0.85);
+      }
+    }
+  }
+
+  /* 靴子：靴尖朝行进方向，是判断朝向最直观的像素。
+     之前只有 1px 高，在 39px 高的人物上几乎看不见，这里加厚成 2~3px */
+  function boot(ctx, fx, fy, S, dir, col) {
+    var bw = Math.max(3, Math.round(4.5 * S));
+    var bh = Math.max(2, Math.round(1.6 * S));
+    var x = Math.round(fx), y = Math.round(fy);
+    var bx = x - (dir > 0 ? Math.round(bw * 0.3) : Math.round(bw * 0.7));
+    // 鞋身
+    PS.rect(ctx, bx, y - bh + 1, bw, bh, col);
+    // 鞋帮受光
+    PS.dt(ctx, bx, y - bh + 1, bw, 1, C.MT2, 0.55);
+    // 鞋头：朝行进方向多伸 1~2px，是读朝向的关键
+    var tipX = dir > 0 ? bx + bw : bx - Math.max(1, Math.round(1.5 * S));
+    PS.rect(ctx, tipX, y - bh + 1, Math.max(1, Math.round(1.5 * S)), bh - 1, col);
+    PS.dt(ctx, dir > 0 ? tipX + Math.max(1, Math.round(1.5 * S)) - 1 : tipX, y - bh + 1,
+      Math.max(1, Math.round(1.5 * S)), 1, C.MT3, 0.7);
+  }
+
+  function shadeOf(col) {
+    // 给一个颜色找"更亮"的版本（简易查表）
+    switch (col) {
+      case C.CN0: return C.CN1; case C.CN1: return C.CN2;
+      case C.CT0: return C.CT1; case C.WD0: return C.WD1;
+      case C.MT1: return C.MT2;
+      default: return col;
+    }
+  }
+  /* 给裤子/衣物找「暗一档」的同色系版本——必须保持色相不变，
+     否则前后腿会在膝盖处断开 */
+  function shadeDown(col) {
+    switch (col) {
+      case C.CN2: return C.CN0; case C.CN1: return C.CN0;
+      case C.CT1: return C.CT0; case C.CT2: return C.CT1;
+      case C.WD1: return C.WD0; case C.WD2: return C.WD1;
+      case C.MT2: return C.MT1; case C.MT1: return C.MT0;
+      case C.BR1: return C.BR0;
+      default: return col;
+    }
+  }
+
+  /* 外套款式细节 */
+  function coatDetail(ctx, e, hip, sh, d, S) {
+    var R = e.ramp, main = R[2], dark = R[1], lit = R[3], hi = R[4];
+    var midY = Math.round((hip.y + sh.y) / 2);
+    var halfW = Math.max(2, Math.round(d.torsoW / 2));
+    var cx = Math.round((hip.x + sh.x) / 2);
+    var id = e.coat.id;
+
+    if (id === 'greatcoat') {
+      // 双排扣 + 腰带 + 肩章
+      for (var i = 0; i < 3; i++) {
+        var yy = sh.y + 2 + i * Math.max(2, Math.round(3 * S));
+        PS.dt(ctx, cx - 2, yy, 1, 1, hi, 0.8);
+        PS.dt(ctx, cx + 2, yy, 1, 1, hi, 0.8);
+      }
+      var by = sh.y + Math.round(d.torsoH * 0.62);
+      PS.dt(ctx, cx - halfW, by, halfW * 2, 1, C.MT0, 0.85);
+      PS.rect(ctx, cx - 1, by, Math.max(1, Math.round(2 * S)), 1, C.BR2M);
+      PS.dt(ctx, cx - halfW - 1, sh.y, halfW * 2 + 2, 1, e.fur[2], 0.9);
+    } else if (id === 'padded') {
+      // 横向绗缝
+      var rows = Math.max(2, Math.round(d.torsoH / Math.max(2, Math.round(3 * S))));
+      for (var r = 1; r < rows; r++) {
+        var ry = sh.y + Math.round(d.torsoH * r / rows);
+        PS.dt(ctx, cx - halfW, ry, halfW * 2, 1, dark, 0.9);
+        PS.dt(ctx, cx - halfW, ry - 1, halfW * 2, 1, lit, 0.35);
+      }
+      PS.dt(ctx, cx - halfW, sh.y, halfW * 2, 1, dark, 1);   // 立领
+    } else if (id === 'leather') {
+      // 皮衣：斜拉链 + 强高光
+      PS.dt(ctx, cx - halfW, sh.y + 1, Math.max(2, Math.round(3 * S)), Math.max(3, Math.round(d.torsoH * 0.7)), hi, 0.35);
+      for (var z = 0; z < Math.round(d.torsoH * 0.6); z++) {
+        PS.dt(ctx, cx + Math.round(z * 0.3), sh.y + 2 + z, 1, 1, hi, 0.7);
+      }
+      PS.dt(ctx, cx - halfW, sh.y, halfW * 2, 1, dark, 1);
+      PS.dt(ctx, cx - halfW, hip.y - 1, halfW * 2, 1, dark, 1);
+    } else if (id === 'wool') {
+      // 翻领 V 字 + 单排扣
+      for (var v = 0; v < Math.max(2, Math.round(4 * S)); v++) {
+        PS.dt(ctx, cx - v, sh.y + 1 + v, 1, 1, lit, 0.8);
+        PS.dt(ctx, cx + v, sh.y + 1 + v, 1, 1, lit, 0.8);
+      }
+      PS.dt(ctx, cx, midY, 1, Math.max(2, Math.round(4 * S)), hi, 0.6);
+    } else if (id === 'parka') {
+      // 毛领 + 下摆收紧 + 口袋
+      PS.dt(ctx, cx - halfW - 1, sh.y, halfW * 2 + 2, Math.max(2, Math.round(2 * S)), e.fur[1], 0.95);
+      PS.dt(ctx, cx - halfW - 1, sh.y, halfW * 2 + 2, 1, e.fur[3], 0.5);
+      PS.dt(ctx, cx - Math.round(3 * S), hip.y - Math.round(3 * S), Math.max(2, Math.round(3 * S)), 1, dark, 0.8);
+      PS.dt(ctx, cx + Math.round(1 * S), hip.y - Math.round(3 * S), Math.max(2, Math.round(3 * S)), 1, dark, 0.8);
+    } else {
+      // 雪地迷彩：不规则深色斑块
+      var rr = PS.mulberry32(Math.floor(e.seed) + 7);
+      for (var c = 0; c < 7; c++) {
+        var ox = Math.round((rr() - 0.5) * d.torsoW * 1.1);
+        var oy = Math.round(rr() * d.torsoH);
+        PS.dt(ctx, cx + ox, sh.y + oy, 1 + Math.floor(rr() * 2), 1 + Math.floor(rr() * 2), C.CT2, 0.55);
+      }
+      PS.dt(ctx, cx - halfW - 1, sh.y, halfW * 2 + 2, 1, C.SN7, 0.7);
+    }
+
+    // 肩章（军官大檐帽 / 钢盔 搭配）
+    if (e.hat === 'cap') {
+      PS.dt(ctx, cx - halfW, sh.y + 1, Math.max(2, Math.round(3 * S)), 1, C.BR2M, 0.7);
+      PS.dt(ctx, cx + halfW - Math.max(2, Math.round(3 * S)), sh.y + 1, Math.max(2, Math.round(3 * S)), 1, C.BR2M, 0.7);
+    }
+    // 敷料/绷带（受伤的）
+    if (e.wound.torso > 0) {
+      PS.dt(ctx, cx - 1, midY - 1, Math.max(2, Math.round(3 * S)), 2, C.SN6, 0.75);
+      PS.dt(ctx, cx - 1, midY, Math.max(2, Math.round(3 * S)), 1, C.BL3, 0.6);
+    }
+  }
+
+  function drawBackRig(ctx, e, sh, hip, S) {
+    var w = Math.max(2, Math.round(4 * S)), h = Math.max(3, Math.round(7 * S));
+    var x = sh.x - (e.dir > 0 ? w + 1 : -1);
+    var y = sh.y + 2;
+    if (e.carry === 'backpack') {
+      PS.rect(ctx, x, y, w, h, C.WD1);
+      PS.dt(ctx, x, y, w, 1, C.WD2, 0.8);
+      PS.dt(ctx, x + w - 1, y, 1, h, C.VOID, 0.7);
+      PS.dt(ctx, x, y + Math.round(h * 0.5), w, 1, C.CT0, 0.8);
+    } else {
+      // 电台：盒子 + 天线
+      PS.rect(ctx, x, y, w, Math.round(h * 0.8), C.MT1);
+      PS.dt(ctx, x, y, w, 1, C.MT3, 0.7);
+      var ax = x + Math.floor(w / 2);
+      PS.rect(ctx, ax, y - Math.max(3, Math.round(7 * S)), 1, Math.max(3, Math.round(7 * S)), C.MT3);
+      if (Math.sin(e.t * 3 + e.seed) > 0.6) PS.dt(ctx, ax, y - Math.max(3, Math.round(7 * S)), 1, 1, C.BL5, 1);
+    }
+  }
+
+  /* ---------- 头 / 帽子 / 脸 ---------- */
+  function drawHead(ctx, e, head, sh, d, S, t) {
+    var hw = d.headW, hh = d.headH;
+    var hx = Math.round(head.x - hw / 2), hy = Math.round(head.y - hh / 2);
+    var skin = e.skin;
+    var jaw = hy + Math.round(hh * 0.42);          // 下半张脸（下巴）起始行
+    var colW = Math.max(2, Math.round(2.6 * S));   // 脖子宽度
+
+    // 整个头：颅顶到下颌铺满，不留空档
+    PS.rect(ctx, hx, hy, hw, hh, skin);
+    // 后脑/上半部压暗一档，形成体积
+    PS.dt(ctx, hx, hy, hw, Math.round(hh * 0.42), C.SK0, 0.55);
+    // 脸部受光面 / 暗面
+    PS.dt(ctx, hx + hw - 1, hy + 1, 1, Math.round(hh * 0.7), C.SN7, 0.22);
+    PS.dt(ctx, hx, jaw, 1, hh - Math.round(hh * 0.42), C.VOID, 0.45);
+
+    // 脖子：够宽把头连到肩上
+    PS.rect(ctx, Math.round(head.x) - Math.floor(colW / 2), hy + hh - Math.max(1, Math.round(2 * S)),
+      colW, Math.max(2, Math.round(3 * S)), C.SK0);
+    PS.dt(ctx, Math.round(head.x) - Math.floor(colW / 2), hy + hh - Math.max(1, Math.round(2 * S)),
+      colW, 1, C.VOID, 0.4);
+
+    // 眼睛（朝行进方向）
+    var ex = e.dir > 0 ? hx + hw - 2 : hx + 1;
+    PS.rect(ctx, ex, hy + Math.round(hh * 0.62), 1, 1, C.VOID);
+
+    // 脸部细节
+    if (e.face === 'beard') PS.dt(ctx, hx, hy + Math.round(hh * 0.66), hw, Math.max(2, Math.round(3 * S)), e.fur[0], 0.85);
+    else if (e.face === 'mustache') PS.dt(ctx, hx, hy + Math.round(hh * 0.70), hw, 1, e.fur[0], 0.8);
+    else if (e.face === 'stubble') PS.dt(ctx, hx, hy + Math.round(hh * 0.72), hw, 1, C.SN3, 0.35);
+    else if (e.face === 'scarfMask') {
+      PS.rect(ctx, hx, hy + Math.round(hh * 0.55), hw, Math.max(2, Math.round(hh * 0.45)), C.CT1);
+      PS.dt(ctx, hx, hy + Math.round(hh * 0.55), hw, 1, C.CT3, 0.6);
+    } else if (e.face === 'goggles') {
+      PS.rect(ctx, hx, hy + Math.round(hh * 0.45), hw, Math.max(1, Math.round(2 * S)), C.MT2);
+      PS.dt(ctx, hx + 1, hy + Math.round(hh * 0.45) + 1, 1, 1, C.IC5, 0.8);
+      PS.dt(ctx, hx + hw - 2, hy + Math.round(hh * 0.45) + 1, 1, 1, C.IC5, 0.8);
+    }
+    // 女性长发
+    if (e.female && e.hat !== 'babushka' && e.hat !== 'scarf') {
+      PS.dt(ctx, hx - 1, hy + Math.round(hh * 0.4), 1, Math.max(2, Math.round(hh * 0.6)), C.BR2, 0.85);
+    }
+
+    // 帽子
+    var hatH = Math.max(1, Math.round(hh * 0.55));
+    switch (e.hat) {
+      case 'ushanka':
+        PS.rect(ctx, hx - 1, hy - 1, hw + 2, hatH, e.fur[1]);
+        PS.dt(ctx, hx - 1, hy - 1, hw + 2, 1, e.fur[2], 0.8);
+        PS.rect(ctx, hx - 1, hy + Math.round(hh * 0.45), 2, Math.max(1, Math.round(hh * 0.5)), e.fur[0]);
+        PS.rect(ctx, hx + hw - 1, hy + Math.round(hh * 0.45), 2, Math.max(1, Math.round(hh * 0.5)), e.fur[0]);
+        PS.dt(ctx, hx - 1, hy - 1, hw + 2, 1, C.SN6, 0.35);       // 帽上积雪
+        break;
+      case 'helmet':
+        PS.rect(ctx, hx - 1, hy - 1, hw + 2, hatH, C.MT2);
+        PS.dt(ctx, hx - 1, hy - 1, hw + 2, 1, C.MT4, 0.75);
+        PS.dt(ctx, hx - 2, hy + Math.round(hh * 0.4), hw + 4, 1, C.MT1, 1);   // 盔檐
+        PS.dt(ctx, hx - 1, hy - 1, hw + 2, 1, C.SN6, 0.4);
+        break;
+      case 'beanie':
+        PS.rect(ctx, hx - 1, hy - 1, hw + 2, hatH, e.ramp[1]);
+        PS.dt(ctx, hx - 1, hy - 1, hw + 2, 1, e.ramp[3], 0.7);
+        PS.rect(ctx, hx - 1, hy + hatH - 1, hw + 2, 1, e.ramp[2]);
+        PS.dt(ctx, hx, hy - 2, hw, 1, e.ramp[4], 0.6);
+        break;
+      case 'cap':
+        PS.rect(ctx, hx - 1, hy - 1, hw + 2, Math.max(1, Math.round(hh * 0.40)), C.CT1);
+        PS.rect(ctx, hx - 2, hy + Math.round(hh * 0.38), hw + 4, 1, C.MT0);    // 大檐
+        PS.dt(ctx, hx - 1, hy - 1, hw + 2, 1, C.CT3, 0.6);
+        PS.dt(ctx, hx + Math.floor(hw / 2), hy - 1, 1, Math.max(1, Math.round(hh * 0.3)), C.BR2M, 0.7);
+        break;
+      case 'hood':
+        PS.rect(ctx, hx - 1, hy - 1, hw + 2, Math.max(2, Math.round(hh * 0.72)), e.ramp[1]);
+        PS.dt(ctx, hx - 1, hy - 1, hw + 2, 2, e.ramp[3], 0.5);
+        PS.dt(ctx, hx - 1, hy - 1, hw + 2, 1, C.SN6, 0.5);
+        break;
+      case 'scarf':
+        PS.rect(ctx, hx - 1, hy - 1, hw + 2, Math.max(2, Math.round(hh * 0.62)), C.BR3);
+        PS.dt(ctx, hx - 1, hy - 1, hw + 2, 1, C.BR4, 0.6);
+        PS.dt(ctx, hx - 1, hy + Math.round(hh * 0.6), 2, Math.max(1, Math.round(2 * S)), C.BR2);
+        break;
+      case 'babushka':
+        PS.rect(ctx, hx - 1, hy - 1, hw + 2, Math.max(2, Math.round(hh * 0.66)), C.RED);
+        PS.dt(ctx, hx - 1, hy - 1, hw + 2, 1, C.BL4, 0.35);
+        PS.dt(ctx, hx - 2, hy + Math.round(hh * 0.5), 2, Math.max(1, Math.round(2 * S)), C.RED);
+        PS.dt(ctx, hx + hw, hy + Math.round(hh * 0.5), 2, Math.max(1, Math.round(2 * S)), C.RED);
+        break;
+      case 'bandage':
+        PS.rect(ctx, hx - 1, hy - 1, hw + 2, Math.max(2, Math.round(hh * 0.60)), C.SN5);
+        PS.dt(ctx, hx - 1, hy - 1, hw + 2, 1, C.SN7, 0.7);
+        PS.dt(ctx, hx - 1, hy + 1, hw + 2, 1, C.BL2, 0.55);
+        break;
+      default:  // bald
+        PS.dt(ctx, hx, hy - 1, hw, Math.max(1, Math.round(hh * 0.32)), C.SK0, 0.55);
+        PS.dt(ctx, hx, hy - 1, hw, 1, skin, 0.6);
+        break;
+    }
+
+    // 抽烟的火点
+    if (e.state === 'smoke') {
+      PS.dt(ctx, head.x + Math.round(2 * S) * e.dir, head.y + Math.round(1 * S), 1, 1,
+        Math.sin(t * 9) > 0 ? C.LP5 : C.LP3, 0.95);
+    }
+    // 头部中弹
+    if (e.wound.head > 0) {
+      PS.dt(ctx, hx, hy, hw, Math.max(2, Math.round(hh * 0.5)), C.BL2, 0.8);
+    }
+  }
+
+  /* ---------- 携带物（手上 / 身边） ---------- */
+  function drawCarry(ctx, e, pts, arms, d, t) {
+    var S = e.S, B = arms.B, A = arms.A;
+    switch (e.carry) {
+      case 'shovel':
+        linePx(ctx, B.x, B.y, B.x + Math.round(3 * S) * e.dir, B.y + Math.round(9 * S), 1, C.WD3, 1);
+        PS.rect(ctx, B.x + Math.round(2 * S) * e.dir, B.y + Math.round(8 * S), Math.max(2, Math.round(3 * S)), Math.max(2, Math.round(3 * S)), C.MT2);
+        break;
+      case 'bucket':
+        PS.rect(ctx, B.x - 1, B.y + 1, Math.max(3, Math.round(4 * S)), Math.max(3, Math.round(4 * S)), C.MT1);
+        PS.dt(ctx, B.x - 1, B.y + 1, Math.max(3, Math.round(4 * S)), 1, C.MT3, 0.8);
+        PS.dt(ctx, B.x, B.y, 1, 1, C.MT3, 1);
+        break;
+      case 'lantern':
+        PS.rect(ctx, B.x - 1, B.y + 1, 3, Math.max(3, Math.round(4 * S)), C.MT1);
+        PS.dt(ctx, B.x, B.y + 2, 1, Math.max(1, Math.round(2 * S)), C.LP4, 1);
+        PS.dt(ctx, B.x - 2, B.y, 5, 5, C.LP2, 0.10);
+        break;
+      case 'crutch':
+        linePx(ctx, A.x - 1, A.y - Math.round(6 * S), A.x - 1, pts.footA.y, 1, C.WD3, 1);
+        PS.rect(ctx, A.x - 2, A.y - Math.round(7 * S), 3, 1, C.WD2);
+        break;
+      case 'jerrycan':
+        PS.rect(ctx, B.x - 2, B.y + 1, Math.max(3, Math.round(5 * S)), Math.max(3, Math.round(5 * S)), C.CT1);
+        PS.dt(ctx, B.x - 2, B.y + 1, Math.max(3, Math.round(5 * S)), 1, C.CT3, 0.7);
+        PS.dt(ctx, B.x - 1, B.y + 1, 1, 1, C.MT2, 1);
+        break;
+      case 'satchel':
+        PS.rect(ctx, pts.hip.x + Math.round(3 * S) * (e.dir > 0 ? 1 : -1), pts.hip.y + 1,
+          Math.max(2, Math.round(3 * S)), Math.max(2, Math.round(4 * S)), C.WD1);
+        PS.dt(ctx, pts.hip.x + Math.round(3 * S) * (e.dir > 0 ? 1 : -1), pts.hip.y + 1,
+          Math.max(2, Math.round(3 * S)), 1, C.WD3, 0.6);
+        break;
+    }
+  }
+
+  /* ---------- 狗 ---------- */
+  function drawDog(ctx, e, ox, oy) {
+    var dg = e.dog, S = e.S;
+    var ph = dg.ph;
+    var dx = dg.dx;
+    if (dg.state === 'mourn') dx = -Math.round(7 * S) + Math.round(Math.sin(ph * 0.9) * 3);
+    var x = Math.round(ox + dx * (e.dir > 0 ? -1 : 1));
+    var y = Math.round(oy);
+    var bw = Math.max(3, Math.round(6 * S)), bh = Math.max(2, Math.round(3 * S));
+    var legSwing = Math.sin(ph) * 1.5;
+    // 身体
+    PS.rect(ctx, x - Math.round(bw / 2), y - bh - 2, bw, bh, C.WD1);
+    PS.dt(ctx, x - Math.round(bw / 2), y - bh - 2, bw, 1, C.WD3, 0.7);
+    // 腿
+    for (var i = 0; i < 2; i++) {
+      var lx = x - Math.round(bw / 2) + 1 + i * (bw - 2);
+      var sw2 = (i === 0 ? legSwing : -legSwing);
+      PS.rect(ctx, lx, y - 2, 1, Math.max(1, Math.round(2 * S) + (sw2 > 0 ? 1 : 0)), C.WD0);
+    }
+    // 头
+    var hx = x + Math.round(bw / 2) * (e.dir > 0 ? 1 : -1);
+    var hy = y - bh - Math.max(2, Math.round(3 * S));
+    PS.rect(ctx, hx - 1, hy, Math.max(2, Math.round(3 * S)), Math.max(2, Math.round(3 * S)), C.WD2);
+    PS.dt(ctx, hx - 1, hy, 1, 1, C.VOID, 0.8);    // 眼
+    // 耳 + 鼻
+    PS.dt(ctx, hx - 1, hy - 1, 1, 1, C.WD0, 1);
+    PS.dt(ctx, hx + Math.max(1, Math.round(2 * S)), hy + 1, 1, 1, C.VOID, 1);
+    // 尾巴
+    var tw = dg.state === 'mourn' ? -1 : Math.sin(ph * 2) * 2;
+    linePx(ctx, x - Math.round(bw / 2), y - bh - 2, x - Math.round(bw / 2) - 2, y - bh - 3 + tw, 1, C.WD2, 1);
+    // 嗅的时候低头
+    if (dg.state === 'sniff') PS.dt(ctx, hx, hy + Math.max(2, Math.round(3 * S)) + 1, 1, 1, C.SN5, 0.5);
+  }
+
+  /* ============================================================
+     倒地动画（10 种）
+     ============================================================ */
+  function drawFalling(ctx, e, x, t) {
+    drawDeathPose(ctx, e, x, e.lay, t, true);
+  }
+  function drawCorpse(ctx, e, x, t) {
+    drawDeathPose(ctx, e, x, 1, t, false);
+  }
+
+  function drawDeathPose(ctx, e, x, k, t, live) {
+    var S = e.S, d = dims(e);
+    var baseY = Math.round(e.baseY) + (e.dy || 0);
+    var type = e.deathType || 'back';
+
+    switch (type) {
+      case 'crumble': drawCrumble(ctx, e, x, baseY, k, d, t); break;
+      case 'kneel': drawKneelFall(ctx, e, x, baseY, k, d, t); break;
+      case 'slide': drawSlideFall(ctx, e, x, baseY, k, d, t); break;
+      case 'crawlDeath': drawCrawlDeath(ctx, e, x, baseY, k, d, t); break;
+      case 'overQuay': drawOverQuay(ctx, e, x, baseY, k, d, t); break;
+      case 'trip': drawTrip(ctx, e, x, baseY, k, d, t); break;
+      case 'fling': drawFling(ctx, e, x, baseY, k, d, t); break;
+      case 'spin': drawSpin(ctx, e, x, baseY, k, d, t); break;
+      default: drawTopple(ctx, e, x, baseY, k, d, t); break;   // back / forward
+    }
+
+    // 尸体上的落雪
+    if (!live && e.corpseSnow > 0) {
+      var p = pose(e);
+      var rr = PS.mulberry32(Math.floor(e.seed) + 3);
+      var n = Math.floor(e.corpseSnow * 26);
+      for (var i = 0; i < n; i++) {
+        PS.dt(ctx, x + Math.round((rr() - 0.5) * 20 * S), baseY - Math.round(rr() * 7 * S), 1, 1, C.SN7, 0.5 + rr() * 0.4);
+      }
+    }
+  }
+
+  /* 旋转倒地：以脚为轴把整根身体转过去 */
+  function rotatedPts(e, x, baseY, ang, dirs, d, lift) {
+    var L = d.legL + d.torsoH + d.headH;
+    var ax = x, ay = baseY - lift;
+    function P(u) {
+      return { x: ax + Math.sin(ang) * dirs * u * L, y: ay - Math.cos(ang) * u * L };
+    }
+    var uKnee = (d.legL * 0.5) / L, uHip = d.legL / L;
+    var uSh = (d.legL + d.torsoH) / L, uHead = (d.legL + d.torsoH + d.headH * 0.55) / L;
+    return {
+      footA: P(0), footB: P(0),
+      kneeA: P(uKnee), kneeB: P(uKnee),
+      hip: P(uHip), sh: P(uSh), head: P(uHead)
+    };
+  }
+  function fallenArms(e, pts, d, ang, dirs) {
+    var S = e.S, sh = pts.sh;
+    var spread = Math.max(3, Math.round(6 * S));
+    var nx = Math.cos(ang), ny = Math.sin(ang);
+    return {
+      A: { x: sh.x - nx * spread * 0.4 - dirs * spread * 0.7, y: sh.y - ny * spread * 0.4 + spread * 0.5 },
+      B: { x: sh.x + nx * spread * 0.4 + dirs * spread * 0.7, y: sh.y + ny * spread * 0.4 + spread * 0.5 }
+    };
+  }
+
+  function drawTopple(ctx, e, x, baseY, k, d, t) {
+    var ang = ease(k) * Math.PI / 2;
+    var dirs = e.deathDir;
+    var lift = Math.round(3 * e.S);
+    var pts = rotatedPts(e, x, baseY, ang, dirs, d, lift * Math.sin(ang));
+    drawFigure(ctx, e, pts, fallenArms(e, pts, d, ang, dirs), { d: d, t: t });
+  }
+
+  function drawSpin(ctx, e, x, baseY, k, d, t) {
+    // 侧向翻转：躯干宽度先收窄再张开，同时后仰
+    var ang = ease(k) * Math.PI / 2;
+    var squash = Math.abs(Math.cos(k * Math.PI));
+    var d2 = {
+      headW: Math.max(2, Math.round(d.headW * (0.45 + 0.55 * squash))),
+      headH: d.headH, torsoH: d.torsoH,
+      torsoW: Math.max(2, Math.round(d.torsoW * (0.35 + 0.65 * squash))),
+      skirtW: Math.max(3, Math.round(d.skirtW * (0.35 + 0.65 * squash))),
+      armL: d.armL, legL: d.legL, stride: d.stride, lift: d.lift
+    };
+    var pts = rotatedPts(e, x, baseY, ang, e.deathDir, d2, Math.round(3 * e.S) * Math.sin(ang));
+    drawFigure(ctx, e, pts, fallenArms(e, pts, d2, ang, e.deathDir), { d: d2, t: t });
+  }
+
+  function drawFling(ctx, e, x, baseY, k, d, t) {
+    // 被冲击力掀翻：腾空翻转 → 重重砸地。
+    // 注意：倾角终点必须是 π/2（躺平）；若转到 2π 会「转一圈又站起来」。
+    var ang = ease(k) * Math.PI / 2;
+    var dirs = e.deathDir;
+    // 腾空段身体蜷缩，落地摊开
+    var tuck = Math.sin(k * Math.PI);
+    var d2 = {
+      headW: d.headW, headH: d.headH, torsoH: Math.max(3, Math.round(d.torsoH * (1 - tuck * 0.22))),
+      torsoW: d.torsoW, skirtW: d.skirtW,
+      armL: d.armL, legL: Math.max(2, Math.round(d.legL * (1 - tuck * 0.30))),
+      stride: d.stride, lift: d.lift
+    };
+    var pts = rotatedPts(e, x, baseY, ang, dirs, d2, Math.round(3 * e.S) * Math.sin(ang));
+    drawFigure(ctx, e, pts, fallenArms(e, pts, d2, ang, dirs), { d: d2, t: t });
+  }
+
+  function drawTrip(ctx, e, x, baseY, k, d, t) {
+    // 绊倒：向前扑翻滚，最后面朝下趴着（终点 π/2）
+    var ang = ease(k) * Math.PI / 2;
+    var dirs = e.dir;
+    var tuck = Math.sin(k * Math.PI);
+    var d2 = {
+      headW: d.headW, headH: d.headH, torsoH: Math.max(3, Math.round(d.torsoH * (1 - tuck * 0.28))),
+      torsoW: d.torsoW, skirtW: d.skirtW,
+      armL: d.armL, legL: Math.max(2, Math.round(d.legL * (1 - tuck * 0.34))),
+      stride: d.stride, lift: d.lift
+    };
+    var pts = rotatedPts(e, x, baseY, ang, dirs, d2, Math.round(3 * e.S) * Math.sin(ang));
+    drawFigure(ctx, e, pts, fallenArms(e, pts, d2, ang, dirs), { d: d2, t: t });
+    // 翻滚时四肢甩开
+    if (tuck > 0.4) {
+      PS.dt(ctx, pts.sh.x + Math.round(dirs * 5 * e.S), baseY - Math.round(2 * e.S), 2, 1, C.MT0, 0.8);
+    }
+  }
+
+  function drawCrumble(ctx, e, x, baseY, k, d, t) {
+    // 原地瘫软：逐段压缩成一堆（爆头/致命的典型）
+    var S = e.S, kk = ease(k);
+    // 终点必须是一「滩」而不是一「个」：腿几乎归零、躯干压到 1/3、
+    // 头也一起塌下去，否则会读成「跪着」或「还站着」。
+    var legL = Math.max(1, Math.round(d.legL * (1 - kk * 0.94)));
+    var torsoH = Math.max(2, Math.round(d.torsoH * (1 - kk * 0.62)));
+    var headH = Math.max(2, Math.round(d.headH * (1 - kk * 0.55)));
+    var hipY = baseY - legL;
+    var shY = hipY - torsoH;
+    var headY = shY - headH;
+    var slump = Math.round(kk * 4 * S) * e.deathDir;
+    var pts = {
+      footA: { x: x - Math.round(2 * S), y: baseY }, footB: { x: x + Math.round(2 * S), y: baseY },
+      kneeA: { x: x - Math.round(3 * S), y: baseY - Math.round(legL * 0.4) },
+      kneeB: { x: x + Math.round(3 * S), y: baseY - Math.round(legL * 0.4) },
+      hip: { x: x + Math.round(slump * 0.3), y: hipY },
+      sh: { x: x + Math.round(slump * 0.7), y: shY },
+      head: { x: x + Math.round(slump * 1.1), y: headY + Math.round((d.headH - headH) * 0.5) }
+    };
+    var arms = {
+      A: { x: pts.sh.x - Math.round(4 * S), y: baseY - 1 },
+      B: { x: pts.sh.x + Math.round(4 * S), y: baseY - 1 }
+    };
+    var d2 = {
+      headW: d.headW, headH: headH,
+      torsoH: torsoH, torsoW: d.torsoW, skirtW: Math.max(4, Math.round(d.skirtW * (1 - kk * 0.15))),
+      armL: d.armL, legL: legL, stride: d.stride, lift: d.lift
+    };
+    drawFigure(ctx, e, pts, arms, { d: d2, t: t });
+    // 头垂下来
+    if (kk > 0.5) PS.dt(ctx, pts.head.x - 1, pts.head.y + Math.round(d.headH * 0.3), Math.max(2, Math.round(3 * S)), 2, C.BL2, 0.7);
+  }
+
+  function drawKneelFall(ctx, e, x, baseY, k, d, t) {
+    // 跪倒：先双膝着地，上身再往前扑
+    var S = e.S, dirs = e.deathDir;
+    var k1 = clamp(k / 0.55, 0, 1), k2 = clamp((k - 0.5) / 0.5, 0, 1);
+    var kneeDrop = ease(k1);
+    var legL = Math.max(2, Math.round(d.legL * (1 - kneeDrop * 0.62)));
+    var hipY = baseY - legL;
+    var torsoAng = ease(k2) * Math.PI / 2;
+    var torsoH = d.torsoH;
+    var shY = hipY - Math.cos(torsoAng) * torsoH;
+    var shX = x + Math.sin(torsoAng) * dirs * torsoH;
+    var headY = shY - Math.cos(torsoAng) * d.headH;
+    var headX = shX + Math.sin(torsoAng) * dirs * d.headH * 0.7;
+    var pts = {
+      footA: { x: x - Math.round(2 * S), y: baseY }, footB: { x: x + Math.round(2 * S), y: baseY },
+      kneeA: { x: x - Math.round(3 * S) - Math.round(kneeDrop * 2 * S) * dirs, y: baseY - 1 },
+      kneeB: { x: x + Math.round(3 * S), y: baseY - 1 },
+      hip: { x: x + Math.round(kneeDrop * 1 * S) * dirs, y: hipY },
+      sh: { x: shX, y: shY },
+      head: { x: headX, y: headY + Math.round(d.headH * 0.2) }
+    };
+    var arms = {
+      A: { x: shX - Math.round(3 * S), y: baseY - Math.round(2 * S) },
+      B: { x: shX + Math.round(4 * S) * dirs, y: shY + Math.round(5 * S) }
+    };
+    drawFigure(ctx, e, pts, arms, { d: d, t: t });
+  }
+
+  function drawSlideFall(ctx, e, x, baseY, k, d, t) {
+    // 沿掩体滑落：蹲姿 → 侧躺，脚往前溜
+    var S = e.S, dirs = e.deathDir, kk = ease(k);
+    var slide = Math.round(kk * 7 * S) * dirs;
+    var legL = Math.max(2, Math.round(d.legL * (1 - kk * 0.85)));
+    var hipY = baseY - legL;
+    var leanAng = kk * Math.PI / 2.2;
+    var shY = hipY - Math.cos(leanAng) * d.torsoH;
+    var shX = x + slide * 0.4 + Math.sin(leanAng) * dirs * d.torsoH;
+    var headX = shX + Math.sin(leanAng) * dirs * d.headH * 0.8;
+    var headY = shY - Math.cos(leanAng) * d.headH * 0.8;
+    var pts = {
+      footA: { x: x - Math.round(2 * S) + slide, y: baseY }, footB: { x: x + Math.round(3 * S) + slide, y: baseY },
+      kneeA: { x: x - Math.round(2 * S) + slide * 0.5, y: baseY - Math.round(legL * 0.5) },
+      kneeB: { x: x + Math.round(3 * S) + slide * 0.5, y: baseY - Math.round(legL * 0.5) },
+      hip: { x: x + slide * 0.4, y: hipY },
+      sh: { x: shX, y: shY },
+      head: { x: headX, y: headY + Math.round(d.headH * 0.2) }
+    };
+    var arms = {
+      A: { x: shX - Math.round(4 * S), y: shY + Math.round(6 * S) },
+      B: { x: shX + Math.round(3 * S), y: shY + Math.round(7 * S) }
+    };
+    drawFigure(ctx, e, pts, arms, { d: d, t: t });
+  }
+
+  function drawCrawlDeath(ctx, e, x, baseY, k, d, t) {
+    // 爬不动了：前臂一软，脸砸进雪里
+    var S = e.S, kk = ease(k), dr = e.dir;      // 爬行方向 = 爬行时的朝向
+    var low = Math.round(d.legL * 0.12);
+    var hipY = baseY - low;
+    var shY = hipY - Math.max(2, Math.round(d.torsoH * (1 - kk * 0.55)));
+    var headDrop = Math.round(kk * d.headH * 0.9);
+    var pts = {
+      footA: { x: x - Math.round(6 * S) * dr, y: baseY }, footB: { x: x - Math.round(4 * S) * dr, y: baseY - 1 },
+      kneeA: { x: x - Math.round(7 * S) * dr, y: baseY - 1 }, kneeB: { x: x - Math.round(6 * S) * dr, y: baseY - 1 },
+      hip: { x: x - Math.round(2 * S) * dr, y: hipY },
+      sh: { x: x + Math.round(2 * S) * dr, y: shY },
+      head: { x: x + Math.round(5 * S) * dr, y: shY - Math.max(1, Math.round(d.headH * 0.35)) + headDrop }
+    };
+    var arms = {
+      A: { x: x - Math.round(1 * S) * dr, y: baseY - 1 },
+      B: { x: x + Math.round(7 * S) * dr, y: baseY - 1 + Math.round((1 - kk) * 3) }
+    };
+    drawFigure(ctx, e, pts, arms, { d: d, t: t });
+  }
+
+  function drawOverQuay(ctx, e, x, baseY, k, d, t) {
+    // 翻过石堤坠向河面
+    var S = e.S, dirs = e.deathDir;
+    var k1 = clamp(k / 0.55, 0, 1), k2 = clamp((k - 0.55) / 0.45, 0, 1);
+    // 向后翻过堤沿 → 之后一路坠到河面；倾角停在 π/2（躺平），靠 dy 表现坠落
+    var ang = ease(k1) * Math.PI / 2;
+    var y = baseY;
+    var pts = rotatedPts(e, x, y, ang, dirs, d, 0);
+    drawFigure(ctx, e, pts, fallenArms(e, pts, d, ang, dirs), { d: d, t: t });
+    // 落水后：只露出一部分 + 水花
+    if (k2 > 0.6) {
+      var wy = G.RIVER_TOP + 1;
+      if (baseY > wy - 4) {
+        PS.dt(ctx, x - Math.round(7 * S), wy - 1, Math.round(14 * S), 3, C.WT3, 0.5);
+      }
+    }
+  }
+
+  function ease(t) {
+    // 起手慢、中间加速、落地沉（重力感）
+    return t * t * (3 - 2 * t) * 0.35 + Math.pow(t, 1.6) * 0.65;
+  }
+
+  /* ============================================================
+     刷怪
+     ============================================================ */
+  E.DESIRED = 16;
+  E.spawnTimer = 0;
+  E.tickSpawn = function (dt) {
+    E.spawnTimer -= dt;
+    if (E.spawnTimer > 0) return;
+    E.spawnTimer = 0.5 + Math.random() * 1.1;
+    if (list.length >= E.DESIRED) return;
+    var fromLeft = chance(0.5);
+    make(Math.random(), fromLeft ? 1 : -1, fromLeft ? -14 : PW + 14);
+  };
+
+  /* ============================================================
+     统计
+     ============================================================ */
+  E.stat = function () {
+    var alive = 0, fleeing = 0, hiding = 0, down = 0;
+    for (var i = 0; i < list.length; i++) {
+      var e = list[i];
+      if (e.dead || e.state === 'corpse') { down++; continue; }
+      alive++;
+      if (e.state === 'run' || e.state === 'hide' || e.state === 'startle') fleeing++;
+      if (e.state === 'cower') hiding++;
+    }
+    return { alive: alive, fleeing: fleeing, hiding: hiding, down: down };
+  };
+
+})(window.PS);
+
+</script>
+  <!-- ==== game.js ==== -->
+<script>
+/* ============================================================
+   GAME — 主循环 / 输入 / 栓动狙击枪 / HUD / 任务流程
+   ============================================================ */
+(function (PS) {
+  'use strict';
+  var C = PS.C, PW = PS.PW, PH = PS.PH, FX = PS.FX, E = PS.Enemy, G = PS.GEO;
+  var W = PS.World;
+
+  var cv, ctx, stage;
+  var Game = PS.Game = {};
+  var T = 0, lastMs = 0, lastPaint = 0;
+
+  /* ---------- 画质档位 ---------- */
+  var QUALITY = {
+    low:    { fps: 30, snow: 60,  scan: false, clouds: false, windows: false, searchlight: false, smoke: false, lamps: false, river: false },
+    midlow: { fps: 45, snow: 120, scan: false, clouds: true,  windows: true,  searchlight: false, smoke: false, lamps: true,  river: true },
+    mid:    { fps: 60, snow: 200, scan: true,  clouds: true,  windows: true,  searchlight: true,  smoke: true,  lamps: true,  river: true },
+    high:   { fps: 60, snow: 320, scan: true,  clouds: true,  windows: true,  searchlight: true,  smoke: true,  lamps: true,  river: true }
+  };
+  function loadQuality() {
+    try {
+      var q = localStorage.getItem('lewu_ps_quality');
+      if (QUALITY[q]) return q;
+    } catch (e) {}
+    return 'midlow';
+  }
+
+  /* ---------- 状态 ---------- */
+  var S = {
+    mode: 'brief',            // brief | play | over
+    aimX: PW * 0.5, aimY: 168,
+    mag: 5, MAG: 5,
+    cycle: 0, cycleDur: 1.05,
+    reload: 0, reloadDur: 2.3,
+    holdBreath: false, stamina: 1,
+    shake: 0, flash: 0, kick: 0,
+    kills: 0, head: 0, shots: 0, hits: 0, missed: 0,
+    startT: 0, endT: 0,
+    target: 20,
+    wind: 0, windTarget: 0, windT: 0,
+    tracer: null,
+    msg: '', msgT: 0,
+    soundOn: true,
+    quality: loadQuality()
+  };
+  Game.S = S;
+
+  var buttons = [
+      { id: 'fire', x: PW - 96, y: PH - 40, w: 86, h: 30, label: 'FIRE', kind: 'big' },
+      { id: 'reload', x: PW - 152, y: PH - 40, w: 52, h: 30, label: 'RLD', kind: 'mid' },
+      { id: 'sound', x: PW - 30, y: 10, w: 22, h: 16, label: 'SND', kind: 'sml' },
+      { id: 'city', x: PW - 56, y: 10, w: 22, h: 16, label: 'MAP', kind: 'sml' }
+    ];
+  var scopeCv, scanCv;              // 瞄具视野暗角（代替画枪：不出现枪身）
+  var snow = [];
+  var MUZZLE = { x: PW * 0.82, y: PH + 34 };   // 射手在画面外右下方
+
+  /* ============================================================
+     初始化
+     ============================================================ */
+  Game.init = function () {
+    cv = document.getElementById('scene');
+    cv.width = PW; cv.height = PH;
+    ctx = cv.getContext('2d', { alpha: false });
+    ctx.imageSmoothingEnabled = false;
+
+    FX.init();
+    buildStatic();
+    W.build();
+    seedSnow();
+    var qbar = document.querySelector('.qbar');
+    if (qbar) {
+      syncQualityUI();
+      qbar.addEventListener('click', function (e) {
+        var b = e.target.closest('button[data-q]');
+        if (b) applyQuality(b.getAttribute('data-q'));
+      });
+    }
+    E.reset();
+    for (var i = 0; i < 8; i++) E.tickSpawn(9);
+
+    // 按钮（内部像素坐标）
+    buttons = [
+      { id: 'fire', x: PW - 74, y: PH - 32, w: 66, h: 24, label: 'FIRE', kind: 'big' },
+      { id: 'reload', x: PW - 116, y: PH - 32, w: 40, h: 24, label: 'RLD', kind: 'mid' },
+      { id: 'sound', x: PW - 26, y: 8, w: 18, h: 14, label: 'SND', kind: 'sml' },
+      { id: 'city', x: PW - 48, y: 8, w: 18, h: 14, label: 'MAP', kind: 'sml' }
+    ];
+
+    bindInput();
+    requestAnimationFrame(loop);
+  };
+
+  /* ---------- 静态资源 ---------- */
+  function buildStatic() {
+    // 瞄具视野：圆形暗角（玩家是通过瞄具在看，画面里不出现枪）
+    scopeCv = PS.layer(PW, PH, function (g) {
+      var cx = PW * 0.5, cy = PH * 0.50, R = 300;
+      for (var y = 0; y < PH; y++) {
+        for (var x = 0; x < PW; x++) {
+          var dx = (x - cx) / R, dy = (y - cy) / (R * 0.86);
+          var d = Math.sqrt(dx * dx + dy * dy);
+          if (d < 0.66) continue;
+          var lv = Math.min(0.86, (d - 0.66) * 2.6);
+          PS.dt(g, x, y, 1, 1, C.VOID, lv);
+        }
+      }
+      // 镜筒内缘的一圈极淡反光
+      for (var a = 0; a < 720; a++) {
+        var ang = a / 720 * 6.2832;
+        var rx = cx + Math.cos(ang) * R * 0.665;
+        var ry = cy + Math.sin(ang) * R * 0.86 * 0.665;
+        if (rx >= 0 && rx < PW && ry >= 0 && ry < PH) PS.dt(g, rx, ry, 1, 1, C.SN4, 0.10);
+      }
+    });
+    scanCv = PS.layer(PW, PH, function (g) {
+      for (var y = 0; y < PH; y += 3) PS.dt(g, 0, y, PW, 1, C.VOID, 0.06);
+    });
+  }
+
+  /* ---------- 画质 ---------- */
+  function qualityCfg() { return QUALITY[S.quality] || QUALITY.midlow; }
+
+  function makeFlake() {
+    return {
+      x: PS.MR(-10, PW + 10), y: PS.MR(0, PH),
+      d: Math.random(), ph: Math.random() * 6.28,
+      r: Math.random() < 0.12 ? 2 : 1
+    };
+  }
+
+  function syncQualityUI() {
+    var btns = document.querySelectorAll('.qopts button[data-q]');
+    Array.prototype.forEach.call(btns, function (b) {
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-q') === S.quality));
+    });
+  }
+
+  function applyQuality(name) {
+    if (!QUALITY[name]) name = 'midlow';
+    S.quality = name;
+    var n = qualityCfg().snow;
+    if (snow.length > n) snow.length = n;
+    while (snow.length < n) snow.push(makeFlake());
+    syncQualityUI();
+    try { localStorage.setItem('lewu_ps_quality', name); } catch (e) {}
+  }
+  Game.applyQuality = applyQuality;
+
+  /* ---------- 雪 ---------- */
+  function seedSnow() {
+    snow.length = 0;
+    for (var i = 0; i < qualityCfg().snow; i++) snow.push(makeFlake());
+  }
+
+  /* ============================================================
+     输入
+     ============================================================ */
+  function toLocal(clientX, clientY) {
+    var r = cv.getBoundingClientRect();
+    return {
+      x: (clientX - r.left) / r.width * PW,
+      y: (clientY - r.top) / r.height * PH
+    };
+  }
+
+  function bindInput() {
+    function hitBtn(p) {
+      for (var i = 0; i < buttons.length; i++) {
+        var b = buttons[i];
+        if (p.x >= b.x && p.x < b.x + b.w && p.y >= b.y && p.y < b.y + b.h) return b;
+      }
+      return null;
+    }
+
+    cv.addEventListener('mousemove', function (ev) {
+      var p = toLocal(ev.clientX, ev.clientY);
+      S.aimX = p.x; S.aimY = p.y;
+    });
+    cv.addEventListener('mousedown', function (ev) {
+      PS.Audio.unlock();
+      if (S.soundOn) PS.Audio.startWind();
+      var p = toLocal(ev.clientX, ev.clientY);
+      var b = hitBtn(p);
+      if (b) { press(b); return; }
+      S.aimX = p.x; S.aimY = p.y;
+      if (S.mode === 'brief') { startGame(); return; }
+      if (S.mode === 'over') { restart(); return; }
+      fire();
+    });
+    cv.addEventListener('contextmenu', function (ev) {
+      ev.preventDefault();
+      S.holdBreath = true;
+    });
+    window.addEventListener('mouseup', function () { S.holdBreath = false; });
+
+    cv.addEventListener('touchstart', function (ev) {
+      ev.preventDefault();
+      PS.Audio.unlock();
+      if (S.soundOn) PS.Audio.startWind();
+      var tp = ev.changedTouches[0];
+      var p = toLocal(tp.clientX, tp.clientY);
+      var b = hitBtn(p);
+      if (b) { press(b); return; }
+      S.aimX = p.x; S.aimY = p.y;
+      if (S.mode === 'brief') startGame();
+      else if (S.mode === 'over') restart();
+    }, { passive: false });
+    cv.addEventListener('touchmove', function (ev) {
+      ev.preventDefault();
+      var tp = ev.changedTouches[0];
+      var p = toLocal(tp.clientX, tp.clientY);
+      S.aimX = p.x; S.aimY = p.y;
+    }, { passive: false });
+
+    window.addEventListener('keydown', function (ev) {
+      var k = ev.key.toLowerCase();
+      if (k === ' ' || k === 'enter') {
+        ev.preventDefault();
+        if (S.mode === 'brief') startGame();
+        else if (S.mode === 'over') restart();
+        else fire();
+      }
+      if (k === 'r') reload();
+      if (k === 'shift') S.holdBreath = true;
+      if (k === 'm') { S.soundOn = PS.Audio.toggle(); if (S.soundOn) PS.Audio.startWind(); }
+      // 微调瞄准（狙击校准）
+      if (k === 'arrowleft') S.aimX -= ev.shiftKey ? 0.2 : 1;
+      if (k === 'arrowright') S.aimX += ev.shiftKey ? 0.2 : 1;
+      if (k === 'arrowup') S.aimY -= ev.shiftKey ? 0.2 : 1;
+      if (k === 'arrowdown') S.aimY += ev.shiftKey ? 0.2 : 1;
+    });
+    window.addEventListener('keyup', function (ev) {
+      if (ev.key === 'Shift') S.holdBreath = false;
+    });
+  }
+
+  function press(b) {
+    PS.Audio.ui();
+    if (b.id === 'fire') {
+      if (S.mode === 'brief') { startGame(); return; }
+      if (S.mode === 'over') { restart(); return; }
+      fire();
+    } else if (b.id === 'reload') {
+      reload();
+    } else if (b.id === 'sound') {
+      S.soundOn = PS.Audio.toggle();
+      if (S.soundOn) PS.Audio.startWind();
+    } else if (b.id === 'city') {
+      W.build();
+      FX.init();
+    }
+  }
+
+  function startGame() {
+    S.mode = 'play';
+    S.startT = T;
+    S.kills = 0; S.head = 0; S.shots = 0; S.hits = 0; S.missed = 0;
+    S.mag = S.MAG; S.cycle = 0; S.reload = 0;
+    E.reset(); FX.init();
+    for (var i = 0; i < 7; i++) E.tickSpawn(9);
+    say('ENGAGE');
+  }
+  function restart() { S.mode = 'brief'; }
+
+  function say(m, dur) { S.msg = m; S.msgT = dur || 2; }
+
+  /* ============================================================
+     射击
+     ============================================================ */
+  function fire() {
+    if (S.mode !== 'play') return;
+    if (S.reload > 0) return;
+    if (S.cycle > 0) { PS.Audio.dry(); return; }
+    if (S.mag <= 0) { PS.Audio.dry(); say('NO ROUNDS'); reload(); return; }
+
+    S.mag--;
+    S.shots++;
+    S.cycle = S.cycleDur;
+    S.shake = 3.6;
+    S.flash = 2;
+    S.kick = 1;                 // 后坐：准星上跳并张开
+    PS.Audio.shot();
+
+    // 射手在画面外，弹道自右下角进入
+    var mz = MUZZLE;
+    // 弹着点 = 准星 + 晃动 + 风偏
+    var fp = firePoint();
+    var px = Math.floor(fp.x), py = Math.floor(fp.y);
+
+    var blocked = isBlocked(px, py);
+    var hit = blocked ? null : E.hitTest(px, py);
+
+    if (hit) {
+      S.hits++;
+      var fatal;
+      if (hit.part === 'head') {
+        S.head++;
+        fatal = E.hurt(hit.e, 'head', 200, 1, 0.25);
+        PS.Audio.hitHead();
+        say(hit.part === 'head' ? 'HEADSHOT' : '', 1.4);
+      } else {
+        fatal = E.hurt(hit.e, hit.part, hit.part === 'torso' ? 55 : 25, 1, 0.25);
+        PS.Audio.hitBody();
+      }
+      if (fatal) {
+        S.kills++;
+        if (S.kills >= S.target) setTimeout(finish, 900);
+      }
+      E.noise(px, py, 150, true);
+      FX.impact(px, py, 'snow', 1);
+    } else {
+      S.missed++;
+      var mat = materialAt(px, py, blocked);
+      FX.impact(px, py, mat, 1);
+      if (mat === 'water') PS.Audio.splash(); else PS.Audio.impact(mat === 'stone' || mat === 'metal');
+      E.noise(px, py, 110, false);
+    }
+
+    S.tracer = { x0: mz.x, y0: mz.y, x1: px, y1: py, t: 0, life: 0.14 };
+    if (S.mag === 0) reload();
+  }
+
+  function reload() {
+    if (S.mode !== 'play' || S.reload > 0 || S.mag === S.MAG) return;
+    S.reload = S.reloadDur;
+    PS.Audio.load();
+    say('RELOADING', 1.2);
+  }
+
+  // 准星实际偏移
+  function firePoint() {
+    var sw = swayAmp();
+    var sx = (Math.sin(T * 1.15) * 1.7 + Math.sin(T * 2.71 + 1.3) * 0.9) * sw;
+    var sy = (Math.cos(T * 0.93) * 1.3 + Math.sin(T * 3.31) * 0.6) * sw;
+    return {
+      x: S.aimX + sx + S.wind,
+      y: S.aimY + sy
+    };
+  }
+  function swayAmp() {
+    var base = 1;
+    if (S.holdBreath && S.stamina > 0) base *= 0.32;
+    return base;
+  }
+
+  function isBlocked(x, y) {
+    var cs = W.covers;
+    for (var i = 0; i < cs.length; i++) {
+      var c = cs[i];
+      if (x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h) return true;
+    }
+    return false;
+  }
+
+  function materialAt(x, y, blocked) {
+    if (blocked) return 'stone';
+    if (y >= G.RIVER_TOP && y < G.RIVER_BOT) return 'water';
+    if (y >= G.NEAR_TOP && y < G.NEAR_GND) return 'ice';
+    if (y >= G.QUAY_TOP && y < G.QUAY_BOT) return 'stone';
+    if (y >= G.NEAR_GND) return 'snow';
+    if (y >= G.CITY_BASE) return 'snow';
+    return 'stone';
+  }
+
+  function finish() {
+    if (S.mode !== 'play') return;
+    S.mode = 'over';
+    S.endT = T;
+  }
+
+  /* ============================================================
+     主循环
+     ============================================================ */
+  function loop(ms) {
+    var dt = lastMs ? Math.min(0.05, (ms - lastMs) / 1000) : 0.016;
+    lastMs = ms;
+    T += dt;
+    update(dt);
+    // 按画质档位限制绘制帧率；逻辑仍然每帧更新，操作不会变顿
+    var interval = 1000 / qualityCfg().fps;
+    if (!lastPaint || ms - lastPaint >= interval - 0.5) {
+      render();
+      lastPaint = ms;
+    }
+    requestAnimationFrame(loop);
+  }
+
+  function update(dt) {
+    FX._now = T;
+
+    // 风：缓慢变化
+    S.windT -= dt;
+    if (S.windT <= 0) { S.windT = 4 + Math.random() * 7; S.windTarget = (Math.random() - 0.5) * 5.2; }
+    S.wind += (S.windTarget - S.wind) * Math.min(1, dt * 0.6);
+
+    // 屏息耐力
+    if (S.holdBreath && S.mode === 'play') S.stamina = Math.max(0, S.stamina - dt * 0.22);
+    else S.stamina = Math.min(1, S.stamina + dt * 0.14);
+
+    if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * 14);
+    if (S.flash > 0) S.flash -= dt * 22;
+    if (S.kick > 0) S.kick = Math.max(0, S.kick - dt * 3.4);
+    if (S.msgT > 0) S.msgT -= dt;
+    if (S.tracer) { S.tracer.t += dt; if (S.tracer.t > S.tracer.life) S.tracer = null; }
+
+    if (S.mode === 'play') {
+      if (S.cycle > 0) {
+        var before = S.cycle;
+        S.cycle -= dt;
+        if (before > S.cycleDur * 0.62 && S.cycle <= S.cycleDur * 0.62) PS.Audio.bolt();
+        if (S.cycle <= 0) S.cycle = 0;
+      }
+      if (S.reload > 0) {
+        S.reload -= dt;
+        if (S.reload <= 0) { S.reload = 0; S.mag = S.MAG; PS.Audio.load(); }
+      }
+      E.tickSpawn(dt);
+      E.update(dt, T);
+    }
+    FX.update(dt, T);
+
+    // 雪
+    for (var i = 0; i < snow.length; i++) {
+      var f = snow[i];
+      f.y += (10 + f.d * 34) * dt;
+      f.x += (7 + f.d * 16 + Math.sin(T * 0.8 + f.ph) * 6) * dt;
+      if (f.y > PH + 2) { f.y = -2; f.x = PS.MR(-10, PW + 10); }
+      if (f.x > PW + 8) f.x -= PW + 16;
+    }
+  }
+
+  /* ============================================================
+     绘制
+     ============================================================ */
+  function render() {
+    var sx = 0, sy = 0;
+    if (S.shake > 0.1) {
+      sx = Math.round((Math.random() - 0.5) * S.shake);
+      sy = Math.round((Math.random() - 0.5) * S.shake);
+    }
+
+    ctx.fillStyle = C.VOID;
+    ctx.fillRect(0, 0, PW, PH);
+
+    drawScene(sx, sy);
+    drawSnow(1);
+    drawSnow(0);      // 少量近层飘雪在最前
+    if (qualityCfg().scan) ctx.drawImage(scanCv, 0, 0);
+    ctx.drawImage(scopeCv, 0, 0);
+
+    if (S.flash > 0) PS.dt(ctx, 0, 0, PW, PH, C.LP4, Math.min(0.30, S.flash * 0.09));
+
+    drawCrosshair();
+    drawHUD();
+    if (S.mode === 'brief') drawBrief();
+    if (S.mode === 'over') drawResult();
+  }
+
+  function drawScene(sx, sy) {
+    var q = qualityCfg();
+    ctx.drawImage(W.sky, sx, sy);
+    if (q.clouds) W.drawClouds(ctx, T);
+    ctx.drawImage(W.city, sx, sy);
+    if (q.windows) W.drawWindows(ctx, T);
+    if (q.searchlight) W.drawSearchlight(ctx, T);
+    if (q.smoke) W.drawSmoke(ctx, T);
+    ctx.drawImage(W.street, sx, sy);
+    FX.drawDecals(ctx);
+    if (q.lamps) W.drawLamps(ctx, T);
+    // 深度分层：远处的人 → 前景道具（沙袋/车/雪堆）→ 近处的人
+    E.drawRange(ctx, T, -1, 0.52);
+    ctx.drawImage(W.propsF, sx, sy);
+    E.drawRange(ctx, T, 0.52, 2);
+    FX.drawParts(ctx);
+    ctx.drawImage(W.riverBase, sx, sy);
+    if (q.river) W.drawRiverFx(ctx, T);
+    ctx.drawImage(W.nearBank, sx, sy);
+    if (S.tracer) drawTracer();
+  }
+
+  function drawTracer() {
+    var tr = S.tracer;
+    var a = 1 - tr.t / tr.life;
+    var steps = Math.floor(Math.hypot(tr.x1 - tr.x0, tr.y1 - tr.y0));
+    if (steps > 0) {
+      for (var i = 0; i <= steps; i += 1) {
+        var t = i / steps;
+        if (t < (1 - a) * 0.85) continue;
+        PS.dt(ctx, Math.round(tr.x0 + (tr.x1 - tr.x0) * t), Math.round(tr.y0 + (tr.y1 - tr.y0) * t),
+          1, 1, t > 0.6 ? C.LP5 : C.SN6, a * (0.5 + t * 0.5));
+      }
+    }
+  }
+
+  function drawSnow(front) {
+    for (var i = 0; i < snow.length; i++) {
+      var f = snow[i];
+      if (front ? (f.d > 0.86) : (f.d <= 0.86)) {
+        PS.dt(ctx, Math.round(f.x), Math.round(f.y), f.r, f.r,
+          front ? C.SN8 : C.SN6, 0.35 + f.d * 0.5);
+      }
+    }
+  }
+
+  /* ---------- 准星（无枪：靠准星 + 后坐跳动 + 屏息表现射击） ---------- */
+  function drawCrosshair() {
+    var fp = firePoint();
+    var x = Math.round(fp.x);
+    var y = Math.round(fp.y) - Math.round(S.kick * 9);   // 后坐上跳
+    var open = Math.round(S.kick * 7);                   // 后坐张开
+    var armed = S.reload <= 0 && S.cycle <= 0 && S.mag > 0;
+    var col = armed ? C.SN8 : C.BL4;
+
+    // 十字线（留中心空）
+    for (var i = 3 + open; i < 11 + open; i++) {
+      PS.dt(ctx, x - i, y, 1, 1, col, 0.85);
+      PS.dt(ctx, x + i, y, 1, 1, col, 0.85);
+      PS.dt(ctx, x, y - i, 1, 1, col, 0.85);
+      PS.dt(ctx, x, y + i, 1, 1, col, 0.85);
+    }
+    // 密位刻度
+    for (var k = 1; k < 4; k++) {
+      PS.dt(ctx, x, y + k * 4 + 3 + open, 1, 1, col, 0.6);
+      PS.dt(ctx, x - k * 4 - 3 - open, y, 1, 1, col, 0.6);
+      PS.dt(ctx, x + k * 4 + 3 + open, y, 1, 1, col, 0.6);
+    }
+    // 中心点
+    PS.dt(ctx, x, y, 1, 1, armed ? C.BL5 : C.BL3, 1);
+    // 外环角标
+    var R = 12 + open;
+    PS.dt(ctx, x - R, y - R, 3, 1, col, 0.45);
+    PS.dt(ctx, x - R, y - R, 1, 3, col, 0.45);
+    PS.dt(ctx, x + R - 2, y - R, 3, 1, col, 0.45);
+    PS.dt(ctx, x + R, y - R, 1, 3, col, 0.45);
+    PS.dt(ctx, x - R, y + R, 3, 1, col, 0.45);
+    PS.dt(ctx, x - R, y + R - 2, 1, 3, col, 0.45);
+    PS.dt(ctx, x + R - 2, y + R, 3, 1, col, 0.45);
+    PS.dt(ctx, x + R, y + R - 2, 1, 3, col, 0.45);
+
+    if (S.holdBreath) {
+      PS.dt(ctx, x - 14 - open, y - 14 - open, 1, 1, C.SN7, 1);
+      PS.dt(ctx, x + 14 + open, y + 14 + open, 1, 1, C.SN7, 1);
+    }
+  }
+
+  /* ---------- HUD ---------- */
+  function drawHUD() {
+    var st = E.stat();
+
+    // 左上：任务面板
+    panel(6, 6, 118, 34);
+    PS.text(ctx, 'OBJECTIVE', 12, 12, C.SN6);
+    PS.text(ctx, 'PATROL ' + S.kills + '/' + S.target, 12, 21, C.LP4);
+    PS.text(ctx, 'CONTACT ' + st.alive, 12, 30, C.SN7);
+    // 进度条
+    var pw = Math.floor(106 * Math.min(1, S.kills / S.target));
+    PS.rect(ctx, 12, 37, 106, 2, C.CN0);
+    PS.dt(ctx, 12, 37, pw, 2, C.LP3, 1);
+
+    // 右上：统计 + 状态
+    panel(PW - 6 - 96, 28, 96, 46);
+    PS.text(ctx, 'KILLS ' + S.kills, PW - 96, 34, C.SN7);
+    PS.text(ctx, 'HEAD  ' + S.head, PW - 96, 43, C.BL5);
+    var acc = S.shots ? Math.round(S.hits / S.shots * 100) : 0;
+    PS.text(ctx, 'ACC   ' + acc + '%', PW - 96, 52, C.SN6);
+    PS.text(ctx, 'DOWN  ' + st.down, PW - 96, 61, C.SN5);
+
+    // 左下：弹药 + 呼吸 + 风
+    panel(6, PH - 6 - 34, 132, 34);
+    for (var i = 0; i < S.MAG; i++) {
+      var bx = 12 + i * 9;
+      var loaded = i < S.mag;
+      PS.rect(ctx, bx, PH - 34, 3, 9, loaded ? C.BR2M : C.CN0);
+      PS.dt(ctx, bx, PH - 34, 3, 2, loaded ? C.BR3M : C.CN2, 1);
+      PS.rect(ctx, bx, PH - 24, 3, 2, loaded ? C.RS2 : C.CN1);
+    }
+    // 呼吸条
+    PS.text(ctx, 'BRTH', 12, PH - 12, C.SN6);
+    PS.rect(ctx, 34, PH - 13, 40, 5, C.CN0);
+    PS.dt(ctx, 34, PH - 13, Math.floor(40 * S.stamina), 5, S.stamina > 0.3 ? C.SN6 : C.BL4, 1);
+    // 风
+    PS.text(ctx, 'WIND', 80, PH - 12, C.SN6);
+    var wx = 112, wl = Math.round(S.wind * 3);
+    PS.rect(ctx, wx, PH - 10, 24, 1, C.CN3);
+    if (wl !== 0) {
+      var dirn = wl > 0 ? 1 : -1;
+      for (var d = 0; d < Math.abs(wl); d++) PS.dt(ctx, wx + 12 + dirn * d, PH - 10, 1, 1, C.SN7, 0.8);
+      PS.dt(ctx, wx + 12 + dirn * Math.abs(wl), PH - 11, 1, 3, C.SN8, 1);
+    }
+
+    // 中间提示
+    if (S.msgT > 0 && S.msg) {
+      var tw = PS.textW(S.msg);
+      PS.text(ctx, S.msg, Math.round((PW - tw) / 2), 128, Math.sin(T * 20) > 0 ? C.LP4 : C.LP3);
+    }
+    // 换弹/拉栓进度
+    if (S.reload > 0) {
+      var rw = Math.floor(60 * (1 - S.reload / S.reloadDur));
+      PS.text(ctx, 'RELOAD', Math.round(PW / 2 - 27), 140, C.SN6);
+      PS.rect(ctx, Math.round(PW / 2 - 30), 148, 60, 3, C.CN0);
+      PS.dt(ctx, Math.round(PW / 2 - 30), 148, rw, 3, C.LP3, 1);
+    } else if (S.cycle > 0) {
+      PS.text(ctx, 'BOLT', Math.round(PW / 2 - 10), 148, C.SN5);
+    }
+
+    drawButtons();
+  }
+
+  function panel(x, y, w, h) {
+    PS.dt(ctx, x, y, w, h, C.VOID, 0.55);
+    PS.dt(ctx, x, y, w, 1, C.SN5, 0.35);
+    PS.dt(ctx, x, y + h - 1, w, 1, C.CN0, 0.7);
+    PS.dt(ctx, x, y, 1, h, C.SN5, 0.25);
+    PS.dt(ctx, x + w - 1, y, 1, h, C.CN0, 0.6);
+  }
+
+  function drawButtons() {
+    for (var i = 0; i < buttons.length; i++) button(buttons[i]);
+  }
+  function button(b) {
+    var busy = (b.id === 'fire' && (S.cycle > 0 || S.reload > 0));
+    var hot = busy ? 0 : 1;
+    PS.rect(ctx, b.x, b.y, b.w, b.h, busy ? C.CN1 : C.CN2);
+    PS.dt(ctx, b.x, b.y, b.w, 1, busy ? C.CN3 : C.SN6, hot ? 0.8 : 0.4);
+    PS.dt(ctx, b.x, b.y + b.h - 1, b.w, 1, C.VOID, 0.8);
+    PS.dt(ctx, b.x, b.y, 1, b.h, C.SN5, hot ? 0.5 : 0.2);
+    PS.dt(ctx, b.x + b.w - 1, b.y, 1, b.h, C.VOID, 0.6);
+    if (b.kind === 'big') PS.dt(ctx, b.x + 1, b.y + 1, b.w - 2, b.h - 2, b.id === 'fire' ? C.BL3 : C.CN3, 0.35);
+    var lbl = b.label;
+    if (b.id === 'sound') lbl = S.soundOn ? 'SND' : 'OFF';
+    var tw = PS.textW(lbl);
+    PS.text(ctx, lbl, Math.round(b.x + (b.w - tw) / 2), Math.round(b.y + (b.h - 7) / 2),
+      busy ? C.SN5 : (b.id === 'fire' ? C.LP5 : C.SN7));
+  }
+
+  /* ---------- 简报 / 结算 ---------- */
+  function drawBrief() {
+    PS.dt(ctx, 0, 0, PW, PH, C.VOID, 0.62);
+    var bw = 300, bh = 118, bx = Math.round((PW - bw) / 2), by = Math.round((PH - bh) / 2);
+    PS.rect(ctx, bx, by, bw, bh, C.CN0);
+    PS.dt(ctx, bx, by, bw, 1, C.SN7, 0.8);
+    PS.dt(ctx, bx, by + bh - 1, bw, 1, C.SN7, 0.4);
+    PS.dt(ctx, bx, by, 1, bh, C.SN7, 0.5);
+    PS.dt(ctx, bx + bw - 1, by, 1, bh, C.SN7, 0.5);
+    PS.dt(ctx, bx + 2, by + 2, bw - 4, bh - 4, C.NG2, 0.4);
+
+    PS.text(ctx, 'OPERATION WINTER LINE', bx + 14, by + 14, C.LP4);
+    PS.dt(ctx, bx + 12, by + 24, bw - 24, 1, C.SN6, 0.35);
+    PS.text(ctx, 'SECTOR 07 - FROZEN RIVER', bx + 14, by + 30, C.SN6);
+    PS.text(ctx, 'TARGETS : RIVERBANK PATROL', bx + 14, by + 42, C.SN7);
+    PS.text(ctx, 'THEY ARE UNARMED AND MOVING', bx + 14, by + 52, C.SN5);
+    PS.text(ctx, 'SUPPRESS THE BANK. 20 UNITS.', bx + 14, by + 62, C.SN5);
+    PS.text(ctx, 'AMMO 5 ROUNDS - BOLT ACTION', bx + 14, by + 74, C.SN5);
+    PS.text(ctx, 'THEY WILL SCATTER AND DIE BADLY', bx + 14, by + 84, C.BL5);
+
+    var blink = Math.sin(T * 4) > -0.2;
+    if (blink) {
+      var tw = PS.textW('PRESS FIRE TO BEGIN');
+      PS.text(ctx, 'PRESS FIRE TO BEGIN', Math.round((PW - tw) / 2), by + 98, C.LP5);
+    }
+    PS.text(ctx, 'MOUSE AIM / SHIFT STEADY / R RELOAD', bx + 14, by + 108, C.SN4, 1);
+  }
+
+  function drawResult() {
+    PS.dt(ctx, 0, 0, PW, PH, C.VOID, 0.70);
+    var acc = S.shots ? Math.round(S.hits / S.shots * 100) : 0;
+    var time = Math.round(S.endT - S.startT);
+    var rank = 'C';
+    var score = acc * 0.5 + (S.head / Math.max(1, S.kills)) * 100 * 0.3 + (S.target / Math.max(1, time)) * 60 * 0.2;
+    if (score > 78) rank = 'S'; else if (score > 62) rank = 'A'; else if (score > 46) rank = 'B';
+    var bw = 250, bh = 108, bx = Math.round((PW - bw) / 2), by = Math.round((PH - bh) / 2);
+    PS.rect(ctx, bx, by, bw, bh, C.CN0);
+    PS.dt(ctx, bx, by, bw, 1, C.LP4, 0.8);
+    PS.dt(ctx, bx, by + bh - 1, bw, 1, C.LP4, 0.4);
+    PS.dt(ctx, bx, by, 1, bh, C.LP4, 0.5);
+    PS.dt(ctx, bx + bw - 1, by, 1, bh, C.LP4, 0.5);
+
+    PS.text(ctx, 'BANK SUPPRESSED', bx + 14, by + 14, C.LP4);
+    PS.dt(ctx, bx + 12, by + 24, bw - 24, 1, C.SN6, 0.35);
+    PS.text(ctx, 'KILLS      ' + S.kills, bx + 14, by + 32, C.SN7);
+    PS.text(ctx, 'HEADSHOTS  ' + S.head, bx + 14, by + 42, C.BL5);
+    PS.text(ctx, 'ACCURACY   ' + acc + '%', bx + 14, by + 52, C.SN7);
+    PS.text(ctx, 'TIME       ' + time + 'S', bx + 14, by + 62, C.SN6);
+    PS.text(ctx, 'SHOTS      ' + S.shots, bx + 14, by + 72, C.SN6);
+    PS.text(ctx, 'RATING', bx + 150, by + 44, C.SN6);
+    PS.text(ctx, rank, bx + 176, by + 42, rank === 'S' ? C.LP5 : C.SN8);
+    if (Math.sin(T * 4) > -0.2) {
+      var tw = PS.textW('CLICK TO REDEPLOY');
+      PS.text(ctx, 'CLICK TO REDEPLOY', Math.round((PW - tw) / 2), by + 90, C.LP5);
+    }
+  }
+
+})(window.PS);
+
+</script>
+  <script>PS.Game.init();</script>
+</body>
+</html>

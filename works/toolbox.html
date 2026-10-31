@@ -1,0 +1,2903 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>乐乌 · 个人工具箱</title>
+<meta name="description" content="一个离线可用的个人工具箱：记账、待办、习惯、专注、计算、贷款、个税、文本处理与备份，数据只存在你自己的设备上。">
+<style>
+/* ============================================================
+   乐乌 · 个人工具箱 — 样式系统
+   暖纸白中性底 + 单一墨绿强调色；数字一律等宽表格式
+   ============================================================ */
+:root{
+  /* 中性 */
+  --paper:#fafaf7;
+  --surface:#ffffff;
+  --sunken:#f3f2ec;
+  --sunken-2:#eceae1;
+  --line:#e3e1d8;
+  --line-2:#d5d2c6;
+  --ink:#1c1b17;
+  --ink-2:#56544b;
+  --ink-3:#8b887b;
+
+  /* 强调（唯一） */
+  --accent:#1f5c4a;
+  --accent-ink:#17493a;
+  --accent-soft:#e7efeb;
+  --accent-line:#c3d6cf;
+
+  /* 语义 */
+  --danger:#a8392b;
+  --danger-soft:#f7eae7;
+  --warn:#8c6218;
+  --warn-soft:#f8f1e2;
+
+  /* 字体角色：离线可用，全部本地栈 */
+  --font-ui:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-display:"Songti SC","Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-num:"SF Mono","JetBrains Mono",Menlo,Consolas,"Courier New",monospace;
+
+  /* 尺度 */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px;
+  --r1:6px; --r2:10px; --r3:14px;
+  --nav-w:228px;
+  --side-w:306px;
+  --top-h:52px;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--font-ui);
+  font-size:15px;
+  line-height:1.62;
+  color:var(--ink);
+  background:var(--paper);
+  -webkit-font-smoothing:antialiased;
+  font-synthesis:none;
+  line-break:strict;
+  overflow-wrap:break-word;
+}
+body.dark{
+  --paper:#131311;
+  --surface:#1a1a17;
+  --sunken:#212119;
+  --sunken-2:#2a2a22;
+  --line:#2e2e26;
+  --line-2:#3d3d33;
+  --ink:#eceae0;
+  --ink-2:#a8a598;
+  --ink-3:#7d7a6e;
+  --accent:#5fae95;
+  --accent-ink:#8ccdb8;
+  --accent-soft:#1e2f29;
+  --accent-line:#314b42;
+  --danger:#d98070;
+  --danger-soft:#33211d;
+  --warn:#c99b4e;
+  --warn-soft:#2f2819;
+}
+button,input,select,textarea{font:inherit;color:inherit;font-family:inherit}
+button{background:none;border:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+::selection{background:var(--accent-soft);color:var(--accent-ink)}
+
+/* 数字角色 */
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+
+/* ---------- 应用外壳 ---------- */
+.app{display:grid;grid-template-columns:var(--nav-w) minmax(0,1fr) var(--side-w);height:100vh;height:100dvh}
+/* 抽屉遮罩：桌面端它不该占任何格子，否则会顶掉整个中栏布局 */
+.scrim{display:none}
+
+/* ---------- 左：导航 ---------- */
+.rail{
+  border-right:1px solid var(--line);
+  background:var(--surface);
+  display:flex;flex-direction:column;
+  min-height:0;
+}
+.rail-top{padding:var(--s5) var(--s3) var(--s3)}
+.brand{display:flex;align-items:baseline;gap:var(--s2);padding:0 var(--s2) var(--s4)}
+.brand-mark{
+  font-family:var(--font-display);font-size:20px;line-height:1;color:var(--accent);
+  letter-spacing:.02em;
+}
+.brand-name{font-family:var(--font-display);font-size:17px;letter-spacing:.06em}
+.brand-sub{font-size:11px;color:var(--ink-3);letter-spacing:.14em;text-transform:uppercase}
+
+.cmd-btn{
+  display:flex;align-items:center;gap:var(--s2);
+  width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:var(--r2);
+  background:var(--paper);color:var(--ink-3);font-size:13px;text-align:left;
+  transition:border-color .12s,color .12s;
+}
+.cmd-btn:hover{border-color:var(--line-2);color:var(--ink-2)}
+.cmd-btn .kbd{margin-left:auto}
+.kbd{
+  font-family:var(--font-num);font-size:10px;line-height:1;
+  border:1px solid var(--line-2);border-radius:4px;padding:3px 4px;color:var(--ink-3);
+  background:var(--surface);
+}
+
+.nav{flex:1;overflow-y:auto;padding:var(--s2) var(--s2) var(--s5);min-height:0}
+.nav-group{margin-top:var(--s4)}
+.nav-group-title{
+  font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink-3);padding:0 var(--s2) var(--s1);
+}
+.nav-item{
+  display:flex;align-items:center;gap:9px;width:100%;
+  padding:7px 9px;border-radius:var(--r1);color:var(--ink-2);
+  font-size:14px;text-align:left;position:relative;transition:background .1s,color .1s;
+}
+.nav-item:hover{background:var(--sunken)}
+.nav-item .ico{width:16px;height:16px;flex-shrink:0;opacity:.72}
+.nav-item .badge{
+  margin-left:auto;font-family:var(--font-num);font-size:11px;color:var(--ink-3);
+}
+.nav-item[aria-current="page"]{
+  background:var(--accent-soft);color:var(--accent-ink);font-weight:600;
+}
+.nav-item[aria-current="page"] .ico{opacity:1}
+.nav-item[aria-current="page"]::before{
+  content:"";position:absolute;left:-8px;top:50%;transform:translateY(-50%);
+  width:2px;height:16px;background:var(--accent);border-radius:2px;
+}
+
+.rail-foot{
+  border-top:1px solid var(--line);padding:var(--s2);
+  display:flex;gap:var(--s1);
+}
+.icon-btn{
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  padding:8px;border-radius:var(--r1);color:var(--ink-3);font-size:12px;flex:1;
+}
+.icon-btn:hover{background:var(--sunken);color:var(--ink)}
+.icon-btn svg{width:15px;height:15px}
+
+/* ---------- 中：工作区 ---------- */
+.work{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--paper)}
+.work-bar{
+  height:var(--top-h);flex-shrink:0;
+  display:flex;align-items:center;gap:var(--s3);
+  padding:0 var(--s5);border-bottom:1px solid var(--line);
+}
+.work-title{font-size:15px;font-weight:600;letter-spacing:.01em}
+.work-sub{font-size:12px;color:var(--ink-3)}
+.work-bar .spacer{flex:1}
+.mobile-menu{display:none}
+
+.work-body{
+  flex:1;min-height:0;overflow-y:auto;
+  padding:var(--s5) var(--s5) var(--s7);
+}
+.page{max-width:760px}
+.page-wide{max-width:900px}
+
+/* 标题组 */
+.hd{margin-bottom:var(--s5)}
+.hd h1{
+  font-family:var(--font-display);font-size:27px;font-weight:600;
+  line-height:1.3;letter-spacing:.02em;text-wrap:balance;
+}
+.hd p{color:var(--ink-2);font-size:13.5px;margin-top:5px;max-width:34em}
+
+/* 分区 */
+.sec{margin-bottom:var(--s5)}
+.sec-hd{
+  display:flex;align-items:baseline;gap:var(--s3);
+  padding-bottom:7px;border-bottom:1px solid var(--line);margin-bottom:var(--s4);
+}
+.sec-hd h2{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);font-weight:600}
+.sec-hd .spacer{flex:1}
+.sec-hd .hint{font-size:12px;color:var(--ink-3)}
+
+/* ---------- 表单 ---------- */
+.fields{display:flex;flex-wrap:wrap;gap:var(--s3)}
+.field{display:flex;flex-direction:column;gap:5px;flex:1 1 150px;min-width:0}
+.field.w-xs{flex:0 0 92px}
+.field.w-sm{flex:0 0 124px}
+.field.w-md{flex:0 0 168px}
+.field label,.field .lab{font-size:11.5px;color:var(--ink-3);letter-spacing:.03em}
+.field .sub{font-size:11px;color:var(--ink-3);margin-top:-1px}
+input.i,select.i,textarea.i{
+  width:100%;padding:9px 11px;min-height:40px;
+  border:1px solid var(--line);border-radius:var(--r2);
+  background:var(--surface);color:var(--ink);font-size:14px;
+  transition:border-color .12s,box-shadow .12s;
+}
+input.i::placeholder,textarea.i::placeholder{color:var(--ink-3);opacity:.75}
+input.i:hover,select.i:hover,textarea.i:hover{border-color:var(--line-2)}
+input.i:focus,select.i:focus,textarea.i:focus{
+  outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);
+}
+input.i[type=number]{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+textarea.i{min-height:88px;resize:vertical;line-height:1.6}
+select.i{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b887b' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+.row{display:flex;gap:var(--s2);align-items:center;flex-wrap:wrap}
+.row-end{justify-content:flex-end}
+
+/* ---------- 按钮 ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:9px 16px;min-height:40px;border-radius:var(--r2);
+  background:var(--accent);color:#fff;font-size:14px;font-weight:500;white-space:nowrap;
+  transition:background .12s,transform .06s;
+}
+.btn:hover{background:var(--accent-ink)}
+.btn:active{transform:translateY(1px)}
+body.dark .btn{color:#0e1613}
+.btn svg{width:15px;height:15px}
+.btn.ghost{
+  background:var(--surface);color:var(--ink-2);border:1px solid var(--line);
+  font-weight:400;
+}
+.btn.ghost:hover{background:var(--sunken);color:var(--ink);border-color:var(--line-2)}
+.btn.quiet{background:none;color:var(--ink-3);padding:6px 8px;min-height:30px;font-size:12.5px}
+.btn.quiet:hover{background:var(--sunken);color:var(--ink)}
+.btn.danger{background:none;color:var(--danger);border:1px solid var(--line);font-weight:400}
+.btn.danger:hover{background:var(--danger-soft);border-color:var(--danger)}
+.btn.sm{padding:6px 11px;min-height:32px;font-size:12.5px;border-radius:var(--r1)}
+
+/* ---------- 结果区 ---------- */
+.result{
+  background:var(--sunken);border:1px solid var(--line);
+  border-radius:var(--r3);padding:var(--s4) var(--s5);
+}
+.result-empty{color:var(--ink-3);font-size:13px}
+.result-main{display:flex;align-items:baseline;gap:var(--s2);flex-wrap:wrap}
+.result-val{
+  font-family:var(--font-num);font-variant-numeric:tabular-nums;
+  font-size:34px;font-weight:600;letter-spacing:-.02em;line-height:1.1;
+}
+.result-unit{font-size:13px;color:var(--ink-3)}
+.result-rows{margin-top:var(--s3);display:flex;flex-direction:column;gap:5px}
+.result-row{display:flex;justify-content:space-between;gap:var(--s3);font-size:13px;color:var(--ink-2)}
+.result-row b{font-family:var(--font-num);font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
+.result-note{
+  margin-top:var(--s3);padding-top:var(--s3);border-top:1px dashed var(--line-2);
+  font-size:11.5px;color:var(--ink-3);line-height:1.55;
+}
+.result-tag{
+  display:inline-block;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--accent-ink);background:var(--accent-soft);border-radius:3px;padding:2px 6px;
+}
+
+/* 空的/提示 */
+.empty{
+  text-align:center;color:var(--ink-3);font-size:13px;
+  padding:var(--s6) var(--s4);border:1px dashed var(--line-2);border-radius:var(--r3);
+}
+.empty b{display:block;color:var(--ink-2);font-weight:500;margin-bottom:3px}
+
+/* ---------- 列表 ---------- */
+.list{display:flex;flex-direction:column}
+.item{
+  display:flex;align-items:flex-start;gap:var(--s3);
+  padding:11px 0;border-bottom:1px solid var(--line);
+}
+.item:last-child{border-bottom:none}
+.item-main{flex:1;min-width:0}
+.item-t{font-size:14px;line-height:1.45}
+.item-m{font-size:11.5px;color:var(--ink-3);margin-top:2px;display:flex;gap:var(--s2);flex-wrap:wrap}
+.item-amt{
+  font-family:var(--font-num);font-variant-numeric:tabular-nums;
+  font-size:14px;font-weight:600;white-space:nowrap;padding-top:1px;
+}
+.item-amt.out{color:var(--ink)}
+.item-amt.in{color:var(--accent)}
+.item-acts{display:flex;gap:2px;opacity:0;transition:opacity .12s}
+.item:hover .item-acts,.item:focus-within .item-acts{opacity:1}
+.item-acts button{
+  width:26px;height:26px;border-radius:5px;display:flex;align-items:center;justify-content:center;
+  color:var(--ink-3);
+}
+.item-acts button:hover{background:var(--sunken-2);color:var(--ink)}
+.item-acts button svg{width:13px;height:13px}
+
+/* 复选框 */
+.check{
+  appearance:none;flex-shrink:0;width:18px;height:18px;margin-top:2px;
+  border:1.5px solid var(--line-2);border-radius:5px;background:var(--surface);
+  cursor:pointer;transition:all .12s;position:relative;
+}
+.check:hover{border-color:var(--accent)}
+.check:checked{background:var(--accent);border-color:var(--accent)}
+.check:checked::after{
+  content:"";position:absolute;left:5px;top:1.5px;width:5px;height:9px;
+  border:solid #fff;border-width:0 1.8px 1.8px 0;transform:rotate(42deg);
+}
+body.dark .check:checked::after{border-color:#0e1613}
+.done .item-t{color:var(--ink-3);text-decoration:line-through;text-decoration-thickness:1px}
+
+/* ---------- KPI ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r3);overflow:hidden}
+.kpi{background:var(--surface);padding:var(--s3) var(--s4)}
+.kpi .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.kpi .v{
+  font-family:var(--font-num);font-variant-numeric:tabular-nums;
+  font-size:23px;font-weight:600;line-height:1.3;margin-top:2px;
+}
+.kpi .v small{font-size:11.5px;font-weight:400;color:var(--ink-3);margin-left:2px;font-family:var(--font-ui)}
+.kpi .d{font-size:11px;color:var(--ink-3);margin-top:1px}
+
+/* ---------- 条形图 ---------- */
+.bars{display:flex;flex-direction:column;gap:7px}
+.bar-row{display:grid;grid-template-columns:62px minmax(0,1fr) 84px;align-items:center;gap:var(--s2);font-size:12.5px}
+.bar-label{color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{height:16px;background:var(--sunken-2);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .3s ease}
+.bar-fill.neg{background:var(--danger)}
+.bar-val{font-family:var(--font-num);font-variant-numeric:tabular-nums;text-align:right;font-size:12px;color:var(--ink-2)}
+
+/* ---------- 习惯网格 ---------- */
+.habit{padding:var(--s3) 0;border-bottom:1px solid var(--line)}
+.habit:last-child{border-bottom:none}
+.habit-hd{display:flex;align-items:center;gap:var(--s3);margin-bottom:9px}
+.habit-name{font-size:14px;font-weight:500}
+.habit-streak{font-size:11.5px;color:var(--ink-3)}
+.habit-streak b{font-family:var(--font-num);color:var(--accent);font-weight:600}
+.habit-days{display:flex;gap:5px}
+.hd-cell{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;max-width:46px}
+.hd-dow{font-size:9.5px;color:var(--ink-3);letter-spacing:.04em}
+.hd-box{
+  appearance:none;width:100%;aspect-ratio:1;max-width:34px;
+  border:1px solid var(--line-2);border-radius:5px;background:var(--surface);
+  cursor:pointer;transition:all .12s;
+}
+.hd-box:hover{border-color:var(--accent)}
+.hd-box:checked{background:var(--accent);border-color:var(--accent)}
+.hd-box.today{box-shadow:0 0 0 2px var(--accent-soft);border-color:var(--accent)}
+
+/* ---------- 表格 ---------- */
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl th{
+  text-align:right;font-weight:500;color:var(--ink-3);font-size:10.5px;
+  letter-spacing:.08em;text-transform:uppercase;padding:0 0 7px;border-bottom:1px solid var(--line);
+}
+.tbl th:first-child{text-align:left}
+.tbl td{
+  padding:7px 0;border-bottom:1px solid var(--line);
+  font-family:var(--font-num);font-variant-numeric:tabular-nums;text-align:right;
+}
+.tbl td:first-child{text-align:left;font-family:var(--font-ui)}
+.tbl tbody tr:last-child td{border-bottom:none}
+.tbl-wrap{overflow-x:auto;margin:0 -2px;padding:0 2px}
+
+/* ---------- 计时器 ---------- */
+.timer{
+  font-family:var(--font-num);font-variant-numeric:tabular-nums;
+  font-size:62px;font-weight:500;letter-spacing:-.04em;line-height:1;
+  text-align:center;padding:var(--s5) 0 var(--s4);
+}
+.timer-sub{text-align:center;font-size:12.5px;color:var(--ink-3);margin-top:-6px;padding-bottom:var(--s4)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r2);overflow:hidden;background:var(--surface)}
+.seg button{
+  padding:7px 13px;font-size:12.5px;color:var(--ink-2);
+  border-right:1px solid var(--line);transition:background .1s;
+}
+.seg button:last-child{border-right:none}
+.seg button:hover{background:var(--sunken)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+
+/* ---------- 痕迹（右栏） ---------- */
+.side{
+  border-left:1px solid var(--line);background:var(--surface);
+  display:flex;flex-direction:column;min-height:0;
+}
+.side-hd{
+  padding:var(--s5) var(--s4) var(--s3);
+  display:flex;align-items:baseline;gap:var(--s2);
+  border-bottom:1px solid var(--line);
+}
+.side-hd h2{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);font-weight:600}
+.side-hd .spacer{flex:1}
+.side-hd .hint{font-size:11px;color:var(--ink-3)}
+.side-body{flex:1;overflow-y:auto;padding:var(--s3) var(--s4) var(--s5);min-height:0}
+
+.trace{display:flex;flex-direction:column;gap:0}
+.trace-item{
+  position:relative;padding:9px 0 9px 15px;
+  border-left:1px solid var(--line);
+}
+.trace-item::before{
+  content:"";position:absolute;left:-3px;top:15px;width:5px;height:5px;
+  border-radius:50%;background:var(--line-2);
+}
+.trace-item.hot::before{background:var(--accent)}
+.trace-t{font-size:12.5px;line-height:1.45;color:var(--ink)}
+.trace-m{
+  font-size:11px;color:var(--ink-3);margin-top:1px;
+  display:flex;gap:5px;align-items:center;flex-wrap:wrap;
+}
+.trace-m .num{color:var(--ink-2);font-weight:600}
+.trace-acts{display:flex;gap:3px;margin-top:5px}
+.chip{
+  font-size:11px;padding:3px 7px;border-radius:4px;
+  background:var(--sunken);color:var(--ink-2);border:1px solid transparent;
+  transition:all .1s;
+}
+.chip:hover{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent-line)}
+.chip[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent-line);font-weight:600}
+
+/* ---------- 今日概览 ---------- */
+.today-kpis{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r2);overflow:hidden;margin-bottom:var(--s4)}
+.today-kpi{background:var(--surface);padding:10px 11px}
+.today-kpi .k{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.today-kpi .v{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:17px;font-weight:600;line-height:1.35}
+
+/* ---------- 概览页 ---------- */
+.hero{margin-bottom:var(--s6)}
+.hero h1{
+  font-family:var(--font-display);font-size:33px;font-weight:600;
+  line-height:1.32;letter-spacing:.02em;text-wrap:balance;
+}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero p{color:var(--ink-2);font-size:14px;margin-top:var(--s2);max-width:32em}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:var(--s3)}
+.tile{
+  display:flex;flex-direction:column;gap:3px;text-align:left;
+  padding:var(--s3) var(--s4) var(--s4);
+  border:1px solid var(--line);border-radius:var(--r3);background:var(--surface);
+  transition:border-color .14s,transform .14s,box-shadow .14s;
+}
+.tile:hover{border-color:var(--accent-line);transform:translateY(-1px);box-shadow:0 4px 14px rgba(28,27,23,.06)}
+.tile .ico-w{color:var(--accent);margin-bottom:5px}
+.tile .ico-w svg{width:19px;height:19px}
+.tile b{font-size:14px;font-weight:600}
+.tile span{font-size:12px;color:var(--ink-3);line-height:1.5}
+.tile .tfoot{
+  margin-top:var(--s2);font-family:var(--font-num);font-size:11px;color:var(--ink-3);
+  font-variant-numeric:tabular-nums;
+}
+
+/* ---------- 命令面板 ---------- */
+.palette{
+  position:fixed;inset:0;z-index:200;display:none;
+  background:rgba(28,27,23,.34);backdrop-filter:blur(2px);
+  padding-top:12vh;
+}
+.palette.open{display:block}
+.palette-box{
+  width:min(560px,calc(100vw - 32px));margin:0 auto;
+  background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r3);
+  box-shadow:0 20px 60px rgba(20,20,16,.22);overflow:hidden;
+}
+.palette-in{padding:var(--s3) var(--s4);border-bottom:1px solid var(--line)}
+.palette-in input{
+  width:100%;border:none;background:none;font-size:16px;outline:none;min-height:28px;
+}
+.palette-in input::placeholder{color:var(--ink-3)}
+.palette-list{max-height:46vh;overflow-y:auto;padding:var(--s2)}
+.palette-item{
+  display:flex;align-items:center;gap:var(--s3);width:100%;
+  padding:9px 11px;border-radius:var(--r1);text-align:left;
+}
+.palette-item .ico{width:16px;height:16px;color:var(--ink-3);flex-shrink:0}
+.palette-item .t{font-size:13.5px}
+.palette-item .d{font-size:11.5px;color:var(--ink-3);margin-left:auto}
+.palette-item.sel{background:var(--accent-soft)}
+.palette-item.sel .t{color:var(--accent-ink);font-weight:600}
+.palette-foot{
+  border-top:1px solid var(--line);padding:7px var(--s4);
+  font-size:11px;color:var(--ink-3);display:flex;gap:var(--s3);
+}
+
+/* ---------- 提示条 ---------- */
+.toast{
+  position:fixed;left:50%;bottom:34px;transform:translate(-50%,14px);
+  background:var(--ink);color:var(--paper);font-size:12.5px;
+  padding:9px 16px;border-radius:var(--r2);z-index:300;
+  opacity:0;pointer-events:none;transition:opacity .16s,transform .16s;
+  max-width:calc(100vw - 40px);
+}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- 移动端底栏 ---------- */
+.tabbar{display:none}
+
+/* ---------- 响应式 ---------- */
+@media (max-width:1180px){
+  .app{grid-template-columns:var(--nav-w) minmax(0,1fr)}
+  .side{display:none}
+}
+@media (max-width:860px){
+  .app{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
+  .rail{
+    position:fixed;inset:0 auto 0 0;width:min(280px,84vw);z-index:150;
+    transform:translateX(-102%);transition:transform .2s ease;
+    box-shadow:0 0 40px rgba(20,20,16,.18);
+  }
+  .rail.open{transform:none}
+  .scrim{position:fixed;inset:0;background:rgba(28,27,23,.34);z-index:140;display:none}
+  .scrim.open{display:block}
+  .mobile-menu{
+    display:flex;align-items:center;justify-content:center;
+    width:34px;height:34px;border-radius:var(--r1);color:var(--ink-2);flex-shrink:0;
+  }
+  .mobile-menu:hover{background:var(--sunken)}
+  .mobile-menu svg{width:18px;height:18px}
+  .work-bar{padding:0 var(--s4);height:48px}
+  .work-sub{display:none}
+  .work-body{padding:var(--s4) var(--s4) 88px}
+  .hd h1,.hero h1{font-size:22px}
+  .result-val{font-size:28px}
+  .timer{font-size:50px}
+  .tiles{grid-template-columns:repeat(auto-fill,minmax(146px,1fr))}
+  .tabbar{
+    display:grid;grid-template-columns:repeat(5,1fr);
+    border-top:1px solid var(--line);background:var(--surface);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .tab{
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+    padding:8px 0 7px;color:var(--ink-3);font-size:10px;min-height:52px;
+  }
+  .tab svg{width:19px;height:19px}
+  .tab[aria-current="page"]{color:var(--accent)}
+  .bar-row{grid-template-columns:54px minmax(0,1fr) 74px}
+}
+@media (max-width:420px){
+  .field.w-xs,.field.w-sm{flex:1 1 100px}
+  .hd h1,.hero h1{font-size:20px}
+  .result-main{gap:5px}
+  .result-val{font-size:25px}
+  .timer{font-size:44px}
+  .tiles{grid-template-columns:1fr 1fr}
+  .tile{padding:var(--s3)}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+}
+
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="rail" id="rail">
+    <div class="rail-top">
+      <div class="brand">
+        <span class="brand-mark">楽</span>
+        <span>
+          <span class="brand-name">乐乌</span>
+          <span class="brand-sub">Toolbox</span>
+        </span>
+      </div>
+      <button class="cmd-btn" id="cmdOpen" type="button">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <span>搜索或跳转</span>
+        <span class="kbd" id="cmdKbd">Ctrl K</span>
+      </button>
+    </div>
+    <nav class="nav" id="nav" aria-label="工具导航"></nav>
+    <div class="rail-foot">
+      <button class="icon-btn" id="themeBtn" type="button" title="切换明暗主题">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
+        <span id="themeLabel">暗色</span>
+      </button>
+      <button class="icon-btn" id="dataBtn" type="button" title="备份与恢复">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+        <span>备份</span>
+      </button>
+    </div>
+  </aside>
+
+  <div class="scrim" id="scrim"></div>
+
+  <main class="work">
+    <div class="work-bar">
+      <button class="mobile-menu" id="menuBtn" type="button" aria-label="打开菜单">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <span class="work-title" id="workTitle">概览</span>
+      <span class="work-sub" id="workSub"></span>
+      <span class="spacer"></span>
+      <button class="btn quiet" id="quickBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        快捷
+      </button>
+    </div>
+    <div class="work-body" id="view"></div>
+  </main>
+
+  <aside class="side" id="side">
+    <div class="side-hd">
+      <h2>今日</h2>
+      <span class="spacer"></span>
+      <span class="hint" id="sideDate"></span>
+    </div>
+    <div class="side-body">
+      <div class="today-kpis" id="todayKpis"></div>
+      <div class="sec-hd" style="margin-bottom:10px">
+        <h2>痕迹</h2>
+        <span class="spacer"></span>
+        <button class="btn quiet" id="clearTrace" type="button" style="min-height:auto;padding:0;font-size:11px">清空</button>
+      </div>
+      <div class="trace" id="trace"></div>
+    </div>
+  </aside>
+
+  <nav class="tabbar" id="tabbar" aria-label="主导航"></nav>
+</div>
+
+<div class="palette" id="palette" role="dialog" aria-modal="true" aria-label="搜索与跳转">
+  <div class="palette-box">
+    <div class="palette-in">
+      <input id="cmdInput" type="text" placeholder="输入工具名、或直接算一道题…" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="palette-list" id="cmdList"></div>
+    <div class="palette-foot">
+      <span>↑↓ 选择</span><span>Enter 打开</span><span>Esc 关闭</span>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   乐乌 · 工具定义
+   每个工具：{ id, name, group, desc, icon, mount(el) }
+   ============================================================ */
+(function () {
+  const LU = (window.LU = {});
+
+  /* ---------- 基础工具函数 ---------- */
+  LU.esc = function (s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  };
+  const esc = LU.esc;
+
+  /* 存储：带安全兜底，不可用时退化为内存 */
+  const mem = {};
+  let storageOK = true;
+  try {
+    const k = "__lu_probe__";
+    localStorage.setItem(k, "1");
+    localStorage.removeItem(k);
+  } catch (e) {
+    storageOK = false;
+  }
+  LU.storageOK = storageOK;
+
+  LU.load = function (key, dflt) {
+    try {
+      const raw = storageOK ? localStorage.getItem("lewu.v3." + key) : mem[key];
+      if (raw == null) return dflt;
+      return JSON.parse(raw);
+    } catch (e) {
+      return dflt;
+    }
+  };
+  LU.save = function (key, val) {
+    const raw = JSON.stringify(val);
+    try {
+      if (storageOK) localStorage.setItem("lewu.v3." + key, raw);
+      else mem[key] = raw;
+    } catch (e) {
+      mem[key] = raw;
+      storageOK = false;
+    }
+  };
+  LU.drop = function (key) {
+    try {
+      if (storageOK) localStorage.removeItem("lewu.v3." + key);
+    } catch (e) {}
+    delete mem[key];
+  };
+  LU.allKeys = function () {
+    const out = [];
+    try {
+      if (storageOK) {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.indexOf("lewu.v3.") === 0) out.push(k);
+        }
+      }
+    } catch (e) {}
+    Object.keys(mem).forEach(function (k) {
+      const full = "lewu.v3." + k;
+      if (out.indexOf(full) === -1 && mem[k] != null) out.push(full);
+    });
+    return out;
+  };
+
+  /* 日期 */
+  const pad2 = function (n) { return String(n).padStart(2, "0"); };
+  LU.today = function () {
+    const d = new Date();
+    return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+  };
+  LU.fmtDate = function (d) {
+    return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+  };
+  LU.monthKey = function (s) { return String(s || "").slice(0, 7); };
+  LU.thisMonth = function () { return LU.today().slice(0, 7); };
+  LU.daysBetween = function (a, b) {
+    const A = new Date(a + "T00:00:00");
+    const B = new Date(b + "T00:00:00");
+    return Math.round((B - A) / 86400000);
+  };
+  LU.uid = function () { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); };
+  LU.money = function (n) {
+    const v = Number(n) || 0;
+    const s = Math.abs(v).toFixed(2);
+    const parts = s.split(".");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return (v < 0 ? "-" : "") + parts.join(".");
+  };
+  LU.cnDate = function (s) {
+    if (!s) return "";
+    const p = String(s).split("-");
+    if (p.length < 3) return s;
+    return p[1] + "月" + p[2] + "日";
+  };
+  LU.ago = function (ts) {
+    const d = Date.now() - Number(ts || 0);
+    if (!isFinite(d) || d < 0) return "";
+    const m = Math.floor(d / 60000);
+    if (m < 1) return "刚刚";
+    if (m < 60) return m + " 分钟前";
+    const h = Math.floor(m / 60);
+    if (h < 24) return h + " 小时前";
+    const day = Math.floor(h / 24);
+    if (day < 7) return day + " 天前";
+    return LU.fmtDate(new Date(ts));
+  };
+
+  /* ---------- 图标 ---------- */
+  const P = {
+    home: '<path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/>',
+    check: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>',
+    flame: '<path d="M12 3s5 4.5 5 9a5 5 0 01-10 0c0-2 1-3.5 1-3.5S9 11 10.5 11c0-3 1.5-8 1.5-8z"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+    wallet: '<path d="M3 7.5A2.5 2.5 0 015.5 5H19a2 2 0 012 2v12a2 2 0 01-2 2H5.5A2.5 2.5 0 013 18.5z"/><path d="M3 8h13"/><circle cx="17" cy="13" r="1.2"/>',
+    target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>',
+    calc: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 12h1M12 12h1M16 12h1M8 17h1M12 17h1M16 17h1"/>',
+    home2: '<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/>',
+    receipt: '<path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+    scale: '<path d="M12 4v16M6 8h12"/><path d="M6 8l-3 6h6zM18 8l-3 6h6z"/>',
+    text: '<path d="M5 6h14M5 12h14M5 18h9"/>',
+    calendar: '<rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M8 3v4M16 3v4M3.5 10h17"/>',
+    db: '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+    trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14"/>',
+    copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h8"/>',
+    pin: '<path d="M12 3v10"/><path d="M8 7h8"/>',
+    key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 4h4v4"/>',
+    shuffle: '<path d="M4 7h3l10 10h3M4 17h3l10-10h3"/><path d="M18 4l3 3-3 3M18 14l3 3-3 3"/>',
+    arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>'
+  };
+  LU.icon = function (name, size) {
+    const d = P[name] || "";
+    const s = size || 16;
+    return (
+      '<svg viewBox="0 0 24 24" width="' + s + '" height="' + s + '" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + "</svg>"
+    );
+  };
+
+  /* ---------- 痕迹（跨工具记录） ---------- */
+  const TRACE_MAX = 40;
+  LU.getTrace = function () { return LU.load("trace", []); };
+  LU.trace = function (item) {
+    const list = LU.getTrace();
+    list.unshift({
+      id: LU.uid(),
+      ts: Date.now(),
+      tool: item.tool || "",
+      label: item.label || "",
+      value: item.value == null ? "" : String(item.value),
+      unit: item.unit || "",
+      detail: item.detail || ""
+    });
+    LU.save("trace", list.slice(0, TRACE_MAX));
+    if (LU.onTraceChange) LU.onTraceChange();
+  };
+  LU.clearTrace = function () { LU.save("trace", []); if (LU.onTraceChange) LU.onTraceChange(); };
+
+  /* 通用：结果块底部的一排"下一步" */
+  LU.actions = function (items) {
+    if (!items || !items.length) return "";
+    return '<div class="row" style="margin-top:12px">' + items.join("") + "</div>";
+  };
+  LU.chip = function (label, attrs) {
+    return '<button class="chip" type="button" ' + (attrs || "") + ">" + esc(label) + "</button>";
+  };
+
+  LU.copy = function (text) {
+    return function () {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(
+          function () { if (LU.toast) LU.toast("已复制"); },
+          function () { LU.fallbackCopy(text); }
+        );
+      } else {
+        LU.fallbackCopy(text);
+      }
+    };
+  };
+  LU.fallbackCopy = function (text) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    if (LU.toast) LU.toast(ok ? "已复制" : "复制失败，请手动选择");
+  };
+
+  /* ============================================================
+     1. 记账
+     ============================================================ */
+  const CATS = ["餐饮", "交通", "购物", "居住", "医疗", "学习", "娱乐", "人情", "其他"];
+
+  function mountLedger(el) {
+    el.innerHTML =
+      '<div class="hd"><h1>记账</h1><p>按分类记下每一笔，月底自动汇总。金额支持负数表示退款。</p></div>' +
+      '<div class="kpis" id="lgKpi" style="margin-bottom:24px"></div>' +
+      '<div class="sec"><div class="sec-hd"><h2>记一笔</h2><span class="spacer"></span><span class="hint">Enter 快速保存</span></div>' +
+      '<div class="fields">' +
+      '<div class="field"><label for="lgNote">说明</label><input class="i" id="lgNote" placeholder="例如：午饭" maxlength="40"></div>' +
+      '<div class="field w-sm"><label for="lgAmt">金额</label><input class="i" id="lgAmt" type="number" step="0.01" placeholder="0.00"></div>' +
+      '<div class="field w-sm"><label for="lgType">类型</label><select class="i" id="lgType"><option>支出</option><option>收入</option></select></div>' +
+      '<div class="field w-sm"><label for="lgCat">分类</label><select class="i" id="lgCat">' +
+      CATS.map(function (c) { return "<option>" + c + "</option>"; }).join("") + "</select></div>" +
+      '<div class="field w-md"><label for="lgDate">日期</label><input class="i" id="lgDate" type="date" value="' + LU.today() + '"></div>' +
+      "</div>" +
+      '<div class="row" style="margin-top:14px"><button class="btn" id="lgAdd" type="button">保存这笔</button>' +
+      '<button class="btn ghost" id="lgCancel" type="button" hidden>取消编辑</button>' +
+      '<span class="spacer"></span><button class="btn quiet" id="lgMonth" type="button"></button></div></div>' +
+      '<div class="sec"><div class="sec-hd"><h2>本月支出构成</h2></div><div class="bars" id="lgBars"></div></div>' +
+      '<div class="sec"><div class="sec-hd"><h2>记录</h2><span class="spacer"></span><span class="hint" id="lgCount"></span></div>' +
+      '<div class="list" id="lgList"></div></div>';
+
+    const store = function () { return LU.load("ledger", []); };
+    const write = function (v) { LU.save("ledger", v); };
+    let editId = null;
+
+    const q = function (s) { return el.querySelector(s); };
+    const noteI = q("#lgNote"), amtI = q("#lgAmt"), typeI = q("#lgType"), catI = q("#lgCat"), dateI = q("#lgDate");
+
+    function render() {
+      const rows = store();
+      const mk = LU.thisMonth();
+      const month = rows.filter(function (r) { return LU.monthKey(r.date) === mk; });
+      const inc = month.filter(function (r) { return r.type === "收入"; })
+        .reduce(function (s, r) { return s + Number(r.amt || 0); }, 0);
+      const exp = month.filter(function (r) { return r.type !== "收入"; })
+        .reduce(function (s, r) { return s + Math.abs(Number(r.amt || 0)); }, 0);
+
+      q("#lgKpi").innerHTML =
+        '<div class="kpi"><div class="k">本月支出</div><div class="v">' + LU.money(exp) + '<small>元</small></div><div class="d">' + month.filter(function (r) { return r.type !== "收入"; }).length + " 笔</div></div>" +
+        '<div class="kpi"><div class="k">本月收入</div><div class="v">' + LU.money(inc) + '<small>元</small></div><div class="d">' + month.filter(function (r) { return r.type === "收入"; }).length + " 笔</div></div>" +
+        '<div class="kpi"><div class="k">本月结余</div><div class="v">' + LU.money(inc - exp) + '<small>元</small></div><div class="d">' + mk.replace("-", " 年 ") + " 月</div></div>";
+
+      q("#lgMonth").textContent = mk.replace("-", "-") + " · 全部 " + rows.length + " 笔";
+
+      // 分类条形图
+      const byCat = {};
+      month.forEach(function (r) {
+        if (r.type === "收入") return;
+        const c = r.cat || "其他";
+        byCat[c] = (byCat[c] || 0) + Math.abs(Number(r.amt || 0));
+      });
+      const arr = Object.keys(byCat).map(function (k) { return [k, byCat[k]]; })
+        .sort(function (a, b) { return b[1] - a[1]; }).slice(0, 6);
+      const max = arr.length ? arr[0][1] : 1;
+      q("#lgBars").innerHTML = arr.length
+        ? arr.map(function (r) {
+            return '<div class="bar-row"><span class="bar-label">' + esc(r[0]) + "</span>" +
+              '<span class="bar-track"><span class="bar-fill" style="width:' + Math.max(2, (r[1] / max) * 100) + '%"></span></span>' +
+              '<span class="bar-val">' + LU.money(r[1]) + "</span></div>";
+          }).join("")
+        : '<p class="result-empty">本月还没有支出记录。</p>';
+
+      // 列表
+      const list = rows.slice().sort(function (a, b) {
+        if (a.date === b.date) return (b.ts || 0) - (a.ts || 0);
+        return a.date < b.date ? 1 : -1;
+      }).slice(0, 40);
+
+      q("#lgCount").textContent = rows.length ? "最近 " + list.length + " 笔" : "";
+      if (!list.length) {
+        q("#lgList").innerHTML = '<div class="empty"><b>还没有记录</b>先存第一笔试试，比如今天的午饭。</div>';
+        return;
+      }
+      q("#lgList").innerHTML = list.map(function (r) {
+        const isIn = r.type === "收入";
+        return '<div class="item" data-id="' + r.id + '">' +
+          '<div class="item-main"><div class="item-t">' + esc(r.note || "（未填写说明）") + "</div>" +
+          '<div class="item-m"><span>' + esc(r.cat || "其他") + "</span><span>" + esc(LU.cnDate(r.date)) + "</span>" +
+          (isIn ? '<span style="color:var(--accent)">收入</span>' : "") + "</div></div>" +
+          '<div class="item-amt ' + (isIn ? "in" : "out") + '">' + (isIn ? "+" : "−") + LU.money(Math.abs(Number(r.amt || 0))) + "</div>" +
+          '<div class="item-acts"><button type="button" data-act="edit" title="编辑">' + LU.icon("copy", 13) + "</button>" +
+          '<button type="button" data-act="del" title="删除">' + LU.icon("trash", 13) + "</button></div></div>";
+      }).join("");
+
+      Array.prototype.forEach.call(q("#lgList").querySelectorAll(".item"), function (row) {
+        const id = row.dataset.id;
+        row.querySelector('[data-act="del"]').addEventListener("click", function () {
+          write(store().filter(function (r) { return r.id !== id; }));
+          if (editId === id) resetForm();
+          render();
+        });
+        row.querySelector('[data-act="edit"]').addEventListener("click", function () {
+          const r = store().filter(function (x) { return x.id === id; })[0];
+          if (!r) return;
+          editId = id;
+          noteI.value = r.note || "";
+          amtI.value = r.amt;
+          typeI.value = r.type || "支出";
+          catI.value = r.cat || "其他";
+          dateI.value = r.date || LU.today();
+          q("#lgCancel").hidden = false;
+          q("#lgAdd").textContent = "更新这笔";
+          noteI.focus();
+        });
+      });
+    }
+
+    function resetForm() {
+      editId = null;
+      noteI.value = "";
+      amtI.value = "";
+      typeI.value = "支出";
+      catI.value = "餐饮";
+      dateI.value = LU.today();
+      q("#lgCancel").hidden = true;
+      q("#lgAdd").textContent = "保存这笔";
+    }
+
+    function commit() {
+      const note = noteI.value.trim();
+      const amt = parseFloat(amtI.value);
+      if (!note) { if (LU.toast) LU.toast("写一句说明吧"); noteI.focus(); return; }
+      if (!isFinite(amt) || amt === 0) { if (LU.toast) LU.toast("金额需要是不为 0 的数字"); amtI.focus(); return; }
+      const rows = store();
+      if (editId) {
+        const r = rows.filter(function (x) { return x.id === editId; })[0];
+        if (r) {
+          r.note = note; r.amt = amt; r.type = typeI.value;
+          r.cat = catI.value; r.date = dateI.value || LU.today();
+        }
+      } else {
+        rows.push({
+          id: LU.uid(), ts: Date.now(),
+          note: note, amt: amt, type: typeI.value,
+          cat: catI.value, date: dateI.value || LU.today()
+        });
+      }
+      write(rows);
+      resetForm();
+      render();
+      if (LU.toast) LU.toast(editId ? "已更新" : "已记下");
+    }
+
+    q("#lgAdd").addEventListener("click", commit);
+    q("#lgCancel").addEventListener("click", function () { resetForm(); render(); });
+    el.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && e.target && e.target.classList.contains("i") && e.target.tagName === "INPUT") {
+        e.preventDefault();
+        commit();
+      }
+    });
+    q("#lgMonth").addEventListener("click", function () {
+      const rows = store();
+      if (!rows.length) { if (LU.toast) LU.toast("还没有记录可汇总"); return; }
+      const mk = LU.thisMonth();
+      const exp = rows.filter(function (r) { return LU.monthKey(r.date) === mk && r.type !== "收入"; })
+        .reduce(function (s, r) { return s + Math.abs(Number(r.amt || 0)); }, 0);
+      LU.trace({ tool: "记账", label: "本月支出", value: LU.money(exp), unit: "元", detail: mk });
+      if (LU.toast) LU.toast("已存入今日痕迹");
+    });
+
+    // 供其他工具调用：页面已挂载时优先走实例渲染
+    LU._ledgerRender = render;
+    LU.addLedgerEntry = function (entry) {
+      const rows = store();
+      rows.push({
+        id: LU.uid(), ts: Date.now(),
+        note: entry.note || "", amt: entry.amt, type: entry.type || "支出",
+        cat: entry.cat || "其他", date: entry.date || LU.today()
+      });
+      write(rows);
+      render();
+    };
+
+    render();
+  }
+
+  /* ============================================================
+     2. 待办
+     ============================================================ */
+  function mountTodo(el) {
+    el.innerHTML =
+      '<div class="hd"><h1>待办</h1><p>只记今天真要做的事。截止日会用颜色标出临近的。</p></div>' +
+      '<div class="sec"><div class="sec-hd"><h2>新增</h2><span class="spacer"></span><span class="hint">Enter 追加</span></div>' +
+      '<div class="fields">' +
+      '<div class="field"><label for="tdT">要做的事</label><input class="i" id="tdT" maxlength="80" placeholder="例如：回复客户邮件"></div>' +
+      '<div class="field w-sm"><label for="tdP">优先级</label><select class="i" id="tdP"><option>普通</option><option>重要</option><option>紧急</option></select></div>' +
+      '<div class="field w-md"><label for="tdD">截止日</label><input class="i" id="tdD" type="date"></div>' +
+      '</div><div class="row" style="margin-top:14px"><button class="btn" id="tdAdd" type="button">加入清单</button></div></div>' +
+      '<div class="sec"><div class="sec-hd"><h2>进行中</h2><span class="spacer"></span><span class="hint" id="tdOpenN"></span></div><div class="list" id="tdOpen"></div></div>' +
+      '<div class="sec"><div class="sec-hd"><h2>已完成</h2><span class="spacer"></span><span class="hint" id="tdDoneN"></span></div><div class="list" id="tdDone"></div></div>';
+
+    const q = function (s) { return el.querySelector(s); };
+    const store = function () { return LU.load("todo", []); };
+    const write = function (v) { LU.save("todo", v); };
+    const tI = q("#tdT"), pI = q("#tdP"), dI = q("#tdD");
+
+    function rowHTML(t) {
+      const today = LU.today();
+      let due = "";
+      let dueStyle = "";
+      if (t.due) {
+        const diff = LU.daysBetween(today, t.due);
+        if (diff < 0) { due = "逾期 " + Math.abs(diff) + " 天"; dueStyle = "color:var(--danger)"; }
+        else if (diff === 0) { due = "今天到期"; dueStyle = "color:var(--danger)"; }
+        else if (diff === 1) { due = "明天到期"; dueStyle = "color:var(--warn)"; }
+        else if (diff <= 3) { due = diff + " 天后"; dueStyle = "color:var(--warn)"; }
+        else due = LU.cnDate(t.due);
+      }
+      const pri = t.pri && t.pri !== "普通"
+        ? '<span style="color:' + (t.pri === "紧急" ? "var(--danger)" : "var(--warn)") + '">' + esc(t.pri) + "</span>"
+        : "";
+      return '<div class="item ' + (t.done ? "done" : "") + '" data-id="' + t.id + '">' +
+        '<input class="check" type="checkbox" data-act="toggle"' + (t.done ? " checked" : "") + ">" +
+        '<div class="item-main"><div class="item-t">' + esc(t.text) + "</div>" +
+        '<div class="item-m">' + pri + (due ? '<span style="' + dueStyle + '">' + esc(due) + "</span>" : "") + "</div></div>" +
+        '<div class="item-acts"><button type="button" data-act="del" title="删除">' + LU.icon("trash", 13) + "</button></div></div>";
+    }
+    function bind(box) {
+      Array.prototype.forEach.call(box.querySelectorAll(".item"), function (row) {
+        const id = row.dataset.id;
+        row.querySelector('[data-act="toggle"]').addEventListener("change", function (e) {
+          const rows = store();
+          rows.forEach(function (t) {
+            if (t.id === id) {
+              t.done = e.target.checked;
+              if (t.done) t.doneAt = Date.now();
+            }
+          });
+          write(rows);
+          if (e.target.checked && LU.toast) LU.toast("完成一件");
+          render();
+        });
+        row.querySelector('[data-act="del"]').addEventListener("click", function () {
+          write(store().filter(function (t) { return t.id !== id; }));
+          render();
+        });
+      });
+    }
+    function render() {
+      const rows = store();
+      const open = rows.filter(function (t) { return !t.done; });
+      const done = rows.filter(function (t) { return t.done; });
+      const priRank = { "紧急": 0, "重要": 1, "普通": 2 };
+      open.sort(function (a, b) {
+        if (a.due && b.due && a.due !== b.due) return a.due < b.due ? -1 : 1;
+        if (a.due && !b.due) return -1;
+        if (!a.due && b.due) return 1;
+        return (priRank[a.pri] || 2) - (priRank[b.pri] || 2);
+      });
+      q("#tdOpenN").textContent = open.length ? open.length + " 项" : "";
+      q("#tdDoneN").textContent = done.length ? done.length + " 项" : "";
+      q("#tdOpen").innerHTML = open.length ? open.map(rowHTML).join("")
+        : '<div class="empty"><b>清单是空的</b>想一件今天必须完成的事，写上去。</div>';
+      q("#tdDone").innerHTML = done.length
+        ? done.slice(0, 12).map(rowHTML).join("")
+        : '<p class="result-empty">完成的事会收到这里。</p>';
+      bind(q("#tdOpen"));
+      bind(q("#tdDone"));
+    }
+    function add() {
+      const text = tI.value.trim();
+      if (!text) { if (LU.toast) LU.toast("先写点内容"); tI.focus(); return; }
+      const rows = store();
+      rows.push({ id: LU.uid(), ts: Date.now(), text: text, pri: pI.value, due: dI.value || "", done: false });
+      write(rows);
+      tI.value = "";
+      dI.value = "";
+      pI.value = "普通";
+      render();
+      tI.focus();
+    }
+    q("#tdAdd").addEventListener("click", add);
+    el.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && e.target === tI) { e.preventDefault(); add(); }
+    });
+    LU.todoStats = function () {
+      const rows = store();
+      const t = LU.today();
+      return {
+        open: rows.filter(function (x) { return !x.done; }).length,
+        todayDone: rows.filter(function (x) { return x.done && x.doneAt && LU.fmtDate(new Date(x.doneAt)) === t; }).length
+      };
+    };
+    render();
+  }
+
+  /* ============================================================
+     3. 习惯
+     ============================================================ */
+  function mountHabit(el) {
+    el.innerHTML =
+      '<div class="hd"><h1>习惯</h1><p>点亮最近 7 天。连续天数会自己累积，断一天就归零。</p></div>' +
+      '<div class="sec"><div class="sec-hd"><h2>添加习惯</h2></div><div class="fields">' +
+      '<div class="field"><label for="hbN">名称</label><input class="i" id="hbN" maxlength="24" placeholder="例如：读书 20 分钟"></div>' +
+      "</div><div class=\"row\" style=\"margin-top:12px\"><button class=\"btn\" id=\"hbAdd\" type=\"button\">添加</button></div></div>" +
+      '<div class="sec"><div class="sec-hd"><h2>7 天记录</h2><span class="spacer"></span><span class="hint" id="hbSum"></span></div>' +
+      '<div id="hbList"></div></div>';
+
+    const q = function (s) { return el.querySelector(s); };
+    const store = function () { return LU.load("habit", []); };
+    const write = function (v) { LU.save("habit", v); };
+    const DOW = ["日", "一", "二", "三", "四", "五", "六"];
+
+    function days(n) {
+      const out = [];
+      for (let i = n - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        out.push(d);
+      }
+      return out;
+    }
+    function render() {
+      const rows = store();
+      const box = q("#hbList");
+      const week = days(7);
+      const today = LU.today();
+      let totalToday = 0;
+      rows.forEach(function (h) { if ((h.log || {})[today]) totalToday++; });
+      q("#hbSum").textContent = rows.length ? "今天完成 " + totalToday + " / " + rows.length : "";
+
+      if (!rows.length) {
+        box.innerHTML = '<div class="empty"><b>还没有习惯</b>从一个最容易坚持的开始，比如喝水。</div>';
+        return;
+      }
+      box.innerHTML = rows.map(function (h) {
+        const log = h.log || {};
+        let streak = 0;
+        for (let i = 0; i < 400; i++) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const k = LU.fmtDate(d);
+          if (log[k]) streak++;
+          else if (i > 0) break;
+        }
+        const cells = week.map(function (d) {
+          const k = LU.fmtDate(d);
+          const isToday = k === today;
+          return '<label class="hd-cell"><span class="hd-dow">' + DOW[d.getDay()] + "</span>" +
+            '<input class="hd-box' + (isToday ? " today" : "") + '" type="checkbox" ' +
+            (log[k] ? "checked" : "") + ' data-h="' + h.id + '" data-d="' + k + '"></label>';
+        }).join("");
+        return '<div class="habit"><div class="habit-hd">' +
+          '<span class="habit-name">' + esc(h.name) + "</span>" +
+          '<span class="habit-streak">连续 <b>' + streak + "</b> 天</span>" +
+          '<span class="spacer" style="flex:1"></span>' +
+          '<button class="btn quiet" type="button" data-del="' + h.id + '">删除</button></div>' +
+          '<div class="habit-days">' + cells + "</div></div>";
+      }).join("");
+
+      Array.prototype.forEach.call(box.querySelectorAll(".hd-box"), function (cb) {
+        cb.addEventListener("change", function () {
+          const list = store();
+          list.forEach(function (h) {
+            if (h.id !== cb.dataset.h) return;
+            h.log = h.log || {};
+            if (cb.checked) {
+              h.log[cb.dataset.d] = 1;
+              if (cb.dataset.d === LU.today() && LU.toast) LU.toast("打卡成功");
+            } else {
+              delete h.log[cb.dataset.d];
+            }
+          });
+          write(list);
+          render();
+        });
+      });
+      Array.prototype.forEach.call(box.querySelectorAll("[data-del]"), function (b) {
+        b.addEventListener("click", function () {
+          if (!window.confirm("删除这个习惯和它的全部记录？")) return;
+          write(store().filter(function (h) { return h.id !== b.dataset.del; }));
+          render();
+        });
+      });
+    }
+    q("#hbAdd").addEventListener("click", function () {
+      const n = q("#hbN").value.trim();
+      if (!n) { if (LU.toast) LU.toast("给它起个名字"); return; }
+      const rows = store();
+      rows.push({ id: LU.uid(), name: n, log: {}, ts: Date.now() });
+      write(rows);
+      q("#hbN").value = "";
+      render();
+    });
+    el.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && e.target && e.target.id === "hbN") { e.preventDefault(); q("#hbAdd").click(); }
+    });
+    LU.habitStats = function () {
+      const rows = store();
+      const t = LU.today();
+      return {
+        total: rows.length,
+        today: rows.filter(function (h) { return (h.log || {})[t]; }).length
+      };
+    };
+    render();
+  }
+
+  /* ============================================================
+     4. 专注
+     ============================================================ */
+  function mountFocus(el) {
+    el.innerHTML =
+      '<div class="hd"><h1>专注</h1><p>选一段时间，只做一件事。结束后自动记进专注流水。</p></div>' +
+      '<div class="sec" style="text-align:center">' +
+      '<div class="row" style="justify-content:center;margin-bottom:18px">' +
+      '<span class="seg" id="fcSeg">' +
+      '<button type="button" data-min="15" aria-pressed="false">15 分</button>' +
+      '<button type="button" data-min="25" aria-pressed="true">25 分</button>' +
+      '<button type="button" data-min="45" aria-pressed="false">45 分</button>' +
+      '<button type="button" data-min="60" aria-pressed="false">60 分</button>' +
+      "</span></div>" +
+      '<div class="timer num" id="fcTime">25:00</div>' +
+      '<div class="timer-sub" id="fcState">准备开始</div>' +
+      '<div class="row" style="justify-content:center">' +
+      '<button class="btn" id="fcGo" type="button">开始专注</button>' +
+      '<button class="btn ghost" id="fcReset" type="button">重置</button>' +
+      "</div></div>" +
+      '<div class="sec"><div class="sec-hd"><h2>今天的专注</h2><span class="spacer"></span><span class="hint" id="fcSum"></span></div>' +
+      '<div class="list" id="fcList"></div></div>';
+
+    const q = function (s) { return el.querySelector(s); };
+    const store = function () { return LU.load("focus", []); };
+    const write = function (v) { LU.save("focus", v); };
+
+    let minutes = 25;
+    let left = 25 * 60000;
+    let running = false;
+    let timer = null;
+    let startAt = 0;
+
+    function paint() {
+      const t = Math.max(0, left);
+      const m = Math.floor(t / 60000);
+      const s = Math.floor((t % 60000) / 1000);
+      q("#fcTime").textContent = pad2(m) + ":" + pad2(s);
+      q("#fcGo").textContent = running ? "暂停" : (t < minutes * 60000 ? "继续" : "开始专注");
+      q("#fcState").textContent = running
+        ? "专注中，手机放远一点"
+        : (t === 0 ? "这段时间完成了" : (t < minutes * 60000 ? "已暂停" : "准备开始"));
+      document.title = running ? pad2(m) + ":" + pad2(s) + " · 乐乌" : "乐乌 · 个人工具箱";
+    }
+    function tick() {
+      left = startAt + minutes * 60000 - Date.now();
+      if (left <= 0) {
+        left = 0;
+        stop();
+        finish();
+      }
+      paint();
+    }
+    function stop() {
+      running = false;
+      if (timer) { clearInterval(timer); timer = null; }
+    }
+    function finish() {
+      const list = store();
+      list.unshift({ id: LU.uid(), ts: Date.now(), min: minutes, date: LU.today() });
+      write(list);
+      LU.trace({ tool: "专注", label: "完成一段专注", value: String(minutes), unit: "分钟", detail: "今天第 " + list.filter(function (f) { return f.date === LU.today(); }).length + " 段" });
+      renderList();
+      if (LU.toast) LU.toast("完成 " + minutes + " 分钟专注");
+      left = minutes * 60000;
+      paint();
+    }
+    function renderList() {
+      const list = store().filter(function (f) { return f.date === LU.today(); });
+      const total = list.reduce(function (s, f) { return s + f.min; }, 0);
+      q("#fcSum").textContent = total ? "共 " + total + " 分钟" : "";
+      q("#fcList").innerHTML = list.length
+        ? list.map(function (f) {
+            const d = new Date(f.ts);
+            return '<div class="item"><div class="item-main"><div class="item-t">' + f.min + " 分钟专注</div>" +
+              '<div class="item-m"><span>' + pad2(d.getHours()) + ":" + pad2(d.getMinutes()) + "</span></div></div>" +
+              '<div class="item-amt in">+' + f.min + "</div></div>";
+          }).join("")
+        : '<div class="empty"><b>今天还没有专注记录</b>开始一段 25 分钟试试。</div>';
+    }
+    q("#fcSeg").addEventListener("click", function (e) {
+      const b = e.target.closest("button[data-min]");
+      if (!b) return;
+      Array.prototype.forEach.call(q("#fcSeg").querySelectorAll("button"), function (x) {
+        x.setAttribute("aria-pressed", String(x === b));
+      });
+      minutes = parseInt(b.dataset.min, 10);
+      stop();
+      left = minutes * 60000;
+      paint();
+    });
+    q("#fcGo").addEventListener("click", function () {
+      if (running) {
+        stop();
+        left = startAt + minutes * 60000 - Date.now();
+        paint();
+        return;
+      }
+      if (left <= 0) left = minutes * 60000;
+      running = true;
+      startAt = Date.now() - (minutes * 60000 - left);
+      timer = setInterval(tick, 250);
+      paint();
+    });
+    q("#fcReset").addEventListener("click", function () {
+      stop();
+      left = minutes * 60000;
+      paint();
+    });
+    paint();
+    renderList();
+    LU.focusStats = function () {
+      const t = LU.today();
+      const list = store().filter(function (f) { return f.date === t; });
+      return list.reduce(function (s, f) { return s + f.min; }, 0);
+    };
+    // 工具卸载时清理定时器
+    LU._cleanup = function () {
+      if (timer) { clearInterval(timer); timer = null; }
+      document.title = "乐乌 · 个人工具箱";
+    };
+  }
+
+  /* ============================================================
+     5. 计算器
+     ============================================================ */
+  function safeEval(expr) {
+    const cleaned = String(expr).replace(/×/g, "*").replace(/÷/g, "/").replace(/−/g, "-").replace(/，/g, ",");
+    if (!/^[\d+\-*/%().\s]+$/.test(cleaned)) throw new Error("bad");
+    const val = Function('"use strict";return (' + cleaned + ")")();
+    if (typeof val !== "number" || !isFinite(val)) throw new Error("bad");
+    return val;
+  }
+
+  function mountCalc(el) {
+    el.innerHTML =
+      '<div class="hd"><h1>计算器</h1><p>支持 + − × ÷ % 和括号。算完的结果可以直接存进记账。</p></div>' +
+      '<div class="sec"><div class="result" id="caOut"><div class="result-val num">0</div></div></div>' +
+      '<div class="sec"><div class="fields">' +
+      '<div class="field" style="flex:1 1 100%"><label for="caEx">表达式</label>' +
+      '<input class="i num" id="caEx" placeholder="例如：(3+5)*12/2" autocomplete="off" spellcheck="false" style="font-size:17px"></div>' +
+      "</div>" +
+      '<div class="fields" id="caKeys" style="margin-top:12px"></div></div>' +
+      '<div class="sec"><div class="sec-hd"><h2>计算历史</h2><span class="spacer"></span><button class="btn quiet" id="caClear" type="button">清空</button></div>' +
+      '<div class="list" id="caHist"></div></div>';
+
+    const q = function (s) { return el.querySelector(s); };
+    const ex = q("#caEx"), out = q("#caOut");
+    let last = null;
+
+    const KEYS = ["7", "8", "9", "÷", "4", "5", "6", "×", "1", "2", "3", "−", "0", ".", "(", ")", "%", "+"];
+    q("#caKeys").innerHTML =
+      '<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;flex:1 1 100%">' +
+      KEYS.map(function (k) {
+        return '<button class="btn ghost" type="button" data-k="' + k + '" style="min-height:46px;font-size:16px;font-family:var(--font-num)">' + k + "</button>";
+      }).join("") +
+      '<button class="btn ghost" type="button" data-k="back" style="min-height:46px" title="退格">⌫</button>' +
+      '<button class="btn ghost" type="button" data-k="clear" style="min-height:46px;font-size:13px">清空</button>' +
+      '<button class="btn" type="button" data-k="eq" style="grid-column:span 2;min-height:46px">=</button>' +
+      "</div>";
+
+    function upd() {
+      const v = ex.value.trim();
+      if (!v) {
+        out.innerHTML = '<div class="result-val num">0</div>';
+        last = null;
+        return;
+      }
+      try {
+        const r = safeEval(v);
+        const shown = Math.abs(r) > 1e12 ? r.toExponential(6) : String(+r.toFixed(10));
+        last = { expr: v, val: shown };
+        out.innerHTML = '<div class="result-val num">' + esc(shown) + "</div>" +
+          '<div class="result-rows"><div class="result-row"><span>表达式</span><b style="font-size:12px;font-weight:400">' + esc(v) + "</b></div></div>" +
+          '<div class="result-note">' + LU.actions([
+            LU.chip("复制结果"),
+            LU.chip("存为痕迹"),
+            LU.chip("记成支出")
+          ]) + "</div>";
+        const chips = out.querySelectorAll(".chip");
+        if (chips[0]) chips[0].addEventListener("click", LU.copy(shown));
+        if (chips[1]) chips[1].addEventListener("click", function () {
+          LU.trace({ tool: "计算器", label: v, value: shown, unit: "", detail: "" });
+          if (LU.toast) LU.toast("已存入痕迹");
+        });
+        if (chips[2]) chips[2].addEventListener("click", function () {
+          const amt = parseFloat(shown);
+          if (!isFinite(amt) || amt <= 0) { if (LU.toast) LU.toast("需要正数才能记成支出"); return; }
+          if (LU.addLedgerEntry) {
+            LU.addLedgerEntry({ note: "计算器：" + v, amt: amt, type: "支出", cat: "其他" });
+            if (LU.toast) LU.toast("已记入记账本");
+          }
+        });
+      } catch (e) {
+        out.innerHTML = '<div class="result-empty">表达式还不太完整，继续输入就好。</div>';
+        last = null;
+      }
+    }
+    ex.addEventListener("input", upd);
+    ex.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      if (!last) return;
+      const hist = LU.load("calc", []);
+      hist.unshift({ id: LU.uid(), ts: Date.now(), expr: last.expr, val: last.val });
+      LU.save("calc", hist.slice(0, 20));
+      ex.value = "";
+      upd();
+      renderHist();
+    });
+    q("#caKeys").addEventListener("click", function (e) {
+      const b = e.target.closest("button[data-k]");
+      if (!b) return;
+      const k = b.dataset.k;
+      if (k === "eq") {
+        ex.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+        return;
+      }
+      if (k === "clear") { ex.value = ""; upd(); return; }
+      if (k === "back") { ex.value = ex.value.slice(0, -1); upd(); return; }
+      ex.value += k;
+      upd();
+    });
+    function renderHist() {
+      const hist = LU.load("calc", []);
+      q("#caHist").innerHTML = hist.length
+        ? hist.map(function (h) {
+            return '<div class="item" data-id="' + h.id + '"><div class="item-main">' +
+              '<div class="item-t num" style="font-size:13px">' + esc(h.expr) + "</div>" +
+              '<div class="item-m"><span class="num" style="color:var(--ink-2);font-weight:600">= ' + esc(h.val) + "</span></div></div>" +
+              '<div class="item-acts"><button type="button" data-act="use" title="回填">' + LU.icon("arrow", 13) + "</button>" +
+              '<button type="button" data-act="del" title="删除">' + LU.icon("trash", 13) + "</button></div></div>";
+          }).join("")
+        : '<p class="result-empty">按 Enter 保存一次计算，历史会留在这里。</p>';
+      Array.prototype.forEach.call(q("#caHist").querySelectorAll(".item"), function (row) {
+        const id = row.dataset.id;
+        row.querySelector('[data-act="del"]').addEventListener("click", function () {
+          LU.save("calc", LU.load("calc", []).filter(function (h) { return h.id !== id; }));
+          renderHist();
+        });
+        row.querySelector('[data-act="use"]').addEventListener("click", function () {
+          const h = LU.load("calc", []).filter(function (x) { return x.id === id; })[0];
+          if (h) { ex.value = h.expr; upd(); ex.focus(); }
+        });
+      });
+    }
+    q("#caClear").addEventListener("click", function () {
+      LU.save("calc", []);
+      renderHist();
+    });
+    upd();
+    renderHist();
+  }
+
+  /* ============================================================
+     6. 贷款
+     ============================================================ */
+  function mountLoan(el) {
+    el.innerHTML =
+      '<div class="hd"><h1>贷款</h1><p>对比等额本息与等额本金的月供和总利息，并查看逐月还款表。</p></div>' +
+      '<div class="sec"><div class="fields">' +
+      '<div class="field"><label for="lnP">贷款总额（万元）</label><input class="i" id="lnP" type="number" value="100" step="1" min="0"></div>' +
+      '<div class="field w-sm"><label for="lnR">年利率（%）</label><input class="i" id="lnR" type="number" value="3.6" step="0.01" min="0"></div>' +
+      '<div class="field w-xs"><label for="lnY">年限</label><input class="i" id="lnY" type="number" value="30" step="1" min="1"></div>' +
+      '<div class="field w-sm"><label for="lnM">还款方式</label><select class="i" id="lnM"><option>等额本息</option><option>等额本金</option></select></div>' +
+      "</div><div class=\"row\" style=\"margin-top:14px\"><button class=\"btn\" id=\"lnGo\" type=\"button\">计算</button>" +
+      '<span class="spacer"></span><button class="btn quiet" id="lnSave" type="button">记成计划</button></div></div>' +
+      '<div id="lnResult"></div>';
+
+    const q = function (s) { return el.querySelector(s); };
+
+    function calc() {
+      const P = (parseFloat(q("#lnP").value) || 0) * 10000;
+      const rate = (parseFloat(q("#lnR").value) || 0) / 100 / 12;
+      const n = (parseInt(q("#lnY").value, 10) || 0) * 12;
+      const mode = q("#lnM").value;
+      if (P <= 0 || n <= 0) { if (LU.toast) LU.toast("请填写贷款金额和年限"); return null; }
+      const rows = [];
+      let totalInterest = 0;
+      if (mode === "等额本息") {
+        const k = Math.pow(1 + rate, n);
+        const m = rate ? (P * rate * k) / (k - 1) : P / n;
+        let bal = P;
+        for (let i = 1; i <= n; i++) {
+          const interest = bal * rate;
+          const principal = m - interest;
+          bal = Math.max(0, bal - principal);
+          totalInterest += interest;
+          if (i <= 360) rows.push({ i: i, pay: m, principal: principal, interest: interest, bal: bal });
+        }
+        return { mode: mode, P: P, n: n, monthly: m, totalInterest: totalInterest, total: P + totalInterest, rows: rows, firstMonthly: m, lastMonthly: m };
+      }
+      const mp = P / n;
+      let bal = P;
+      let first = 0, lastM = 0;
+      for (let i = 1; i <= n; i++) {
+        const interest = bal * rate;
+        const pay = mp + interest;
+        if (i === 1) first = pay;
+        if (i === n) lastM = pay;
+        bal = Math.max(0, bal - mp);
+        totalInterest += interest;
+        if (i <= 360) rows.push({ i: i, pay: pay, principal: mp, interest: interest, bal: bal });
+      }
+      return { mode: mode, P: P, n: n, monthly: first, totalInterest: totalInterest, total: P + totalInterest, rows: rows, firstMonthly: first, lastMonthly: lastM };
+    }
+
+    let current = null;
+    function render() {
+      const r = calc();
+      current = r;
+      if (!r) return;
+      const box = q("#lnResult");
+      const isEqual = r.mode === "等额本息";
+      const head = isEqual
+        ? '<div class="result-main"><span class="result-val num">' + LU.money(r.monthly) + '</span><span class="result-unit">元 / 月</span></div>'
+        : '<div class="result-main"><span class="result-val num">' + LU.money(r.firstMonthly) + '</span><span class="result-unit">元 首月，逐月递减至 ' + LU.money(r.lastMonthly) + " 元</span></div>";
+      const rowsHTML = r.rows.slice(0, 24).map(function (x) {
+        return "<tr><td>" + x.i + "</td><td>" + LU.money(x.pay) + "</td><td>" + LU.money(x.principal) + "</td><td>" + LU.money(x.interest) + "</td><td>" + LU.money(x.bal) + "</td></tr>";
+      }).join("");
+
+      box.innerHTML =
+        '<div class="sec"><div class="result">' + head +
+        '<div class="result-rows">' +
+        '<div class="result-row"><span>总利息</span><b>' + LU.money(r.totalInterest) + " 元</b></div>" +
+        '<div class="result-row"><span>还款总额</span><b>' + LU.money(r.total) + " 元</b></div>" +
+        '<div class="result-row"><span>期数</span><b>' + r.n + " 期</b></div>" +
+        '<div class="result-row"><span>利息占比</span><b>' + ((r.totalInterest / r.total) * 100).toFixed(1) + "%</b></div>" +
+        "</div>" +
+        '<div class="result-note">' + r.mode + " · 年利率 " + q("#lnR").value + "% · " + q("#lnY").value + " 年。实际月供以银行为准，此结果不含手续费与提前还款违约金。" +
+        LU.actions([LU.chip("复制月供"), LU.chip("记成计划")]) + "</div></div></div>" +
+        '<div class="sec"><div class="sec-hd"><h2>前 24 期还款表</h2><span class="spacer"></span><span class="hint">单位：元</span></div>' +
+        '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>期</th><th>月供</th><th>本金</th><th>利息</th><th>剩余本金</th></tr></thead>' +
+        "<tbody>" + rowsHTML + "</tbody></table></div></div>";
+
+      const chips = box.querySelectorAll(".chip");
+      if (chips[0]) chips[0].addEventListener("click", LU.copy(LU.money(isEqual ? r.monthly : r.firstMonthly)));
+      if (chips[1]) chips[1].addEventListener("click", function () { savePlan(r); });
+    }
+
+    function savePlan(r) {
+      const list = LU.load("loan", []);
+      list.unshift({
+        id: LU.uid(), ts: Date.now(), mode: r.mode,
+        principal: r.P, rate: q("#lnR").value, years: q("#lnY").value,
+        monthly: r.monthly, totalInterest: r.totalInterest
+      });
+      LU.save("loan", list.slice(0, 10));
+      LU.trace({
+        tool: "贷款", label: r.mode + " " + (r.P / 10000) + " 万",
+        value: LU.money(r.totalInterest), unit: "元利息",
+        detail: "月供 " + LU.money(r.mode === "等额本息" ? r.monthly : r.firstMonthly)
+      });
+      if (LU.toast) LU.toast("已记成计划并存入痕迹");
+    }
+
+    q("#lnGo").addEventListener("click", render);
+    q("#lnSave").addEventListener("click", function () {
+      if (!current) render();
+      if (current) savePlan(current);
+    });
+    ["#lnP", "#lnR", "#lnY"].forEach(function (s) {
+      q(s).addEventListener("input", render);
+    });
+    q("#lnM").addEventListener("change", render);
+    render();
+  }
+
+  /* ============================================================
+     7. 个税
+     ============================================================ */
+  function mountTax(el) {
+    el.innerHTML =
+      '<div class="hd"><h1>个税</h1><p>按月度累计预扣法估算。起征点 5000 元，含五险一金与专项附加扣除。</p></div>' +
+      '<div class="sec"><div class="fields">' +
+      '<div class="field"><label for="txS">税前月薪（元）</label><input class="i" id="txS" type="number" value="10000" min="0" step="100"></div>' +
+      '<div class="field w-md"><label for="txI">五险一金（元/月）</label><input class="i" id="txI" type="number" value="1500" min="0" step="50"></div>' +
+      '<div class="field w-md"><label for="txD">专项附加（元/月）</label><input class="i" id="txD" type="number" value="0" min="0" step="100"><span class="sub">子女教育、房租、赡养老人等</span></div>' +
+      "</div></div>" +
+      '<div id="txResult"></div>';
+
+    const q = function (s) { return el.querySelector(s); };
+    const BR = [
+      [3000, 0.03, 0], [12000, 0.1, 210], [25000, 0.2, 1410],
+      [35000, 0.25, 2660], [55000, 0.3, 4410], [80000, 0.35, 7160],
+      [Infinity, 0.45, 15160]
+    ];
+
+    function render() {
+      const s = parseFloat(q("#txS").value) || 0;
+      const ins = parseFloat(q("#txI").value) || 0;
+      const de = parseFloat(q("#txD").value) || 0;
+      const base = s - ins - 5000 - de;
+      const box = q("#txResult");
+
+      if (s <= 0) {
+        box.innerHTML = '<div class="sec"><div class="result"><div class="result-empty">填入税前月薪后自动计算。</div></div></div>';
+        return;
+      }
+      if (base <= 0) {
+        box.innerHTML = '<div class="sec"><div class="result">' +
+          '<div class="result-main"><span class="result-val num">0</span><span class="result-unit">元 个税</span></div>' +
+          '<div class="result-rows"><div class="result-row"><span>应纳税所得额</span><b>' + LU.money(Math.max(0, base)) + " 元</b></div>" +
+          '<div class="result-row"><span>税后到手</span><b>' + LU.money(s - ins) + " 元</b></div></div>" +
+          '<div class="result-note">收入未超过起征点与扣除合计，本月无需缴税。</div></div></div>';
+        return;
+      }
+      const br = BR.filter(function (x) { return base <= x[0]; })[0];
+      const tax = Math.max(0, base * br[1] - br[2]);
+      const net = s - ins - tax;
+
+      box.innerHTML =
+        '<div class="sec"><div class="result">' +
+        '<div class="result-main"><span class="result-val num">' + LU.money(net) + '</span><span class="result-unit">元 税后到手</span></div>' +
+        '<div class="result-rows">' +
+        '<div class="result-row"><span>应缴个税</span><b>' + LU.money(tax) + " 元</b></div>" +
+        '<div class="result-row"><span>适用税率</span><b>' + (br[1] * 100).toFixed(0) + "%（速算扣除 " + br[2] + "）</b></div>" +
+        '<div class="result-row"><span>应纳税所得额</span><b>' + LU.money(base) + " 元</b></div>" +
+        '<div class="result-row"><span>五险一金</span><b>' + LU.money(ins) + " 元</b></div>" +
+        '<div class="result-row"><span>实际税负率</span><b>' + ((tax / s) * 100).toFixed(2) + "%</b></div>" +
+        "</div>" +
+        '<div class="result-note">按月度税率表估算，未考虑年终奖单独计税与年度汇算差异。' +
+        LU.actions([LU.chip("复制税后"), LU.chip("记成收入")]) + "</div></div></div>";
+
+      const chips = box.querySelectorAll(".chip");
+      if (chips[0]) chips[0].addEventListener("click", LU.copy(LU.money(net)));
+      if (chips[1]) chips[1].addEventListener("click", function () {
+        if (LU.addLedgerEntry) {
+          LU.addLedgerEntry({ note: "税后月薪", amt: Math.round(net * 100) / 100, type: "收入", cat: "其他" });
+          if (LU.toast) LU.toast("已记入记账本");
+        }
+      });
+    }
+    ["#txS", "#txI", "#txD"].forEach(function (s) {
+      q(s).addEventListener("input", render);
+    });
+    render();
+  }
+
+  /* ============================================================
+     8. 文本处理
+     ============================================================ */
+  function mountText(el) {
+    el.innerHTML =
+      '<div class="hd"><h1>文本处理</h1><p>统计字数、转换大小写、按行去重排序、批量替换、Base64 编解码。</p></div>' +
+      '<div class="sec"><div class="row" style="margin-bottom:12px"><span class="seg" id="txMode">' +
+      '<button type="button" data-m="stat" aria-pressed="true">统计</button>' +
+      '<button type="button" data-m="case" aria-pressed="false">大小写</button>' +
+      '<button type="button" data-m="line" aria-pressed="false">行处理</button>' +
+      '<button type="button" data-m="find" aria-pressed="false">替换</button>' +
+      '<button type="button" data-m="b64" aria-pressed="false">Base64</button>' +
+      "</span></div>" +
+      '<div class="field"><label for="txIn">原文</label><textarea class="i" id="txIn" placeholder="粘贴或输入文本…" style="min-height:130px"></textarea></div>' +
+      '<div class="row" style="margin-top:10px"><span class="hint" id="txLive" style="font-size:11.5px;color:var(--ink-3)"></span></div></div>' +
+      '<div id="txPanel"></div>';
+
+    const q = function (s) { return el.querySelector(s); };
+    const inI = q("#txIn");
+    let mode = "stat";
+
+    function count(text) {
+      const chars = Array.from(text).length;
+      const noSpace = Array.from(text.replace(/\s/g, "")).length;
+      const cjk = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
+      const words = (text.trim().match(/[A-Za-z0-9'’-]+/g) || []).length;
+      const lines = text ? text.split(/\r?\n/).length : 0;
+      const paras = text.trim() ? text.trim().split(/\n\s*\n/).length : 0;
+      return { chars: chars, noSpace: noSpace, cjk: cjk, words: words, lines: lines, paras: paras };
+    }
+
+    function render() {
+      const text = inI.value;
+      const c = count(text);
+      q("#txLive").textContent = text ? c.chars + " 字符 · " + c.lines + " 行" : "";
+      const box = q("#txPanel");
+
+      if (mode === "stat") {
+        box.innerHTML =
+          '<div class="sec"><div class="kpis">' +
+          '<div class="kpi"><div class="k">字符</div><div class="v num">' + c.chars + "</div></div>" +
+          '<div class="kpi"><div class="k">不含空格</div><div class="v num">' + c.noSpace + "</div></div>" +
+          '<div class="kpi"><div class="k">汉字</div><div class="v num">' + c.cjk + "</div></div>" +
+          '<div class="kpi"><div class="k">英文单词</div><div class="v num">' + c.words + "</div></div>" +
+          '<div class="kpi"><div class="k">行数</div><div class="v num">' + c.lines + "</div></div>" +
+          '<div class="kpi"><div class="k">段落</div><div class="v num">' + c.paras + "</div></div>" +
+          "</div></div>";
+        return;
+      }
+      if (mode === "case") {
+        box.innerHTML = '<div class="sec"><div class="sec-hd"><h2>转换结果</h2></div>' +
+          '<div class="field"><textarea class="i" id="txOut" readonly style="min-height:110px"></textarea></div>' +
+          '<div class="row" style="margin-top:10px">' +
+          LU.chip("全部大写", 'data-c="upper"') + LU.chip("全部小写", 'data-c="lower"') +
+          LU.chip("首字母大写", 'data-c="cap"') + LU.chip("反转大小写", 'data-c="swap"') +
+          LU.chip("复制结果", 'data-c="copy"') + "</div></div>";
+        bindCase();
+        return;
+      }
+      if (mode === "line") {
+        box.innerHTML = '<div class="sec"><div class="sec-hd"><h2>行处理</h2></div>' +
+          '<div class="field"><textarea class="i" id="txOut" readonly style="min-height:110px"></textarea></div>' +
+          '<div class="row" style="margin-top:10px">' +
+          LU.chip("去重", 'data-c="dedup"') + LU.chip("升序", 'data-c="asc"') +
+          LU.chip("降序", 'data-c="desc"') + LU.chip("去空行", 'data-c="blank"') +
+          LU.chip("反转顺序", 'data-c="rev"') + LU.chip("加行号", 'data-c="num"') +
+          LU.chip("复制结果", 'data-c="copy"') + "</div></div>";
+        bindLine();
+        return;
+      }
+      if (mode === "find") {
+        box.innerHTML = '<div class="sec"><div class="fields">' +
+          '<div class="field"><label for="txA">查找</label><input class="i" id="txA" placeholder="要被替换的内容"></div>' +
+          '<div class="field"><label for="txB">替换为</label><input class="i" id="txB" placeholder="留空则删除"></div>' +
+          "</div>" +
+          '<div class="row" style="margin-top:12px"><button class="btn" id="txGo" type="button">全部替换</button>' +
+          '<span class="hint" id="txFound" style="font-size:11.5px;color:var(--ink-3)"></span></div>' +
+          '<div class="field" style="margin-top:12px"><textarea class="i" id="txOut" readonly style="min-height:110px"></textarea></div>' +
+          '<div class="row" style="margin-top:10px">' + LU.chip("复制结果", 'data-c="copy"') + "</div></div>";
+        bindFind();
+        return;
+      }
+      box.innerHTML = '<div class="sec"><div class="sec-hd"><h2>Base64</h2><span class="spacer"></span><span class="hint">支持中文（UTF-8）</span></div>' +
+        '<div class="row">' + LU.chip("编码原文", 'data-c="enc"') + LU.chip("解码原文", 'data-c="dec"') + LU.chip("复制结果", 'data-c="copy"') + "</div>" +
+        '<div class="field" style="margin-top:12px"><textarea class="i" id="txOut" readonly style="min-height:110px"></textarea></div></div>';
+      bindB64();
+    }
+
+    function outEl() { return q("#txOut"); }
+    function setOut(v) { const o = outEl(); if (o) o.value = v; }
+    function wireCopy() {
+      const c = q('#txPanel [data-c="copy"]');
+      if (c) c.addEventListener("click", function () { LU.copy(outEl() ? outEl().value : "")(); });
+    }
+    function bindCase() {
+      q("#txPanel").addEventListener("click", function (e) {
+        const b = e.target.closest("[data-c]");
+        if (!b) return;
+        const t = inI.value;
+        const k = b.dataset.c;
+        if (k === "copy") { LU.copy(outEl().value)(); return; }
+        const map = {
+          upper: function (s) { return s.toUpperCase(); },
+          lower: function (s) { return s.toLowerCase(); },
+          cap: function (s) {
+            return s.replace(/(^|\s)(\S)/g, function (m, a, b2) { return a + b2.toUpperCase(); });
+          },
+          swap: function (s) {
+            return Array.from(s).map(function (ch) {
+              return ch === ch.toUpperCase() ? ch.toLowerCase() : ch.toUpperCase();
+            }).join("");
+          }
+        };
+        setOut(map[k] ? map[k](t) : t);
+      });
+      wireCopy();
+    }
+    function bindLine() {
+      q("#txPanel").addEventListener("click", function (e) {
+        const b = e.target.closest("[data-c]");
+        if (!b) return;
+        const k = b.dataset.c;
+        if (k === "copy") { LU.copy(outEl().value)(); return; }
+        let lines = inI.value.split(/\r?\n/);
+        if (k === "dedup") {
+          const seen = {};
+          lines = lines.filter(function (l) {
+            const t = l.trim();
+            if (!t) return true;
+            if (seen[t]) return false;
+            seen[t] = 1;
+            return true;
+          });
+        } else if (k === "asc") lines = lines.slice().sort(function (a, b2) { return a.localeCompare(b2, "zh"); });
+        else if (k === "desc") lines = lines.slice().sort(function (a, b2) { return b2.localeCompare(a, "zh"); });
+        else if (k === "blank") lines = lines.filter(function (l) { return l.trim() !== ""; });
+        else if (k === "rev") lines = lines.slice().reverse();
+        else if (k === "num") lines = lines.map(function (l, i) { return i + 1 + ". " + l; });
+        setOut(lines.join("\n"));
+      });
+      wireCopy();
+    }
+    function bindFind() {
+      function go() {
+        const a = q("#txA").value;
+        if (!a) { setOut(""); q("#txFound").textContent = "先填入要查找的内容"; return; }
+        const b = q("#txB").value;
+        const parts = inI.value.split(a);
+        const n = parts.length - 1;
+        q("#txFound").textContent = "找到 " + n + " 处";
+        setOut(parts.join(b));
+      }
+      q("#txGo").addEventListener("click", go);
+      q("#txA").addEventListener("input", go);
+      q("#txB").addEventListener("input", go);
+      wireCopy();
+    }
+    function bindB64() {
+      q("#txPanel").addEventListener("click", function (e) {
+        const b = e.target.closest("[data-c]");
+        if (!b) return;
+        const k = b.dataset.c;
+        if (k === "copy") { LU.copy(outEl().value)(); return; }
+        try {
+          if (k === "enc") {
+            setOut(btoa(unescape(encodeURIComponent(inI.value))));
+          } else {
+            const raw = inI.value.trim();
+            if (!raw) { setOut(""); return; }
+            setOut(decodeURIComponent(escape(atob(raw.replace(/\s/g, "")))));
+          }
+        } catch (err) {
+          setOut("这段内容不是有效的 Base64 编码。");
+        }
+      });
+      wireCopy();
+    }
+
+    q("#txMode").addEventListener("click", function (e) {
+      const b = e.target.closest("button[data-m]");
+      if (!b) return;
+      mode = b.dataset.m;
+      Array.prototype.forEach.call(q("#txMode").querySelectorAll("button"), function (x) {
+        x.setAttribute("aria-pressed", String(x === b));
+      });
+      render();
+    });
+    inI.addEventListener("input", render);
+    render();
+  }
+
+  /* ============================================================
+     9. 换算
+     ============================================================ */
+  function mountConvert(el) {
+    const UNITS = {
+      len: { name: "长度", base: "米", map: { 毫米: 0.001, 厘米: 0.01, 米: 1, 千米: 1000, 英寸: 0.0254, 英尺: 0.3048, 码: 0.9144, 英里: 1609.344 } },
+      mass: { name: "重量", base: "千克", map: { 克: 0.001, 千克: 1, 吨: 1000, 斤: 0.5, 两: 0.05, 磅: 0.45359237, 盎司: 0.0283495 } },
+      area: { name: "面积", base: "平方米", map: { 平方厘米: 0.0001, 平方米: 1, 公顷: 10000, 平方千米: 1000000, 亩: 666.667, 平方英尺: 0.092903 } },
+      temp: { name: "温度", base: "摄氏度", map: { 摄氏度: 1, 华氏度: 1, 开尔文: 1 } }
+    };
+    el.innerHTML =
+      '<div class="hd"><h1>换算</h1><p>长度、重量、面积、温度与进制，输入即出结果。</p></div>' +
+      '<div class="sec"><div class="row"><span class="seg" id="cvCat">' +
+      '<button type="button" data-c="len" aria-pressed="true">长度</button>' +
+      '<button type="button" data-c="mass" aria-pressed="false">重量</button>' +
+      '<button type="button" data-c="area" aria-pressed="false">面积</button>' +
+      '<button type="button" data-c="temp" aria-pressed="false">温度</button>' +
+      '<button type="button" data-c="radix" aria-pressed="false">进制</button>' +
+      "</span></div></div>" +
+      '<div id="cvPanel"></div>';
+
+    const q = function (s) { return el.querySelector(s); };
+    let cat = "len";
+
+    function render() {
+      const box = q("#cvPanel");
+      if (cat === "radix") {
+        box.innerHTML =
+          '<div class="sec"><div class="fields">' +
+          '<div class="field w-xs"><label for="cvBase">输入进制</label><select class="i" id="cvBase">' +
+          '<option value="2">二进制</option><option value="8">八进制</option><option value="10" selected>十进制</option><option value="16">十六进制</option></select></div>' +
+          '<div class="field"><label for="cvVal">数值</label><input class="i num" id="cvVal" value="255" autocomplete="off"></div>' +
+          "</div><div id=\"cvOut\" style=\"margin-top:16px\"></div></div>";
+        const go = function () {
+          const base = parseInt(q("#cvBase").value, 10);
+          const raw = q("#cvVal").value.trim();
+          const n = parseInt(raw, base);
+          const out = q("#cvOut");
+          if (raw === "" || isNaN(n)) {
+            out.innerHTML = '<div class="result"><div class="result-empty">这个进制下没有读到有效数字。</div></div>';
+            return;
+          }
+          out.innerHTML = '<div class="result"><div class="result-rows">' +
+            [["二进制", n.toString(2)], ["八进制", n.toString(8)], ["十进制", String(n)], ["十六进制", n.toString(16).toUpperCase()]]
+              .map(function (r) {
+                return '<div class="result-row"><span>' + r[0] + "</span><b>" + esc(r[1]) + "</b></div>";
+              }).join("") +
+            "</div>" + LU.actions([LU.chip("复制十进制"), LU.chip("存为痕迹")]) + "</div>";
+          const chips = out.querySelectorAll(".chip");
+          if (chips[0]) chips[0].addEventListener("click", LU.copy(String(n)));
+          if (chips[1]) chips[1].addEventListener("click", function () {
+            LU.trace({ tool: "换算", label: "进制转换", value: String(n), unit: "十进制", detail: "来自 " + base + " 进制 " + raw });
+            if (LU.toast) LU.toast("已存入痕迹");
+          });
+        };
+        q("#cvBase").addEventListener("change", go);
+        q("#cvVal").addEventListener("input", go);
+        go();
+        return;
+      }
+
+      const U = UNITS[cat];
+      const names = Object.keys(U.map);
+      box.innerHTML =
+        '<div class="sec"><div class="fields">' +
+        '<div class="field w-md"><label for="cvAmt">数值</label><input class="i num" id="cvAmt" type="number" value="1" step="any"></div>' +
+        '<div class="field w-md"><label for="cvFrom">从</label><select class="i" id="cvFrom">' +
+        names.map(function (n) { return "<option>" + n + "</option>"; }).join("") + "</select></div>" +
+        '<div class="field w-md"><label for="cvTo">到</label><select class="i" id="cvTo">' +
+        names.map(function (n) { return "<option>" + n + "</option>"; }).join("") + "</select></div>" +
+        "</div>" +
+        '<div class="row" style="margin-top:14px"><button class=\"btn\" id=\"cvSwap\" type=\"button\">交换</button></div></div>' +
+        '<div id="cvOut"></div>';
+
+      q("#cvTo").value = names[Math.min(1, names.length - 1)];
+
+      const conv = function (v, from, to) {
+        if (cat === "temp") {
+          let c;
+          if (from === "摄氏度") c = v;
+          else if (from === "华氏度") c = (v - 32) * 5 / 9;
+          else c = v - 273.15;
+          if (to === "摄氏度") return c;
+          if (to === "华氏度") return c * 9 / 5 + 32;
+          return c + 273.15;
+        }
+        return (v * U.map[from]) / U.map[to];
+      };
+
+      const go = function () {
+        const v = parseFloat(q("#cvAmt").value);
+        const from = q("#cvFrom").value;
+        const to = q("#cvTo").value;
+        const out = q("#cvOut");
+        if (!isFinite(v)) {
+          out.innerHTML = '<div class="sec"><div class="result"><div class="result-empty">输入一个数字即可换算。</div></div></div>';
+          return;
+        }
+        const r = conv(v, from, to);
+        const shown = Math.abs(r) >= 1e9 || (Math.abs(r) < 1e-4 && r !== 0) ? r.toExponential(6) : String(+r.toFixed(6));
+        out.innerHTML = '<div class="sec"><div class="result">' +
+          '<div class="result-main"><span class="result-val num">' + esc(shown) + '</span><span class="result-unit">' + esc(to) + "</span></div>" +
+          '<div class="result-rows">' + names.map(function (n) {
+            if (n === from) return "";
+            const x = conv(v, from, n);
+            const sv = Math.abs(x) >= 1e9 || (Math.abs(x) < 1e-4 && x !== 0) ? x.toExponential(4) : String(+x.toFixed(6));
+            return '<div class="result-row"><span>' + n + "</span><b>" + esc(sv) + "</b></div>";
+          }).join("") + "</div>" +
+          '<div class="result-note">1 ' + esc(from) + " = " + esc(String(+conv(1, from, to).toFixed(6))) + " " + esc(to) +
+          LU.actions([LU.chip("复制结果"), LU.chip("存为痕迹")]) + "</div></div></div>";
+        const chips = out.querySelectorAll(".chip");
+        if (chips[0]) chips[0].addEventListener("click", LU.copy(shown));
+        if (chips[1]) chips[1].addEventListener("click", function () {
+          LU.trace({ tool: "换算", label: v + " " + from, value: shown, unit: to, detail: U.name });
+          if (LU.toast) LU.toast("已存入痕迹");
+        });
+      };
+      q("#cvAmt").addEventListener("input", go);
+      q("#cvFrom").addEventListener("change", go);
+      q("#cvTo").addEventListener("change", go);
+      q("#cvSwap").addEventListener("click", function () {
+        const a = q("#cvFrom").value;
+        q("#cvFrom").value = q("#cvTo").value;
+        q("#cvTo").value = a;
+        go();
+      });
+      go();
+    }
+
+    q("#cvCat").addEventListener("click", function (e) {
+      const b = e.target.closest("button[data-c]");
+      if (!b) return;
+      cat = b.dataset.c;
+      Array.prototype.forEach.call(q("#cvCat").querySelectorAll("button"), function (x) {
+        x.setAttribute("aria-pressed", String(x === b));
+      });
+      render();
+    });
+    render();
+  }
+
+  /* ============================================================
+     10. 日期
+     ============================================================ */
+  function mountDate(el) {
+    el.innerHTML =
+      '<div class="hd"><h1>日期</h1><p>算两个日期差多少天，或者看距离某个日子还有多久。</p></div>' +
+      '<div class="sec"><div class="sec-hd"><h2>日期间隔</h2></div><div class="fields">' +
+      '<div class="field"><label for="dtA">开始</label><input class="i" id="dtA" type="date" value="' + LU.today() + '"></div>' +
+      '<div class="field"><label for="dtB">结束</label><input class="i" id="dtB" type="date" value="' + LU.today() + '"></div>' +
+      '</div><div id="dtDiff" style="margin-top:16px"></div></div>' +
+      '<div class="sec"><div class="sec-hd"><h2>倒数与年龄</h2></div><div class="fields">' +
+      '<div class="field"><label for="dtT">目标日期</label><input class="i" id="dtT" type="date"></div>' +
+      '<div class="field w-md"><label for="dtL">名称（可选）</label><input class="i" id="dtL" maxlength="20" placeholder="例如：生日"></div>' +
+      '</div><div id="dtTarget" style="margin-top:16px"></div></div>';
+
+    const q = function (s) { return el.querySelector(s); };
+
+    function renderDiff() {
+      const a = q("#dtA").value, b = q("#dtB").value;
+      const box = q("#dtDiff");
+      if (!a || !b) { box.innerHTML = ""; return; }
+      const days = LU.daysBetween(a, b);
+      const abs = Math.abs(days);
+      const weeks = (abs / 7).toFixed(1);
+      const months = (abs / 30.4375).toFixed(1);
+      const years = (abs / 365.25).toFixed(2);
+      box.innerHTML = '<div class="result">' +
+        '<div class="result-main"><span class="result-val num">' + abs + '</span><span class="result-unit">天' + (days < 0 ? "（结束早于开始）" : "") + "</span></div>" +
+        '<div class="result-rows">' +
+        '<div class="result-row"><span>周</span><b>' + weeks + "</b></div>" +
+        '<div class="result-row"><span>月（约）</span><b>' + months + "</b></div>" +
+        '<div class="result-row"><span>年（约）</span><b>' + years + "</b></div>" +
+        '<div class="result-row"><span>工作日（约）</span><b>' + Math.round((abs / 7) * 5) + "</b></div>" +
+        "</div></div>";
+    }
+    function renderTarget() {
+      const t = q("#dtT").value;
+      const box = q("#dtTarget");
+      if (!t) { box.innerHTML = '<p class="result-empty">选一个未来的日子，看还有多久。</p>'; return; }
+      const d = LU.daysBetween(LU.today(), t);
+      const name = q("#dtL").value.trim() || "目标日";
+      const abs = Math.abs(d);
+      const label = d > 0 ? "还有" : (d < 0 ? "已经过去" : "就是今天");
+      box.innerHTML = '<div class="result">' +
+        '<div class="result-main"><span class="result-val num">' + abs + '</span><span class="result-unit">天 · ' + esc(name) + " " + label + "</span></div>" +
+        '<div class="result-rows"><div class="result-row"><span>目标日期</span><b>' + esc(t) + "</b></div>" +
+        '<div class="result-row"><span>星期</span><b>星期' + "日一二三四五六".charAt(new Date(t + "T00:00:00").getDay()) + "</b></div></div>" +
+        LU.actions([LU.chip("存为痕迹")]) + "</div>";
+      const chip = box.querySelector(".chip");
+      if (chip) chip.addEventListener("click", function () {
+        LU.trace({ tool: "日期", label: name, value: abs + " 天", unit: d > 0 ? "后" : "前", detail: t });
+        if (LU.toast) LU.toast("已存入痕迹");
+      });
+    }
+    ["#dtA", "#dtB"].forEach(function (s) { q(s).addEventListener("change", renderDiff); });
+    ["#dtT", "#dtL"].forEach(function (s) {
+      q(s).addEventListener("change", renderTarget);
+      q(s).addEventListener("input", renderTarget);
+    });
+    renderDiff();
+    renderTarget();
+  }
+
+  /* ============================================================
+     11. 目标
+     ============================================================ */
+  function mountGoal(el) {
+    el.innerHTML =
+      '<div class="hd"><h1>目标</h1><p>给想存的钱设一个数字，看到进度每天都会想再推一点。</p></div>' +
+      '<div class="sec"><div class="fields">' +
+      '<div class="field"><label for="glN">目标名称</label><input class="i" id="glN" maxlength="24" placeholder="例如：旅行基金"></div>' +
+      '<div class="field w-md"><label for="glT">目标金额（元）</label><input class="i" id="glT" type="number" min="1" step="100" placeholder="10000"></div>' +
+      '<div class="field w-md"><label for="glD">截止日</label><input class="i" id="glD" type="date"></div>' +
+      '</div><div class="row" style="margin-top:14px"><button class="btn" id="glAdd" type="button">添加目标</button></div></div>' +
+      '<div id="glList"></div>';
+
+    const q = function (s) { return el.querySelector(s); };
+    const store = function () { return LU.load("goal", []); };
+    const write = function (v) { LU.save("goal", v); };
+
+    function render() {
+      const rows = store();
+      const box = q("#glList");
+      if (!rows.length) {
+        box.innerHTML = '<div class="sec"><div class="empty"><b>还没有目标</b>设定一个金额和日期，进度条会替你记住节奏。</div></div>';
+        return;
+      }
+      box.innerHTML = rows.map(function (g) {
+        const pct = Math.min(100, (g.saved / g.target) * 100);
+        const rest = Math.max(0, g.target - g.saved);
+        let timeNote = "";
+        if (g.due) {
+          const d = LU.daysBetween(LU.today(), g.due);
+          if (d < 0) timeNote = "已过期 " + Math.abs(d) + " 天";
+          else if (d === 0) timeNote = "今天到期";
+          else {
+            const months = Math.max(1, Math.ceil(d / 30.4375));
+            timeNote = "还有 " + d + " 天 · 每月需存 " + LU.money(rest / months);
+          }
+        }
+        return '<div class="sec" data-id="' + g.id + '"><div class="sec-hd">' +
+          '<h2>' + esc(g.name) + '</h2><span class="spacer"></span><span class="hint">' + esc(timeNote) + "</span></div>" +
+          '<div class="result">' +
+          '<div class="result-main"><span class="result-val num">' + pct.toFixed(1) + '</span><span class="result-unit">% 已完成</span></div>' +
+          '<div class="bar-track" style="height:10px;margin:12px 0 10px;border-radius:5px"><div class="bar-fill" style="width:' + pct + "%;border-radius:5px\"></div></div>" +
+          '<div class="result-rows">' +
+          '<div class="result-row"><span>已存</span><b>' + LU.money(g.saved) + " 元</b></div>" +
+          '<div class="result-row"><span>目标</span><b>' + LU.money(g.target) + " 元</b></div>" +
+          '<div class="result-row"><span>还差</span><b>' + LU.money(rest) + " 元</b></div></div>" +
+          '<div class="row" style="margin-top:12px">' +
+          '<input class="i" type="number" step="0.01" placeholder="存入金额" data-in="' + g.id + '" style="flex:1 1 110px;min-height:34px;font-size:13px">' +
+          '<button class="btn sm" type="button" data-add="' + g.id + '">存入</button>' +
+          '<button class="btn quiet" type="button" data-del="' + g.id + '">删除</button>' +
+          "</div></div></div>";
+      }).join("");
+
+      Array.prototype.forEach.call(box.querySelectorAll("[data-add]"), function (b) {
+        b.addEventListener("click", function () {
+          const id = b.dataset.add;
+          const inp = box.querySelector('[data-in="' + id + '"]');
+          const v = parseFloat(inp.value);
+          if (!isFinite(v) || v === 0) { if (LU.toast) LU.toast("输入要存入的金额"); inp.focus(); return; }
+          const list = store();
+          list.forEach(function (g) { if (g.id === id) g.saved = Math.max(0, g.saved + v); });
+          write(list);
+          render();
+          if (LU.toast) LU.toast("已更新进度");
+        });
+      });
+      Array.prototype.forEach.call(box.querySelectorAll("[data-del]"), function (b) {
+        b.addEventListener("click", function () {
+          if (!window.confirm("删除这个目标？")) return;
+          write(store().filter(function (g) { return g.id !== b.dataset.del; }));
+          render();
+        });
+      });
+    }
+    q("#glAdd").addEventListener("click", function () {
+      const n = q("#glN").value.trim();
+      const t = parseFloat(q("#glT").value);
+      if (!n) { if (LU.toast) LU.toast("给目标起个名字"); q("#glN").focus(); return; }
+      if (!isFinite(t) || t <= 0) { if (LU.toast) LU.toast("目标金额要大于 0"); q("#glT").focus(); return; }
+      const rows = store();
+      rows.push({ id: LU.uid(), ts: Date.now(), name: n, target: t, saved: 0, due: q("#glD").value || "" });
+      write(rows);
+      q("#glN").value = "";
+      q("#glT").value = "";
+      q("#glD").value = "";
+      render();
+    });
+    LU.goalStats = function () {
+      const rows = store();
+      return {
+        count: rows.length,
+        pct: rows.length ? rows.reduce(function (s, g) { return s + Math.min(100, (g.saved / g.target) * 100); }, 0) / rows.length : 0
+      };
+    };
+    render();
+  }
+
+  /* ============================================================
+     12. 数据
+     ============================================================ */
+  function mountData(el) {
+    el.innerHTML =
+      '<div class="hd"><h1>数据</h1><p>所有记录都保存在这台设备的浏览器里。换设备前导出一份 JSON 就行。</p></div>' +
+      '<div class="sec"><div class="sec-hd"><h2>当前存量</h2><span class="spacer"></span><span class="hint" id="dtSize"></span></div>' +
+      '<div class="kpis" id="dtKpi"></div></div>' +
+      '<div class="sec"><div class="sec-hd"><h2>备份</h2></div>' +
+      '<div class="row"><button class="btn" id="dtExport" type="button">导出 JSON</button>' +
+      '<button class="btn ghost" id="dtImport" type="button">导入 JSON</button>' +
+      '<input type="file" id="dtFile" accept=".json,application/json" hidden></div>' +
+      '<div class="result" style="margin-top:14px"><div class="result-rows">' +
+      '<div class="result-row"><span>导出</span><b style="font-family:var(--font-ui);font-weight:400;font-size:12.5px">包含全部工具记录与偏好</b></div>' +
+      '<div class="result-row"><span>导入</span><b style="font-family:var(--font-ui);font-weight:400;font-size:12.5px">合并覆盖同名字段</b></div>' +
+      "</div></div></div>" +
+      '<div class="sec"><div class="sec-hd"><h2>清空</h2></div>' +
+      '<div class="result"><div class="result-note" style="margin-top:0;padding-top:0;border:none">清空会删除本设备上所有乐乌数据，且无法恢复。建议先导出备份。</div>' +
+      '<div class="row" style="margin-top:12px"><button class="btn danger" id="dtWipe" type="button">清空全部数据</button></div></div></div>';
+
+    const q = function (s) { return el.querySelector(s); };
+    function render() {
+      const L = function (k) { return LU.load(k, []); };
+      const ledger = L("ledger"), todo = L("todo"), habit = L("habit"), focus = L("focus"), goal = L("goal");
+      const bytes = LU.allKeys().reduce(function (s, k) {
+        try { return s + (localStorage.getItem(k) || "").length; } catch (e) { return s; }
+      }, 0);
+      q("#dtSize").textContent = bytes ? (bytes / 1024).toFixed(1) + " KB" : "";
+      q("#dtKpi").innerHTML =
+        '<div class="kpi"><div class="k">记账</div><div class="v num">' + ledger.length + '<small>笔</small></div></div>' +
+        '<div class="kpi"><div class="k">待办</div><div class="v num">' + todo.length + '<small>项</small></div></div>' +
+        '<div class="kpi"><div class="k">习惯</div><div class="v num">' + habit.length + '<small>个</small></div></div>' +
+        '<div class="kpi"><div class="k">专注</div><div class="v num">' + focus.length + '<small>段</small></div></div>' +
+        '<div class="kpi"><div class="k">目标</div><div class="v num">' + goal.length + '<small>个</small></div></div>';
+    }
+    q("#dtExport").addEventListener("click", function () {
+      const payload = { app: "lewu", version: 3, exportedAt: new Date().toISOString(), data: {} };
+      LU.allKeys().forEach(function (k) {
+        try { payload.data[k] = localStorage.getItem(k); } catch (e) {}
+      });
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "lewu-backup-" + LU.today() + ".json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+      if (LU.toast) LU.toast("备份已导出");
+    });
+    q("#dtImport").addEventListener("click", function () { q("#dtFile").click(); });
+    q("#dtFile").addEventListener("change", function (e) {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = function () {
+        try {
+          const parsed = JSON.parse(String(reader.result));
+          const data = parsed && parsed.data ? parsed.data : parsed;
+          if (!data || typeof data !== "object") throw new Error("bad");
+          let n = 0;
+          Object.keys(data).forEach(function (k) {
+            if (k.indexOf("lewu.v3.") !== 0) return;
+            const v = data[k];
+            try { localStorage.setItem(k, typeof v === "string" ? v : JSON.stringify(v)); n++; } catch (err) {}
+          });
+          if (!n) { if (LU.toast) LU.toast("没有找到可导入的乐乌数据"); return; }
+          if (LU.toast) LU.toast("已导入 " + n + " 项，页面即将刷新");
+          setTimeout(function () { location.reload(); }, 900);
+        } catch (err) {
+          if (LU.toast) LU.toast("这个文件不是有效的乐乌备份");
+        }
+      };
+      reader.readAsText(f);
+      e.target.value = "";
+    });
+    q("#dtWipe").addEventListener("click", function () {
+      if (!window.confirm("确定清空全部数据？这一步无法撤销。")) return;
+      if (!window.confirm("再确认一次：所有记账、待办、习惯记录都将被删除。")) return;
+      LU.allKeys().forEach(function (k) {
+        try { localStorage.removeItem(k); } catch (e) {}
+      });
+      if (LU.toast) LU.toast("已清空，页面即将刷新");
+      setTimeout(function () { location.reload(); }, 700);
+    });
+    render();
+  }
+
+  /* ============================================================
+     13. 密码
+     ============================================================ */
+  function mountPassword(el) {
+    el.innerHTML =
+      '<div class="hd"><h1>密码</h1><p>在本机生成随机密码，不联网、不上传，复制后别忘记存进密码管理器。</p></div>' +
+      '<div class="sec"><div class="sec-hd"><h2>生成设置</h2></div>' +
+      '<div class="fields">' +
+      '<div class="field w-sm"><label for="pwLen">长度</label><input class="i" id="pwLen" type="number" min="4" max="64" value="16"></div>' +
+      '<div class="field"><label>包含字符</label><div class="row" id="pwSets">' +
+      '<button class="chip" type="button" data-set="lower" aria-pressed="true">小写字母</button>' +
+      '<button class="chip" type="button" data-set="upper" aria-pressed="true">大写字母</button>' +
+      '<button class="chip" type="button" data-set="num" aria-pressed="true">数字</button>' +
+      '<button class="chip" type="button" data-set="sym" aria-pressed="false">符号</button>' +
+      '</div></div></div>' +
+      '<div class="row" style="margin-top:14px"><button class="btn" id="pwGo" type="button">生成密码</button>' +
+      '<button class="btn ghost" id="pwCopy" type="button">复制</button>' +
+      '<button class="btn ghost" id="pwTrace" type="button">存为痕迹</button></div></div>' +
+      '<div class="sec"><div class="sec-hd"><h2>结果</h2><span class="spacer"></span><span class="hint" id="pwLv"></span></div>' +
+      '<textarea class="i" id="pwVal" readonly style="min-height:74px;font-family:var(--font-num);font-size:17px;letter-spacing:.02em"></textarea>' +
+      '<div class="result-note" id="pwNote">默认 16 位、大小写和数字混合；需要更强就勾上符号、把长度拉到 20 以上。</div></div>';
+
+    const q = function (s) { return el.querySelector(s); };
+    const sets = { lower: "abcdefghijklmnopqrstuvwxyz", upper: "ABCDEFGHIJKLMNOPQRSTUVWXYZ", num: "0123456789", sym: "!@#$%^&*()-_=+[]{};:,.?/" };
+    const chosen = { lower: true, upper: true, num: true, sym: false };
+    let current = "";
+
+    function randomInt(n) {
+      if (window.crypto && window.crypto.getRandomValues) {
+        return window.crypto.getRandomValues(new Uint32Array(1))[0] % n;
+      }
+      return Math.floor(Math.random() * n);
+    }
+    function shuffle(s) {
+      const a = Array.from(s);
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = randomInt(i + 1);
+        const t = a[i]; a[i] = a[j]; a[j] = t;
+      }
+      return a.join("");
+    }
+    function level(p) {
+      let score = 0;
+      if (p.length >= 12) score++;
+      if (p.length >= 18) score++;
+      if (/[a-z]/.test(p) && /[A-Z]/.test(p)) score++;
+      if (/[0-9]/.test(p)) score++;
+      if (/[^A-Za-z0-9]/.test(p)) score++;
+      return score >= 4 ? "很强" : score >= 3 ? "较强" : "一般";
+    }
+    function generate() {
+      const len = Math.max(4, Math.min(64, Number(q("#pwLen").value) || 16));
+      const active = Object.keys(chosen).filter(function (k) { return chosen[k]; });
+      if (!active.length) { if (LU.toast) LU.toast("至少选一种字符"); return; }
+      const pool = active.map(function (k) { return sets[k]; }).join("");
+      let out = active.map(function (k) { return sets[k][randomInt(sets[k].length)]; }).join("");
+      while (out.length < len) out += pool[randomInt(pool.length)];
+      current = shuffle(out).slice(0, len);
+      q("#pwVal").value = current;
+      q("#pwLv").textContent = level(current) + " · " + len + " 位";
+    }
+
+    q("#pwSets").addEventListener("click", function (e) {
+      const b = e.target.closest("button[data-set]");
+      if (!b) return;
+      const k = b.getAttribute("data-set");
+      chosen[k] = !chosen[k];
+      b.setAttribute("aria-pressed", String(chosen[k]));
+    });
+    q("#pwGo").addEventListener("click", generate);
+    q("#pwCopy").addEventListener("click", function () {
+      if (!current) generate();
+      LU.copy(current)();
+    });
+    q("#pwTrace").addEventListener("click", function () {
+      if (!current) generate();
+      LU.trace({ tool: "密码", label: current.length + " 位密码", value: "已生成", detail: "未保存明文" });
+      if (LU.toast) LU.toast("已存入痕迹（不保存密码本身）");
+    });
+    generate();
+  }
+
+  /* ============================================================
+     14. 随机
+     ============================================================ */
+  function mountRandom(el) {
+    el.innerHTML =
+      '<div class="hd"><h1>随机</h1><p>选择困难的时候，把选项一行一个丢进来，让它替你做决定。</p></div>' +
+      '<div class="sec"><div class="sec-hd"><h2>选项</h2><span class="spacer"></span><span class="hint" id="rdCount"></span></div>' +
+      '<div class="field"><textarea class="i" id="rdIn" style="min-height:130px" placeholder="一行一个，例如：\n火锅\n烧烤\n面条\n沙拉"></textarea></div>' +
+      '<div class="fields" style="margin-top:12px">' +
+      '<div class="field w-sm"><label for="rdN">抽几个</label><input class="i" id="rdN" type="number" min="1" max="20" value="1"></div>' +
+      '<div class="field"><label>常用清单</label><div class="row">' +
+      '<button class="chip" type="button" data-fill="午饭">午饭</button>' +
+      '<button class="chip" type="button" data-fill="今晚">今晚</button>' +
+      '<button class="chip" type="button" data-fill="周末">周末</button></div></div></div></div>' +
+      '<div class="sec"><div class="sec-hd"><h2>结果</h2></div><div id="rdOut" class="result"><div class="result-empty">写上选项，点下面的按钮。</div></div>' +
+      '<div class="row" style="margin-top:12px"><button class="btn" id="rdGo" type="button">抽一个</button>' +
+      '<button class="btn ghost" id="rdAll" type="button">全部打乱</button></div></div>';
+
+    const q = function (s) { return el.querySelector(s); };
+    const presets = {
+      "午饭": ["米饭套餐", "面条", "饺子", "沙拉", "火锅", "汉堡"],
+      "今晚": ["看电影", "打游戏", "散步", "读会儿书", "早点睡", "收拾房间"],
+      "周末": ["爬山", "逛展", "宅家", "约朋友", "学点新东西", "睡到自然醒"]
+    };
+    function lines() {
+      return q("#rdIn").value.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+    }
+    function updateCount() { q("#rdCount").textContent = lines().length + " 个选项"; }
+    function pick(n) {
+      const all = lines();
+      if (!all.length) { q("#rdOut").innerHTML = '<div class="result-empty">先写几个选项吧。</div>'; return; }
+      const k = Math.max(1, Math.min(all.length, n));
+      const shuffled = all.slice();
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = t;
+      }
+      const out = shuffled.slice(0, k);
+      q("#rdOut").innerHTML = '<div class="result-main"><span class="result-val">' + esc(out.join(" / ")) + "</span></div>" +
+        '<div class="result-note">从 ' + all.length + " 个选项里抽了 " + k + " 个。" +
+        LU.actions([LU.chip("再抽一次"), LU.chip("存为痕迹")]) + "</div>";
+      const chips = q("#rdOut").querySelectorAll(".chip");
+      if (chips[0]) chips[0].addEventListener("click", function () { pick(k); });
+      if (chips[1]) chips[1].addEventListener("click", function () {
+        LU.trace({ tool: "随机", label: out.join(" / "), value: "已抽取", detail: "共 " + all.length + " 个选项" });
+        if (LU.toast) LU.toast("已存入痕迹");
+      });
+    }
+    q("#rdIn").addEventListener("input", updateCount);
+    q("#rdGo").addEventListener("click", function () { pick(Number(q("#rdN").value) || 1); });
+    q("#rdAll").addEventListener("click", function () { pick(lines().length || 1); });
+    el.querySelectorAll("[data-fill]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        const list = presets[b.getAttribute("data-fill")] || [];
+        q("#rdIn").value = list.join("\n");
+        updateCount();
+      });
+    });
+    updateCount();
+  }
+
+  /* ============================================================
+     工具清单
+     ============================================================ */
+  LU.TOOLS = [
+    { id: "ledger", name: "记账", group: "记录", desc: "收支分类与月度汇总", icon: "wallet", mount: mountLedger },
+    { id: "todo", name: "待办", group: "记录", desc: "带优先级和截止日", icon: "check", mount: mountTodo },
+    { id: "habit", name: "习惯", group: "记录", desc: "7 天打卡与连续天数", icon: "flame", mount: mountHabit },
+    { id: "goal", name: "目标", group: "记录", desc: "储蓄进度与每月需存", icon: "target", mount: mountGoal },
+    { id: "focus", name: "专注", group: "时间", desc: "番茄钟与专注流水", icon: "clock", mount: mountFocus },
+    { id: "date", name: "日期", group: "时间", desc: "间隔天数与倒数", icon: "calendar", mount: mountDate },
+    { id: "calc", name: "计算器", group: "计算", desc: "表达式与计算历史", icon: "calc", mount: mountCalc },
+    { id: "loan", name: "贷款", group: "计算", desc: "月供对比与还款表", icon: "home2", mount: mountLoan },
+    { id: "tax", name: "个税", group: "计算", desc: "税后到手与税率档", icon: "receipt", mount: mountTax },
+    { id: "convert", name: "换算", group: "计算", desc: "长度重量温度进制", icon: "scale", mount: mountConvert },
+    { id: "text", name: "文本", group: "工具", desc: "统计转换去重替换", icon: "text", mount: mountText },
+    { id: "password", name: "密码", group: "工具", desc: "本机生成随机密码", icon: "key", mount: mountPassword },
+    { id: "random", name: "随机", group: "工具", desc: "从清单里抽一个决定", icon: "shuffle", mount: mountRandom },
+    { id: "data", name: "数据", group: "工具", desc: "备份导出与清空", icon: "db", mount: mountData }
+  ];
+  LU.GROUPS = ["记录", "时间", "计算", "工具"];
+
+  /* ============================================================
+     全局统计与跨工具写入
+     供概览页、今日面板、痕迹面板使用——不依赖对应工具是否被打开过
+     ============================================================ */
+  LU.addLedgerEntry = function (entry) {
+    const rows = LU.load("ledger", []);
+    rows.push({
+      id: LU.uid(), ts: Date.now(),
+      note: entry.note || "", amt: entry.amt, type: entry.type || "支出",
+      cat: entry.cat || "其他", date: entry.date || LU.today()
+    });
+    LU.save("ledger", rows);
+    if (LU._ledgerRender) {
+      try { LU._ledgerRender(); } catch (e) {}
+    }
+  };
+
+  LU.todoStats = function () {
+    const rows = LU.load("todo", []);
+    const t = LU.today();
+    return {
+      open: rows.filter(function (x) { return !x.done; }).length,
+      todayDone: rows.filter(function (x) {
+        return x.done && x.doneAt && LU.fmtDate(new Date(x.doneAt)) === t;
+      }).length
+    };
+  };
+
+  LU.habitStats = function () {
+    const rows = LU.load("habit", []);
+    const t = LU.today();
+    return {
+      total: rows.length,
+      today: rows.filter(function (h) { return (h.log || {})[t]; }).length
+    };
+  };
+
+  LU.focusStats = function () {
+    const t = LU.today();
+    return LU.load("focus", [])
+      .filter(function (f) { return f.date === t; })
+      .reduce(function (s, f) { return s + (Number(f.min) || 0); }, 0);
+  };
+
+  LU.goalStats = function () {
+    const rows = LU.load("goal", []);
+    return {
+      count: rows.length,
+      pct: rows.length
+        ? rows.reduce(function (s, g) {
+            const t = Number(g.target) || 0;
+            return s + (t > 0 ? Math.min(100, (Number(g.saved) || 0) / t * 100) : 0);
+          }, 0) / rows.length
+        : 0
+    };
+  };
+})();
+
+</script>
+<script>
+"use strict";
+/* ============================================================
+   乐乌 · 应用层：路由 / 导航 / 命令面板 / 今日面板
+   ============================================================ */
+(function () {
+  const LU = window.LU;
+  const esc = LU.esc;
+  const TOOLS = LU.TOOLS;
+
+  const el = {
+    nav: document.getElementById("nav"),
+    view: document.getElementById("view"),
+    workTitle: document.getElementById("workTitle"),
+    workSub: document.getElementById("workSub"),
+    tabbar: document.getElementById("tabbar"),
+    side: document.getElementById("side"),
+    sideDate: document.getElementById("sideDate"),
+    todayKpis: document.getElementById("todayKpis"),
+    trace: document.getElementById("trace"),
+    palette: document.getElementById("palette"),
+    cmdInput: document.getElementById("cmdInput"),
+    cmdList: document.getElementById("cmdList"),
+    toast: document.getElementById("toast"),
+    rail: document.getElementById("rail"),
+    scrim: document.getElementById("scrim")
+  };
+
+  /* ---------- 提示 ---------- */
+  let toastTimer = null;
+  LU.toast = function (msg) {
+    el.toast.textContent = msg;
+    el.toast.classList.add("show");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.toast.classList.remove("show"); }, 1900);
+  };
+
+  /* ---------- 主题 ---------- */
+  function applyTheme(dark) {
+    document.body.classList.toggle("dark", !!dark);
+    const lab = document.getElementById("themeLabel");
+    if (lab) lab.textContent = dark ? "亮色" : "暗色";
+  }
+  let dark = LU.load("theme", null);
+  if (dark === null) {
+    try {
+      dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    } catch (e) { dark = false; }
+  }
+  applyTheme(dark);
+  document.getElementById("themeBtn").addEventListener("click", function () {
+    dark = !document.body.classList.contains("dark");
+    applyTheme(dark);
+    LU.save("theme", dark);
+  });
+
+  /* ---------- 导航 ---------- */
+  const NAV_ICON = { "记录": "receipt", "时间": "clock", "计算": "calc", "工具": "text" };
+  function buildNav() {
+    let html = "";
+    LU.GROUPS.forEach(function (g) {
+      const items = TOOLS.filter(function (t) { return t.group === g; });
+      if (!items.length) return;
+      html += '<div class="nav-group"><div class="nav-group-title">' + esc(g) + "</div>";
+      items.forEach(function (t) {
+        html += '<button class="nav-item" type="button" data-go="' + t.id + '">' +
+          '<span class="ico">' + LU.icon(t.icon, 16) + "</span><span>" + esc(t.name) + "</span>" +
+          "</button>";
+      });
+      html += "</div>";
+    });
+    el.nav.innerHTML = html;
+  }
+
+  const TABS = ["ledger", "todo", "habit", "focus", "calc"];
+  function buildTabs() {
+    el.tabbar.innerHTML = TABS.map(function (id) {
+      const t = TOOLS.filter(function (x) { return x.id === id; })[0];
+      if (!t) return "";
+      return '<button class="tab" type="button" data-go="' + t.id + '">' +
+        LU.icon(t.icon, 19) + "<span>" + esc(t.name) + "</span></button>";
+    }).join("") + '<button class="tab" type="button" data-go="home">' +
+      LU.icon("home", 19) + "<span>全部</span></button>";
+  }
+
+  /* ---------- 今日面板 ---------- */
+  function renderToday() {
+    const d = new Date();
+    const dow = "日一二三四五六".charAt(d.getDay());
+    el.sideDate.textContent = d.getMonth() + 1 + "月" + d.getDate() + "日 周" + dow;
+
+    const h = LU.habitStats ? LU.habitStats() : { total: 0, today: 0 };
+    const t = LU.todoStats ? LU.todoStats() : { open: 0, todayDone: 0 };
+    const f = LU.focusStats ? LU.focusStats() : 0;
+    const g = LU.goalStats ? LU.goalStats() : { count: 0, pct: 0 };
+
+    el.todayKpis.innerHTML =
+      '<div class="today-kpi"><div class="k">待办未完成</div><div class="v">' + t.open + "</div></div>" +
+      '<div class="today-kpi"><div class="k">今日完成</div><div class="v">' + t.todayDone + "</div></div>" +
+      '<div class="today-kpi"><div class="k">习惯打卡</div><div class="v">' + h.today + "/" + h.total + "</div></div>" +
+      '<div class="today-kpi"><div class="k">专注分钟</div><div class="v">' + f + "</div></div>" +
+      '<div class="today-kpi" style="grid-column:span 2"><div class="k">目标平均进度</div><div class="v">' +
+      (g.count ? g.pct.toFixed(0) + "%" : "未设定") + "</div></div>";
+  }
+
+  function renderTrace() {
+    const list = LU.getTrace();
+    if (!list.length) {
+      el.trace.innerHTML = '<p class="result-empty" style="font-size:12px">算完、记完的东西可以存到这里，之后一键回填或记进账本。</p>';
+      return;
+    }
+    el.trace.innerHTML = list.slice(0, 14).map(function (it, i) {
+      const d = new Date(it.ts);
+      const time = pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+      return '<div class="trace-item' + (i === 0 ? " hot" : "") + '">' +
+        '<div class="trace-t">' + esc(it.label || it.tool) + "</div>" +
+        '<div class="trace-m"><span class="num">' + esc(it.value) + "</span>" +
+        (it.unit ? "<span>" + esc(it.unit) + "</span>" : "") +
+        "<span>" + esc(it.tool) + "</span><span>" + time + "</span></div>" +
+        (it.value ? '<div class="trace-acts"><button class="chip" type="button" data-copy="' + it.id + '">复制</button>' +
+          '<button class="chip" type="button" data-ledger="' + it.id + '">记成支出</button></div>' : "") +
+        "</div>";
+    }).join("");
+
+    Array.prototype.forEach.call(el.trace.querySelectorAll("[data-copy]"), function (b) {
+      b.addEventListener("click", function () {
+        const it = LU.getTrace().filter(function (x) { return x.id === b.dataset.copy; })[0];
+        if (it) LU.copy(it.value)();
+      });
+    });
+    Array.prototype.forEach.call(el.trace.querySelectorAll("[data-ledger]"), function (b) {
+      b.addEventListener("click", function () {
+        const it = LU.getTrace().filter(function (x) { return x.id === b.dataset.ledger; })[0];
+        if (!it) return;
+        const amt = parseFloat(String(it.value).replace(/,/g, ""));
+        if (!isFinite(amt) || amt <= 0) { LU.toast("这个数不能记成支出"); return; }
+        if (LU.addLedgerEntry) {
+          LU.addLedgerEntry({ note: it.label || it.tool, amt: amt, type: "支出", cat: "其他" });
+          LU.toast("已记入记账本");
+        } else {
+          LU.toast("打开记账页后再试");
+        }
+      });
+    });
+  }
+  LU.onTraceChange = function () {
+    if (document.getElementById("trace")) renderTrace();
+  };
+  function pad2(n) { return String(n).padStart(2, "0"); }
+
+  document.getElementById("clearTrace").addEventListener("click", function () {
+    if (!LU.getTrace().length) { LU.toast("痕迹已经是空的"); return; }
+    LU.clearTrace();
+  });
+
+  /* ---------- 概览页 ---------- */
+  function mountHome() {
+    const d = new Date();
+    const hour = d.getHours();
+    const greet = hour < 6 ? "夜深了" : hour < 11 ? "早上好" : hour < 14 ? "中午好" : hour < 18 ? "下午好" : hour < 23 ? "晚上好" : "夜深了";
+    const t = LU.todoStats ? LU.todoStats() : { open: 0, todayDone: 0 };
+    const f = LU.focusStats ? LU.focusStats() : 0;
+
+    let html = '<div class="page page-wide"><div class="hero">' +
+      "<h1>" + greet + "。今天还有 <em>" + t.open + "</em> 件事在等着。</h1>" +
+      "<p>" + TOOLS.length + " 个工具，数据只存在这台设备上。按 Ctrl K 可以直接跳到任何工具。</p>" +
+      "</div>";
+
+    // 快捷开始：先给四个最常用的入口，进来不会只剩一块空白
+    const quick = [
+      { id: "ledger", name: "记一笔", desc: "今天花了多少", icon: "wallet" },
+      { id: "todo", name: "加待办", desc: "别让事情溜走", icon: "check" },
+      { id: "focus", name: "开始专注", desc: "25 分钟番茄钟", icon: "clock" },
+      { id: "password", name: "生成密码", desc: "随机、只在本地", icon: "key" }
+    ];
+    html += '<div class="sec"><div class="sec-hd"><h2>快捷开始</h2><span class="spacer"></span>' +
+      '<span class="hint">点一下就进去</span></div><div class="tiles">' +
+      quick.map(function (x) {
+        return '<button class="tile" type="button" data-go="' + x.id + '">' +
+          '<span class="ico-w">' + LU.icon(x.icon, 19) + "</span>" +
+          "<b>" + esc(x.name) + "</b><span>" + esc(x.desc) + "</span></button>";
+      }).join("") + "</div></div>";
+
+    // 今日速览
+    html += '<div class="sec"><div class="sec-hd"><h2>今天</h2><span class="spacer"></span>' +
+      '<span class="hint">专注 ' + f + " 分钟 · 已完成 " + t.todayDone + " 件</span></div>" +
+      '<div class="kpis" id="homeKpi"></div></div>';
+
+    // 最近痕迹：没数据时也给一句引导，不留大白块
+    const recent = LU.getTrace().slice(0, 3);
+    html += '<div class="sec"><div class="sec-hd"><h2>最近痕迹</h2><span class="spacer"></span>' +
+      '<span class="hint">' + (recent.length ? "最近 " + recent.length + " 条" : "还没有记录") + "</span></div>" +
+      (recent.length
+        ? '<div class="trace">' + recent.map(function (it, i) {
+            return '<div class="trace-item' + (i === 0 ? " hot" : "") + '"><div class="trace-t">' + esc(it.label || it.tool) + "</div>" +
+              '<div class="trace-m"><span class="num">' + esc(it.value || "") + "</span><span>" + esc(it.tool || "") + "</span>" +
+              '<span>' + esc(LU.ago(it.ts)) + "</span></div></div>";
+          }).join("") + "</div>"
+        : '<div class="empty"><b>这里会出现你最近的操作</b>记一笔、完成待办或专注一段，都会自动留在这里。</div>') +
+      "</div>";
+
+    // 工具网格
+    LU.GROUPS.forEach(function (g) {
+      const items = TOOLS.filter(function (x) { return x.group === g; });
+      html += '<div class="sec"><div class="sec-hd"><h2>' + esc(g) + "</h2><span class=\"spacer\"></span><span class=\"hint\">" +
+        items.length + " 个</span></div><div class=\"tiles\">" +
+        items.map(function (x) {
+          return '<button class="tile" type="button" data-go="' + x.id + '">' +
+            '<span class="ico-w">' + LU.icon(x.icon, 19) + "</span>" +
+            "<b>" + esc(x.name) + "</b><span>" + esc(x.desc) + "</span>" +
+            "</button>";
+        }).join("") + "</div></div>";
+    });
+
+    html += "</div>";
+    el.view.innerHTML = html;
+
+    // 今日 KPI（复用首页指标）
+    const L = function (k) { return LU.load(k, []); };
+    const mk = LU.thisMonth();
+    const ledger = L("ledger");
+    const exp = ledger.filter(function (r) { return LU.monthKey(r.date) === mk && r.type !== "收入"; })
+      .reduce(function (s, r) { return s + Math.abs(Number(r.amt || 0)); }, 0);
+    const hb = LU.habitStats ? LU.habitStats() : { total: 0, today: 0 };
+    const gp = LU.goalStats ? LU.goalStats() : { count: 0, pct: 0 };
+
+    const box = document.getElementById("homeKpi");
+    if (box) {
+      box.innerHTML =
+        '<div class="kpi"><div class="k">本月支出</div><div class="v num">' + LU.money(exp) + '<small>元</small></div><div class="d">' + mk.replace("-", " 年 ") + " 月</div></div>" +
+        '<div class="kpi"><div class="k">习惯</div><div class="v num">' + hb.today + "/" + hb.total + '<small>今日</small></div><div class="d">连续打卡会累积</div></div>' +
+        '<div class="kpi"><div class="k">专注</div><div class="v num">' + f + '<small>分钟</small></div><div class="d">今天累计</div></div>' +
+        '<div class="kpi"><div class="k">目标</div><div class="v num">' + (gp.count ? gp.pct.toFixed(0) + "%" : "—") + '<small>平均</small></div><div class="d">' + gp.count + " 个在进行</div></div>";
+    }
+  }
+
+  /* ---------- 路由 ---------- */
+  let current = "";
+  function go(id, push) {
+    if (LU._cleanup) { LU._cleanup(); LU._cleanup = null; }
+    current = id;
+    if (push !== false) {
+      try { location.hash = id === "home" ? "" : "#" + id; } catch (e) {}
+    }
+    if (id === "home" || !id) {
+      el.workTitle.textContent = "概览";
+      el.workSub.textContent = "";
+      mountHome();
+    } else {
+      const t = TOOLS.filter(function (x) { return x.id === id; })[0];
+      if (!t) { mountHome(); return; }
+      el.workTitle.textContent = t.name;
+      el.workSub.textContent = t.desc;
+      el.view.innerHTML = "";
+      const wrap = document.createElement("div");
+      wrap.className = "page";
+      el.view.appendChild(wrap);
+      try {
+        t.mount(wrap);
+      } catch (err) {
+        wrap.innerHTML = '<div class="empty"><b>这个工具没能打开</b>刷新页面后再试一次。</div>';
+      }
+      el.view.scrollTop = 0;
+    }
+    Array.prototype.forEach.call(document.querySelectorAll("[data-go]"), function (b) {
+      if (b.getAttribute("data-go") === id) b.setAttribute("aria-current", "page");
+      else b.removeAttribute("aria-current");
+    });
+    renderToday();
+    if (push !== false) closeRail();
+  }
+
+  document.addEventListener("click", function (e) {
+    const b = e.target.closest("[data-go]");
+    if (b) {
+      e.preventDefault();
+      go(b.getAttribute("data-go"));
+    }
+  });
+
+  window.addEventListener("hashchange", function () {
+    const id = (location.hash || "").replace("#", "") || "home";
+    if (id !== current) go(id, false);
+  });
+
+  /* ---------- 移动端抽屉 ---------- */
+  function openRail() { el.rail.classList.add("open"); el.scrim.classList.add("open"); }
+  function closeRail() { el.rail.classList.remove("open"); el.scrim.classList.remove("open"); }
+  document.getElementById("menuBtn").addEventListener("click", function () {
+    if (el.rail.classList.contains("open")) closeRail();
+    else openRail();
+  });
+  el.scrim.addEventListener("click", closeRail);
+
+  /* ---------- 命令面板 ---------- */
+  let cmdIndex = 0;
+  let cmdItems = [];
+  const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  const kbdEl = document.getElementById("cmdKbd");
+  if (kbdEl) kbdEl.textContent = isMac ? "⌘ K" : "Ctrl K";
+
+  function cmdCandidates(q) {
+    const query = q.trim().toLowerCase();
+    const out = [];
+    if (!query) {
+      TOOLS.forEach(function (t) {
+        out.push({ kind: "tool", id: t.id, title: t.name, desc: t.group + " · " + t.desc, icon: t.icon });
+      });
+      return out;
+    }
+    TOOLS.forEach(function (t) {
+      const hay = (t.name + " " + t.desc + " " + t.group).toLowerCase();
+      if (hay.indexOf(query) >= 0) {
+        out.push({ kind: "tool", id: t.id, title: t.name, desc: t.group + " · " + t.desc, icon: t.icon });
+      }
+    });
+    // 表达式
+    if (/^[\d+\-*/().%\s×÷−]+$/.test(query) && /\d/.test(query)) {
+      try {
+        const v = Function('"use strict";return (' + query.replace(/×/g, "*").replace(/÷/g, "/") + ")")();
+        if (typeof v === "number" && isFinite(v)) {
+          out.unshift({ kind: "calc", title: String(+v.toFixed(10)), desc: "计算 " + q, icon: "calc", expr: q });
+        }
+      } catch (e) {}
+    }
+    // 痕迹
+    LU.getTrace().forEach(function (it) {
+      if ((it.label + " " + it.value).toLowerCase().indexOf(query) >= 0) {
+        out.push({ kind: "trace", title: it.label || it.tool, desc: it.tool + " · " + it.value + (it.unit || ""), icon: "pin", value: it.value });
+      }
+    });
+    return out;
+  }
+
+  function renderCmd() {
+    const q = el.cmdInput.value;
+    cmdItems = cmdCandidates(q).slice(0, 9);
+    if (cmdIndex >= cmdItems.length) cmdIndex = 0;
+    if (!cmdItems.length) {
+      el.cmdList.innerHTML = '<div class="palette-item"><span class="t" style="color:var(--ink-3)">没有匹配的结果</span></div>';
+      return;
+    }
+    el.cmdList.innerHTML = cmdItems.map(function (it, i) {
+      return '<button class="palette-item' + (i === cmdIndex ? " sel" : "") + '" type="button" data-i="' + i + '">' +
+        '<span class="ico">' + LU.icon(it.icon, 16) + "</span>" +
+        '<span class="t">' + esc(it.title) + "</span>" +
+        '<span class="d">' + esc(it.desc) + "</span></button>";
+    }).join("");
+  }
+
+  function openCmd() {
+    el.palette.classList.add("open");
+    el.cmdInput.value = "";
+    cmdIndex = 0;
+    renderCmd();
+    setTimeout(function () { el.cmdInput.focus(); }, 30);
+  }
+  function closeCmd() { el.palette.classList.remove("open"); }
+
+  function runCmd(it) {
+    if (!it) return;
+    if (it.kind === "tool") { closeCmd(); go(it.id); return; }
+    if (it.kind === "calc") {
+      LU.trace({ tool: "计算器", label: it.expr, value: it.title });
+      LU.toast("结果 " + it.title + " 已存入痕迹");
+      closeCmd();
+      return;
+    }
+    if (it.kind === "trace") {
+      LU.copy(it.value)();
+      closeCmd();
+    }
+  }
+
+  document.getElementById("cmdOpen").addEventListener("click", openCmd);
+  document.getElementById("quickBtn").addEventListener("click", openCmd);
+  el.cmdInput.addEventListener("input", function () { cmdIndex = 0; renderCmd(); });
+  el.cmdInput.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowDown") { e.preventDefault(); cmdIndex = Math.min(cmdItems.length - 1, cmdIndex + 1); renderCmd(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); cmdIndex = Math.max(0, cmdIndex - 1); renderCmd(); }
+    else if (e.key === "Enter") { e.preventDefault(); runCmd(cmdItems[cmdIndex]); }
+    else if (e.key === "Escape") { closeCmd(); }
+  });
+  el.cmdList.addEventListener("click", function (e) {
+    const b = e.target.closest("[data-i]");
+    if (!b) return;
+    runCmd(cmdItems[parseInt(b.dataset.i, 10)]);
+  });
+  el.palette.addEventListener("click", function (e) {
+    if (e.target === el.palette) closeCmd();
+  });
+  document.addEventListener("keydown", function (e) {
+    const k = e.key.toLowerCase();
+    if ((e.metaKey || e.ctrlKey) && k === "k") {
+      e.preventDefault();
+      if (el.palette.classList.contains("open")) closeCmd();
+      else openCmd();
+    }
+    if (e.key === "Escape" && el.palette.classList.contains("open")) closeCmd();
+    if ((e.metaKey || e.ctrlKey) && k === "/") {
+      e.preventDefault();
+      openCmd();
+    }
+  });
+
+  /* ---------- 启动 ---------- */
+  buildNav();
+  buildTabs();
+  renderTrace();
+  renderToday();
+
+  const startId = (location.hash || "").replace("#", "") || "home";
+  const valid = startId === "home" || TOOLS.some(function (t) { return t.id === startId; });
+  go(valid ? startId : "home", false);
+})();
+
+</script>
+</body>
+</html>

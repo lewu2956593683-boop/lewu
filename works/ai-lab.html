@@ -1,0 +1,1979 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI 训练实验室 · 浏览器神经网络进化观测</title>
+<style>
+:root{
+  --bg:#06090d; --panel:#0d141d; --panel2:#111c27;
+  --line:#1c2b3a; --line2:#2a4459;
+  --fg:#c6d6e4; --dim:#6a8299; --dim2:#48607a;
+  --acc:#3ee5a4; --acc2:#4bb8ff; --acc3:#a98bff;
+  --warn:#ffb454; --bad:#ff5f6d;
+  --mono:"SFMono-Regular",Consolas,Menlo,"Liberation Mono","Noto Sans Mono CJK SC","Microsoft YaHei",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;max-width:100%;overflow-x:hidden}
+body{
+  background:
+    radial-gradient(1100px 520px at 12% -12%, #0d1f2e 0%, transparent 58%),
+    radial-gradient(900px 460px at 102% -4%, #16102a 0%, transparent 55%),
+    var(--bg);
+  color:var(--fg);font-family:var(--mono);font-size:14px;line-height:1.62;
+  -webkit-text-size-adjust:100%;min-height:100vh;padding-bottom:40px;
+}
+h1,h2,h3,p,ul{margin:0}
+.app{max-width:1360px;margin:0 auto;padding:10px 12px 0}
+.topbar{
+  position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;
+  gap:10px;flex-wrap:wrap;padding:10px 12px;margin-bottom:12px;
+  background:linear-gradient(180deg,rgba(10,16,23,.96),rgba(10,16,23,.82));
+  border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(6px);
+}
+.brand{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.brand h1{font-size:17px;letter-spacing:.5px;color:#eaf4ff;font-weight:700}
+.brand .sub{font-size:11px;color:var(--dim2);letter-spacing:1px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--acc);box-shadow:0 0 12px var(--acc);align-self:center}
+.topmeta{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.badge{font-size:11px;padding:3px 9px;border-radius:999px;border:1px solid var(--line2);color:var(--dim);background:#0b131c;white-space:nowrap}
+.badge.ok{color:var(--acc);border-color:#1d5d45;background:#0b1a15}
+.badge.warn{color:var(--warn);border-color:#5d451d;background:#1a150b}
+.badge.bad{color:var(--bad);border-color:#5d2130;background:#1a0d10}
+.badge.info{color:var(--acc2);border-color:#1d4765;background:#0b1620}
+.layout{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:12px;align-items:start}
+.col{display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel{background:linear-gradient(180deg,var(--panel),#0b121a);border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;min-width:0}
+.panel h2{font-size:13px;color:#e6f1fb;letter-spacing:.4px;display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;min-width:0}
+.panel h2::before{content:"";width:3px;height:14px;background:var(--acc);border-radius:2px;box-shadow:0 0 8px rgba(62,229,164,.6)}
+.panel h2 .hint{font-size:11px;color:var(--dim2);font-weight:400;margin-left:auto;min-width:0;white-space:normal;text-align:right}
+.desc{font-size:11.5px;color:var(--dim);margin:8px 0;line-height:1.55}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.segbtn{flex:1 1 auto;min-width:78px;padding:7px 9px;font-size:12px;font-family:var(--mono);cursor:pointer;
+  color:var(--dim);background:#0a121b;border:1px solid var(--line);border-radius:8px;transition:.15s}
+.segbtn:hover{color:var(--fg);border-color:var(--line2)}
+.segbtn.active{color:#04140d;background:linear-gradient(180deg,#48eeb0,#2cc98c);border-color:#48eeb0;font-weight:700}
+textarea,input[type=text]{
+  width:100%;font-family:var(--mono);font-size:12.5px;color:var(--fg);background:#070d13;
+  border:1px solid var(--line);border-radius:8px;padding:8px 9px;resize:vertical;outline:none}
+textarea:focus,input[type=text]:focus{border-color:var(--acc2);box-shadow:0 0 0 2px rgba(75,184,255,.12)}
+.rowbtn{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.btn{
+  font-family:var(--mono);font-size:12.5px;padding:8px 13px;border-radius:8px;cursor:pointer;
+  color:var(--fg);background:#12202c;border:1px solid var(--line2);transition:.15s}
+.btn:hover{border-color:var(--acc2);color:#fff}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn.primary{color:#04140d;background:linear-gradient(180deg,#48eeb0,#27b87c);border-color:#48eeb0;font-weight:700}
+.btn.danger{color:#ffd9dd;background:#2a1116;border-color:#5d2130}
+.btn.ghost{background:#0a121b}
+.btn.sm{padding:5px 9px;font-size:11.5px}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:10px}
+.stats-grid div{background:#08111a;border:1px solid var(--line);border-radius:8px;padding:6px 4px;text-align:center;min-width:0}
+.stats-grid label{display:block;font-size:10px;color:var(--dim2);letter-spacing:.5px}
+.stats-grid b{font-size:13px;color:var(--acc2);font-weight:600;word-break:break-all}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+fieldset:disabled{opacity:.55}
+.param{margin-bottom:11px}
+.ptop{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:12px;color:var(--fg)}
+.ptop b{color:var(--acc);font-size:12.5px}
+.ph{font-size:10.8px;color:var(--dim2);margin-top:3px;line-height:1.45}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;margin:2px 0 0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:3px;background:linear-gradient(90deg,#1d3d4f,#243b52)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;margin-top:-5.5px;border-radius:50%;
+  background:#eafff6;border:2px solid var(--acc);box-shadow:0 0 10px rgba(62,229,164,.55)}
+input[type=range]::-moz-range-track{height:4px;border-radius:3px;background:#243b52}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border:2px solid var(--acc);border-radius:50%;background:#eafff6}
+select{width:100%;font-family:var(--mono);font-size:12.5px;color:var(--fg);background:#0a121b;border:1px solid var(--line);border-radius:8px;padding:7px 8px;outline:none}
+.note{font-size:10.8px;color:var(--dim2);margin-top:8px;line-height:1.5}
+.sepline{height:1px;background:var(--line);margin:12px 0 10px}
+/* 训练面板 */
+.train-head{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chart-wrap{position:relative;width:100%;min-width:0;height:220px;margin-top:10px;border:1px solid var(--line);border-radius:10px;background:#061019;overflow:hidden}
+#lossCanvas{display:block;width:100%;height:100%}
+.live-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:7px;margin-top:10px}
+.live-grid div{background:#08111a;border:1px solid var(--line);border-radius:8px;padding:6px 7px;min-width:0}
+.live-grid label{display:block;font-size:10px;color:var(--dim2)}
+.live-grid b{font-size:13.5px;color:var(--fg);font-weight:600;word-break:break-all}
+.live-grid b.hl{color:var(--acc)}
+#logBox{margin-top:10px;height:92px;overflow:auto;overflow-wrap:anywhere;background:#050a0f;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:11.5px;color:#7fa0b8}
+#logBox div{white-space:pre-wrap;word-break:break-all}
+#logBox .t{color:var(--dim2)}
+#logBox .ok{color:var(--acc)}
+#logBox .err{color:var(--bad)}
+#logBox .wn{color:var(--warn)}
+/* ===== 进化快照（本作品核心 · 全宽大字） ===== */
+.evo-panel{margin-bottom:12px;border-color:#1b4638;background:linear-gradient(180deg,#0c1b17,#0b121a 58%)}
+.evo-panel h2::before{box-shadow:0 0 10px rgba(62,229,164,.9)}
+.evo-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:12px;align-items:stretch;min-width:0}
+.evo-now{background:#040d0a;border:1px solid #17372c;border-left:3px solid #17372c;border-radius:10px;padding:9px 11px 9px;min-width:0;transition:border-left-color .25s}
+.evo-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.evo-ep{font-size:12px;color:var(--dim);letter-spacing:.5px;font-weight:700}
+.evo-level{font-size:12px;font-weight:700;padding:2px 10px;border-radius:999px;border:1px solid var(--line2);color:var(--dim);white-space:nowrap}
+.evo-score{margin-left:auto;font-size:10.5px;color:var(--dim2);white-space:nowrap}
+.evo-score b{font-size:15px;color:#eaf4ff;font-weight:700;letter-spacing:-.5px}
+.evo-idx{font-size:11px;color:var(--acc);min-width:52px;text-align:right}
+.evo-text{font-size:15px;line-height:1.85;color:#eaf6ff;margin:8px 0 0;white-space:pre-wrap;word-break:break-all;
+  min-height:128px;max-height:196px;overflow:auto;font-family:var(--mono);letter-spacing:.2px}
+.evo-text.ph{font-size:12.5px;line-height:1.8;color:var(--dim2);letter-spacing:0}
+.evo-meter{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:8px}
+.evo-meter span{font-size:10px;text-align:center;padding:4px 0;border-radius:6px;border:1px solid var(--line2);background:#08111a;
+  color:var(--dim2);transition:.2s;overflow:hidden;white-space:nowrap}
+.evo-meter span.on.lv1{background:#ff5f6d;border-color:#ff5f6d;color:#2a0a0d;font-weight:700}
+.evo-meter span.on.lv2{background:#ffb454;border-color:#ffb454;color:#2a1c05;font-weight:700}
+.evo-meter span.on.lv3{background:#4bb8ff;border-color:#4bb8ff;color:#04202f;font-weight:700}
+.evo-meter span.on.lv4{background:#3ee5a4;border-color:#3ee5a4;color:#04140d;font-weight:700}
+.evo-play{display:flex;align-items:center;gap:6px;margin-top:9px;flex-wrap:wrap}
+.evo-play input[type=range]{flex:1 1 110px;min-width:70px}
+.evo-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed #17372c}
+.evo-tp{font-size:11px;color:var(--dim2)}
+.evo-tp.hit{color:var(--warn);font-weight:700}
+.evo-foot .btn{margin-left:auto}
+.evo-side{display:flex;flex-direction:column;min-width:0}
+.evo-side-h{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--dim2);margin-bottom:7px;flex-wrap:wrap}
+.evo-side-h b{color:var(--dim);font-weight:600}
+.lv1{color:var(--bad)!important;border-color:#5d2130!important;background:#1a0d10!important}
+.lv2{color:var(--warn)!important;border-color:#5d451d!important;background:#1a150b!important}
+.lv3{color:var(--acc2)!important;border-color:#1d4765!important;background:#0b1620!important}
+.lv4{color:var(--acc)!important;border-color:#1d5d45!important;background:#0b1a15!important}
+#timeline{position:relative;flex:1 1 auto;display:flex;flex-direction:column;gap:6px;max-height:318px;overflow:auto;padding-right:3px}
+.snap{border:1px solid var(--line);border-left:3px solid var(--line2);border-radius:8px;background:#08111a;padding:6px 9px;cursor:pointer;transition:.15s;min-width:0}
+.snap:hover{border-color:var(--line2)}
+.snap[data-lv="1"]{border-left-color:#ff5f6d}
+.snap[data-lv="2"]{border-left-color:#ffb454}
+.snap[data-lv="3"]{border-left-color:#4bb8ff}
+.snap[data-lv="4"]{border-left-color:#3ee5a4}
+.snap.turning{box-shadow:inset 0 0 22px rgba(255,180,84,.09)}
+.snap.active{border-color:var(--acc);border-left-color:var(--acc);box-shadow:0 0 0 1px rgba(62,229,164,.3),0 0 18px rgba(62,229,164,.1)}
+.snap-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:10.5px;color:var(--dim2);margin-bottom:4px}
+.snap-head .ep{color:#e6f1fb;font-weight:700;font-size:11.5px}
+.snap-head .tp-chip{color:var(--warn);font-weight:700;white-space:nowrap}
+.snap-head .sc{margin-left:auto;color:var(--dim);white-space:nowrap}
+.chip{font-size:10px;padding:1px 7px;border-radius:999px;border:1px solid var(--line2);white-space:nowrap}
+.snap-text{font-size:11.5px;line-height:1.62;color:#a9c2d4;white-space:pre-wrap;word-break:break-all;margin:0;
+  max-height:38px;overflow:hidden;background:#050a0f;border-radius:6px;padding:5px 7px}
+.snap.active .snap-text{color:#dceaf6;max-height:76px}
+.empty{border:1px dashed var(--line2);border-radius:10px;padding:18px 12px;text-align:center;color:var(--dim2);font-size:12px}
+.empty.guide{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center}
+.guide{padding:12px}
+.guide-h{font-size:11.5px;color:var(--dim);margin-bottom:7px}
+.guide div.g{display:flex;gap:7px;align-items:flex-start;font-size:11px;color:var(--dim2);text-align:left;margin-top:5px;line-height:1.55}
+.guide div.g b{flex:0 0 15px;height:15px;line-height:15px;text-align:center;border-radius:4px;background:#12202c;
+  border:1px solid var(--line2);color:var(--acc);font-size:10px;margin-top:1px}
+.out{width:100%;font-family:var(--mono);font-size:12.5px;line-height:1.75;color:#d9ecf8;background:#050a0f;
+  border:1px solid var(--line);border-radius:8px;padding:9px 10px;white-space:pre-wrap;word-break:break-all;min-height:74px}
+footer{margin-top:14px;padding:12px;border-top:1px solid var(--line);color:var(--dim2);font-size:11px;line-height:1.7}
+@media(max-width:980px){
+  .layout{grid-template-columns:1fr}
+  .evo-grid{grid-template-columns:1fr}
+  .evo-text{min-height:104px;max-height:180px;font-size:14.5px}
+  .brand h1{font-size:15px}
+  .chart-wrap{height:190px}
+  #timeline{max-height:300px}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:420px){
+  body{font-size:13px}
+  .panel{padding:10px 9px 12px}
+  .btn{padding:7px 10px;font-size:12px}
+}
+/* ===== 置顶训练台（压缩版：给快照让位） ===== */
+.train-panel{margin-bottom:12px}
+.train-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+/* 开始按钮旁的小提示：一行小字，不占地方 */
+.mini-tip{font-size:11px;line-height:1.5;color:var(--warn);background:rgba(255,180,84,.07);
+  border:1px solid rgba(255,180,84,.22);border-radius:6px;padding:3px 8px;white-space:nowrap}
+.btn.xl{font-size:14.5px;padding:11px 20px;border-radius:9px;letter-spacing:.5px}
+.btn.primary.xl{box-shadow:0 0 0 1px rgba(62,229,164,.35),0 8px 24px rgba(62,229,164,.16)}
+.prog-row{display:flex;align-items:center;gap:9px;margin-top:9px}
+.progress{flex:1 1 auto;min-width:60px;height:6px;background:#08121b;border:1px solid var(--line);border-radius:99px;overflow:hidden}
+#progressText{white-space:nowrap;text-align:center;flex:0 0 auto}
+.progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3ee5a4,#4bb8ff);transition:width .18s ease}
+.train-body{display:grid;grid-template-columns:minmax(0,1fr) 206px;gap:9px;align-items:stretch;min-width:0}
+.train-panel .chart-wrap{height:166px;margin-top:9px}
+.train-body .live-grid{margin-top:9px;grid-template-columns:1fr 1fr;gap:6px;align-content:start}
+.train-body .live-grid div{padding:5px 6px}
+.train-body .live-grid b{font-size:12.5px}
+.log-wrap{margin-top:8px;border-top:1px dashed var(--line);padding-top:5px}
+.log-wrap summary{cursor:pointer;font-size:11px;color:var(--dim2);list-style:none;padding:2px 0;user-select:none}
+.log-wrap summary::-webkit-details-marker{display:none}
+.log-wrap summary::before{content:"▸ ";color:var(--acc2)}
+.log-wrap[open] summary::before{content:"▾ "}
+.train-panel #logBox{height:64px;margin-top:6px}
+@media(max-width:900px) and (min-width:600px){
+  .train-body .live-grid{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:900px){
+  .train-body{grid-template-columns:minmax(0,1fr)}
+  .train-body .live-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .train-panel h2 .hint{display:none}
+  .train-panel .chart-wrap{height:150px}
+  .btn.xl{font-size:13.5px;padding:10px 14px}
+  .topbar{position:static}
+  .brand .sub{display:none}
+  .train-actions .btn{flex:1 1 auto}
+  .mini-tip{flex:1 1 100%;white-space:normal;order:9;font-size:10.5px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><span class="dot"></span><h1>AI 训练实验室</h1><span class="sub">Browser Neural Evolution Lab</span></div>
+    <div class="topmeta">
+      <span id="tfBadge" class="badge warn">TF.js 加载中…</span>
+      <span id="archBadge" class="badge info">LSTM</span>
+      <span id="statusChip" class="badge">就绪</span>
+    </div>
+  </header>
+
+  <!-- ========== 训练台：置顶，第一眼就能点 ========== -->
+  <section class="panel train-panel">
+    <h2>① 训练台 <span class="hint">点一下就开始 · 下面的快照会自动长出来</span></h2>
+    <div class="train-actions">
+      <button id="btnTrain" class="btn primary xl">▶ 开始训练</button>
+      <span class="mini-tip">⚠ 首次点击会卡顿 10 多秒（正在编译引擎），请耐心等待</span>
+      <button id="btnStop" class="btn danger" disabled>■ 停止</button>
+      <button id="btnQuick" class="btn ghost">⚡ 快速体验（30 秒出结果）</button>
+      <button id="btnClear" class="btn ghost">清空曲线/快照</button>
+    </div>
+    <div class="prog-row">
+      <div class="progress"><i id="trainProgress"></i></div>
+      <span id="progressText" class="badge">未开始</span>
+    </div>
+    <div class="train-body">
+      <div class="chart-wrap"><canvas id="lossCanvas"></canvas></div>
+      <div class="live-grid">
+        <div><label>当前轮</label><b id="sEpoch">0 / 0</b></div>
+        <div><label>批损失</label><b id="sBatchLoss">—</b></div>
+        <div><label>最新轮损失</label><b id="sEpochLoss">—</b></div>
+        <div><label>训练速度</label><b id="sSpeed">—</b></div>
+        <div><label>已用 / 预计</label><b id="sTime">—</b></div>
+        <div><label>语料 / 架构</label><b id="sCorpus" style="font-size:11.5px">—</b></div>
+      </div>
+    </div>
+    <details class="log-wrap" id="logWrap">
+      <summary>运行日志（出问题时点开）</summary>
+      <div id="logBox"></div>
+    </details>
+  </section>
+
+  <!-- ========== ② 进化快照：全宽大字，紧跟训练台 ========== -->
+  <section class="panel evo-panel" id="evoPanel">
+    <h2>② 进化快照 <span class="hint">本作品核心 · 从乱码到说人话的全过程</span></h2>
+    <div class="evo-grid">
+      <div class="evo-now" id="evoNow">
+        <div class="evo-top">
+          <span class="evo-ep" id="evoEpoch">第 — 轮</span>
+          <span class="evo-level" id="evoLevel">等待训练</span>
+          <span class="evo-score">像人话 <b id="evoScore">—</b><span style="font-size:10px">/100</span></span>
+          <span class="evo-idx" id="playIdx">0 / 0</span>
+        </div>
+        <pre class="evo-text ph" id="evoText">它还没开口。点上面的「▶ 开始训练」，几秒后这里会出现它写的第一段字（多半是乱码），然后一轮比一轮像人话。</pre>
+        <div class="evo-meter" id="evoMeter">
+          <span data-lv="1">纯乱码</span><span data-lv="2">碎片拼接</span><span data-lv="3">初步成词</span><span data-lv="4">基本成句</span>
+        </div>
+        <div class="evo-play">
+          <button id="btnPrev" class="btn ghost sm" title="上一帧">◀</button>
+          <button id="btnPlay" class="btn sm">▶ 回放</button>
+          <button id="btnNext" class="btn ghost sm" title="下一帧">▶</button>
+          <input type="range" id="playSlider" min="0" max="0" value="0">
+        </div>
+        <div class="evo-foot">
+          <span class="evo-tp" id="evoTP">还没发现转折点</span>
+          <button id="btnExport" class="btn ghost sm">导出进化报告</button>
+        </div>
+      </div>
+      <div class="evo-side">
+        <div class="evo-side-h"><b>时间线</b><span>越往下，越会说人话 ↓</span></div>
+        <div id="timeline"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="layout">
+    <!-- 左栏 -->
+    <div class="col">
+      <section class="panel">
+        <h2>③ 语料 <span class="hint">给它读什么</span></h2>
+        <div class="seg" id="corpusSeg">
+          <button class="segbtn active" data-c="lunxun">鲁迅《故乡》</button>
+          <button class="segbtn" data-c="yuhua">余华《活着》</button>
+          <button class="segbtn" data-c="tcm">中药知识</button>
+          <button class="segbtn" data-c="poem">现代诗</button>
+          <button class="segbtn" data-c="custom">自定义</button>
+        </div>
+        <p class="desc" id="corpusDesc"></p>
+        <textarea id="customText" rows="4" placeholder="粘贴自定义文本后点“载入”&#10;建议 800 字以上；句式越规律，进化过程越明显"></textarea>
+        <div class="rowbtn"><button id="btnLoadCustom" class="btn primary">载入自定义文本</button></div>
+        <div class="stats-grid">
+          <div><label>有效字符</label><b id="mChars">0</b></div>
+          <div><label>字符表</label><b id="mVocab">0</b></div>
+          <div><label>训练样本</label><b id="mSamples">0</b></div>
+          <div><label>参数量</label><b id="mParams">0</b></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>④ 超参数 <span class="hint">每个都有白话解释</span></h2>
+        <fieldset id="paramFs">
+          <div class="param">
+            <div class="ptop"><label for="pArch">网络架构</label></div>
+            <select id="pArch">
+              <option value="lstm">LSTM（带记忆，适合序列）</option>
+              <option value="mlp">MLP（无记忆，靠整段窗口）</option>
+            </select>
+            <p class="ph">LSTM 会记住上文的“语境”，通常更早成句；MLP 只看固定长度窗口，学得慢但每轮更快。</p>
+          </div>
+          <div class="param">
+            <div class="ptop"><label for="pHidden">隐藏层大小</label><b id="vHidden">64</b></div>
+            <input type="range" id="pHidden" min="16" max="384" step="16" value="64">
+            <p class="ph">“脑容量”。越大越聪明、越容易记住整段原文（过拟合），但训练越慢。</p>
+          </div>
+          <div class="param">
+            <div class="ptop"><label for="pLr">学习率</label></div>
+            <select id="pLr">
+              <option value="0.001">0.001 · 很稳但慢</option>
+              <option value="0.003">0.003 · 稳</option>
+              <option value="0.005">0.005 · 推荐</option>
+              <option value="0.01" selected>0.01 · 快（默认）</option>
+              <option value="0.02">0.02 · 快但易抖</option>
+              <option value="0.05">0.05 · 冒险</option>
+            </select>
+            <p class="ph">每次改参数的步子大小。太小学不动，太大会“学飞”（loss 变 NaN）。</p>
+          </div>
+          <div class="param">
+            <div class="ptop"><label for="pSeq">序列长度</label><b id="vSeq">12</b></div>
+            <input type="range" id="pSeq" min="6" max="40" step="2" value="12">
+            <p class="ph">用前 N 个字预测下一个字。长一点更懂上下文，代价是更慢、样本更少。</p>
+          </div>
+          <div class="param">
+            <div class="ptop"><label for="pBatch">批大小</label><b id="vBatch">64</b></div>
+            <input type="range" id="pBatch" min="16" max="128" step="16" value="64">
+            <p class="ph">一次喂多少条样本。大=快且稳，小=慢但每轮更新更多次。</p>
+          </div>
+          <div class="param">
+            <div class="ptop"><label for="pEpoch">训练轮数</label><b id="vEpoch">30</b></div>
+            <input type="range" id="pEpoch" min="5" max="120" step="1" value="30">
+            <p class="ph">把整本语料反复读几遍。想看到“从乱码到说话”，一般 20 轮以上开始有意思。</p>
+          </div>
+          <div class="param">
+            <div class="ptop"><label for="pSnap">快照间隔（每 N 轮）</label><b id="vSnap">5</b></div>
+            <input type="range" id="pSnap" min="1" max="20" step="1" value="5">
+            <p class="ph">每隔几轮让模型现场作文并存档。设为 1 可以看到逐轮进化，非常治愈。</p>
+          </div>
+          <div class="param">
+            <div class="ptop"><label for="pTemp">采样温度</label><b id="vTemp">0.80</b></div>
+            <input type="range" id="pTemp" min="0.1" max="2" step="0.05" value="0.8">
+            <p class="ph">“胆子”。低=照抄原文最保守；高=更有想象力也更胡说。快照和续写共用。</p>
+          </div>
+        </fieldset>
+        <div class="sepline"></div>
+        <div class="rowbtn">
+          <button id="btnResetParam" class="btn ghost sm">恢复默认参数</button>
+        </div>
+        <p class="note">改动架构 / 隐藏层 / 序列长度 / 学习率会重建模型，历史曲线与快照会被清空。</p>
+      </section>
+
+      <section class="panel">
+        <h2>⑥ 模型存档 <span class="hint">localStorage</span></h2>
+        <div class="rowbtn">
+          <button id="btnSaveModel" class="btn">保存模型</button>
+          <button id="btnLoadModel" class="btn">加载模型</button>
+          <button id="btnDelModel" class="btn danger">删除存档</button>
+        </div>
+        <p class="note" id="modelNote">未检测到本地存档。保存后可在下次打开时直接加载继续训练或续写。</p>
+      </section>
+    </div>
+
+    <!-- 右栏 -->
+    <div class="col">
+      <section class="panel">
+        <h2>⑤ 续写 <span class="hint">训练完即可玩</span></h2>
+        <input type="text" id="seedInput" placeholder="输入种子文字，例如：东临碣石">
+        <div class="param" style="margin-top:10px">
+          <div class="ptop"><label for="pGenLen">生成长度（字）</label><b id="vGenLen">160</b></div>
+          <input type="range" id="pGenLen" min="20" max="500" step="10" value="160">
+        </div>
+        <div class="rowbtn">
+          <button id="btnGen" class="btn primary">生成续写</button>
+          <button id="btnGenRand" class="btn ghost">随机种子</button>
+        </div>
+        <p class="note">温度沿用左侧「采样温度」滑块。未训练过、也没加载模型时会提示。</p>
+        <div class="out" id="genOut" style="margin-top:9px">（生成结果会出现在这里）</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    说明：全部计算在你的浏览器里完成，数据不上传。字符级语言模型 —— 用前 N 个字预测下一个字，重复几十万次后它就会“说话”。<br>
+    推荐路线：先选「中药知识」这类高规律语料 + 快照间隔 2，训练 30 轮左右，能清晰看到转折点。
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+<script>
+/* =========================================================
+ *  AI 训练实验室 —— 浏览器端字符级语言模型（单文件版）
+ *  依赖：TensorFlow.js 4.22 (CDN)
+ * ========================================================= */
+(function () {
+'use strict';
+
+/* ---------------- 工具 ---------------- */
+var el = function (id) { return document.getElementById(id); };
+var pf = window.performance && performance.now ? function(){return performance.now();} : function(){return Date.now();};
+function fmtTime(ms) {
+  var s = Math.floor(ms / 1000);
+  if (s < 60) return s + 's';
+  var m = Math.floor(s / 60);
+  return m + 'm' + (s % 60) + 's';
+}
+function escapeHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+/* 关键：让出主线程不要用 requestAnimationFrame —— 标签页切到后台时 rAF 会被暂停，
+   训练会永久卡在 await 上（这正是“开始训练后卡死”的根因）。用 setTimeout 更可靠。 */
+function yieldUI() {
+  return new Promise(function (res) { setTimeout(res, 0); });
+}
+
+/* ---------------- 内置语料 ---------------- */
+/* 鲁迅小说节选（《故乡》《孔乙己》《社戏》《从百草园到三味书屋》《阿Q正传》，
+   作者 1936 年逝世，作品已进入公有领域） */
+var LUXUN_TEXT = [
+'我冒了严寒，回到相隔二千余里，别了二十余年的故乡去。',
+'时候既然是深冬；渐近故乡时，天气又阴晦了，冷风吹进船舱中，呜呜的响，从篷隙向外一望，苍黄的天底下，远近横着几个萧索的荒村，没有一些活气。我的心禁不住悲凉起来了。阿！这不是我二十年来时时记得的故乡？',
+'我所记得的故乡全不如此。我的故乡好得多了。但要我记起他的美丽，说出他的佳处来，却又没有影像，没有言辞了。仿佛也就如此。于是我自己解释说：故乡本也如此，虽然没有进步，也未必有如我所感的悲凉，这只是我自己心情的改变罢了，因为我这次回乡，本没有什么好心绪。',
+'我这次是专为了别他而来的。我们多年聚族而居的老屋，已经公同卖给别姓了，交屋的期限，只在本年，所以必须赶在正月初一以前，永别了熟识的老屋，而且远离了熟识的故乡，搬家到我在谋食的异地去。',
+'第二日清早晨我到了我家的门口了。瓦楞上许多枯草的断茎当风抖着，正在说明这老屋难免易主的原因。几房的本家大约已经搬走了，所以很寂静。我到了自家的房外，我的母亲早已迎着出来了，接着便飞出了八岁的侄儿宏儿。',
+'我的母亲很高兴，但也藏着许多凄凉的神情，教我坐下，歇息，喝茶，且不谈搬家的事。宏儿没有见过我，远远的对面站着只是看。',
+'但我们终于谈到搬家的事。我说外间的寓所已经租定了，又买了几件家具，此外须将家里所有的木器卖去，再去增添。母亲也说好，而且行李也略已齐集，木器不便搬运的，也小半卖去了，只是收不起钱来。',
+'“你休息一两天，去拜望亲戚本家一回，我们便可以走了。”母亲说。',
+'“还有闰土，他每到我家来时，总问起你，很想见你一回面。我已经将你到家的大约日期通知他，他也许就要来了。”',
+'这时候，我的脑里忽然闪出一幅神异的图画来：深蓝的天空中挂着一轮金黄的圆月，下面是海边的沙地，都种着一望无际的碧绿的西瓜，其间有一个十一二岁的少年，项带银圈，手捏一柄钢叉，向一匹猹尽力的刺去，那猹却将身一扭，反从他的胯下逃走了。',
+'这少年便是闰土。我认识他时，也不过十多岁，离现在将有三十年了；那时我的父亲还在世，家景也好，我正是一个少爷。那一年，我家是一件大祭祀的值年。这祭祀，说是三十多年才能轮到一回，所以很郑重；正月里供祖像，供品很多，祭器很讲究，拜的人也很多，祭器也很要防偷去。',
+'我的父亲允许了；我也很高兴，因为我早听到闰土这名字，而且知道他和我仿佛年纪，闰月生的，五行缺土，所以他的父亲叫他闰土。他是能装弶捉小鸟雀的。',
+'我于是日日盼望新年，新年到，闰土也就到了。好容易到了年末，有一日，母亲告诉我，闰土来了，我便飞跑的去看。他正在厨房里，紫色的圆脸，头戴一顶小毡帽，颈上套一个明晃晃的银项圈，这可见他的父亲十分爱他，怕他死去，所以在神佛面前许下愿心，用圈子将他套住了。他见人很怕羞，只是不怕我，没有旁人的时候，便和我说话，于是不到半日，我们便熟识了。',
+'我们那时候不知道谈些什么，只记得闰土很高兴，说是上城之后，见了许多没有见过的东西。',
+'第二日，我便要他捕鸟。他说：“这不能。须大雪下了才好。我们沙地上，下了雪，我扫出一块空地来，用短棒支起一个大竹匾，撒下秕谷，看鸟雀来吃时，我远远地将缚在棒上的绳子只一拉，那鸟雀就罩在竹匾下了。什么都有：稻鸡，角鸡，鹁鸪，蓝背……”',
+'我于是又很盼望下雪。闰土又对我说：“现在太冷，你夏天到我们这里来。我们日里到海边捡贝壳去，红的绿的都有，鬼见怕也有，观音手也有。晚上我和爹管西瓜去，你也去。”',
+'“管贼么？”',
+'“不是。走路的人口渴了摘一个瓜吃，我们这里是不算偷的。要管的是獾猪，刺猬，猹。月亮底下，你听，啦啦的响了，猹在咬瓜了。你便捏了胡叉，轻轻地走去……”',
+'我那时并不知道这所谓猹的是怎么一件东西，便是现在也没有知道，只是无端的觉得状如小狗而很凶猛。',
+'“他不咬人么？”',
+'“有胡叉呢。走到了，看见猹了，你便刺。这畜生很伶俐，倒向你奔来，反从胯下窜了。他的皮毛是油一般的滑……”',
+'我素不知道天下有这许多新鲜事：海边有如许五色的贝壳；西瓜有这样危险的经历，我先前单知道他在水果店里出卖罢了。',
+'“我们沙地里，潮汛要来的时候，就有许多跳鱼儿只是跳，都有青蛙似的两个脚……”',
+'阿！闰土的心里有无穷无尽的希奇的事，都是我往常的朋友所不知道的。他们不知道一些事，闰土在海边时，他们都和我一样只看见院子里高墙上的四角的天空。',
+'可惜正月过去了，闰土须回家里去，我急得大哭，他也躲到厨房里，哭着不肯出门，但终于被他父亲带走了。他后来还托他的父亲带给我一包贝壳和几支很好看的鸟毛，我也曾送他一两次东西，但从此没有再见面。',
+'我在朦胧中，眼前展开一片海边碧绿的沙地来，上面深蓝的天空中挂着一轮金黄的圆月。我想：希望本是无所谓有，无所谓无的。这正如地上的路；其实地上本没有路，走的人多了，也便成了路。'
+].join('\n');
+
+/* 余华风格：原创仿写片段（非原文，避开版权），短句白描、重复多、情绪克制 */
+var YUHUA_TEXT = [
+'我比现在年轻十岁的时候，获得了一个游手好闲的职业，去乡间收集民间歌谣。那一年的整个夏天，我如同一只乱飞的麻雀，游荡在知了和阳光充斥的村舍田野。',
+'我喜欢喝农民那种带有苦味的茶水，他们的茶桶就放在田埂的树下，我毫无顾忌地拿起漆满茶垢的茶碗舀水喝，还把自己的水壶灌满，与田里干活的男人说上几句废话，在姑娘因我而起的窃窃私笑里扬长而去。',
+'我曾经和一位守着瓜田的老人聊了整整一个下午，这是我有生以来瓜吃得最多的一次，当我站起来告辞时，突然发现自己像个孕妇一样步履艰难了。',
+'我遇到那位名叫福贵的老人时，是夏天刚刚来到的季节。老人黝黑的脸在阳光里笑得十分生动，脸上的皱纹欢乐地游动着，里面镶满了泥土，就如布满田间的小道。',
+'这位老人和我一起坐在了那棵茂盛的树下，在那个充满阳光的下午，他向我讲述了自己。',
+'那时候我们家境还没有败落，我们徐家有一百多亩地，从这里一直到那边工厂的烟囱，都是我家的。我爹和我，是远近闻名的阔老爷和阔少爷，我们走路时鞋子的声响，都像是铜钱碰来撞去的。',
+'我女人家珍，是城里米行老板的女儿，她也是有钱人家出身的。有钱人嫁给有钱人，就是把钱堆起来，钱在钱上面哗哗地流，这样的声音我有四十年没有听到了。',
+'我是我们徐家的败家子，用我爹的话说，我是他的孽子。',
+'我念过几年私塾，穿长衫的私塾先生叫我念一段书时，是我最高兴的。我站起来，拿着本线装的《千字文》，对私塾先生说：“好好听着，爹给你念一段。”',
+'年过花甲的私塾先生对我爹说：“你家少爷长大了准能当个二流子。”',
+'我从小就不可救药，这是我爹的话。私塾先生说我是朽木不可雕也。现在想想他们都说对了，当初我可不这么想，我想我有钱啊，我是徐家仅有的一根香火，我要是灭了，徐家就得断子绝孙。',
+'上私塾时我从来不走路，都是我家一个雇工背着我去，放学时他已经恭恭敬敬地弯腰蹲在那里了，我骑上去后拍拍雇工的脑袋，说一声：“长根，跑呀。”',
+'雇工长根就跑起来，我在上面一颠一颠的，像是一只在树梢上的麻雀。我说一声：“飞呀。”长根就一步一跳，做出一副飞的样子。',
+'我长大以后喜欢往城里跑，常常是十天半月不回家。我穿着白色的丝绸衣衫，头发抹得光滑透亮，往镜子前一站，我看到自己满脑袋的黑油漆，一副有钱人的样子。'
+].join('\n');
+
+/* 中药知识：结构化条目（常识性表述，统一模板，便于观察“学会句式”） */
+var TCM_DATA = [
+['麻黄','辛微苦','温','肺、膀胱','发汗解表，宣肺平喘，利水消肿','风寒感冒，胸闷喘咳，风水浮肿','二至九','表虚自汗及阴虚盗汗者慎用'],
+['桂枝','辛甘','温','心、肺、膀胱','发汗解肌，温通经脉，助阳化气','风寒感冒，脘腹冷痛，血寒经闭','三至九','温热病及阴虚火旺者忌服'],
+['紫苏','辛','温','肺、脾','解表散寒，行气和胃','风寒感冒，咳嗽呕恶，鱼蟹中毒','五至九','气虚久咳者慎用'],
+['荆芥','辛','微温','肺、肝','解表散风，透疹消疮','感冒头痛，麻疹不透，风疹瘙痒','五至九','表虚自汗者不宜'],
+['防风','辛甘','微温','膀胱、肝、脾','祛风解表，胜湿止痛','感冒头痛，风湿痹痛，破伤风证','五至九','阴虚火旺者慎用'],
+['白芷','辛','温','肺、胃、大肠','解表散寒，祛风止痛，通鼻窍','感冒头痛，鼻塞流涕，牙痛鼻渊','三至九','阴虚血热者忌服'],
+['薄荷','辛','凉','肺、肝','疏散风热，清利头目，利咽透疹','风热感冒，头痛目赤，咽喉肿痛','三至六','体虚多汗者不宜'],
+['菊花','甘苦','微寒','肺、肝','疏散风热，平抑肝阳，清肝明目','风热感冒，目赤肿痛，眩晕头痛','五至九','气虚胃寒者少用'],
+['柴胡','辛苦','微寒','肝、胆、肺','疏散退热，疏肝解郁，升举阳气','寒热往来，胸胁胀痛，子宫脱垂','三至九','肝阳上亢者慎用'],
+['葛根','甘辛','凉','脾、胃、肺','解肌退热，生津止渴，升阳止泻','外感发热，口渴消渴，热泻热痢','九至十五','胃寒者慎用'],
+['黄芩','苦','寒','肺、胆、脾、大肠','清热燥湿，泻火解毒，止血安胎','湿温暑温，肺热咳嗽，血热吐血','三至九','脾胃虚寒者不宜'],
+['黄连','苦','寒','心、脾、胃、肝、胆','清热燥湿，泻火解毒','湿热痞满，呕吐吞酸，心火亢盛','二至五','脾胃虚弱者慎用'],
+['金银花','甘','寒','肺、心、胃','清热解毒，疏散风热','痈肿疔疮，喉痹咽痛，风热感冒','六至十五','脾胃虚寒者慎用'],
+['连翘','苦','微寒','肺、心、小肠','清热解毒，消肿散结，疏散风热','风热感冒，痈疽瘰疬，咽喉肿痛','六至十五','脾胃虚弱者慎用'],
+['板蓝根','苦','寒','心、胃','清热解毒，凉血利咽','瘟毒发斑，咽喉肿痛，大头瘟毒','九至十五','体虚而无实热者忌服'],
+['石膏','甘辛','大寒','肺、胃','清热泻火，除烦止渴','外感热病，高热烦渴，肺热喘咳','十五至六十','脾胃虚寒者忌服'],
+['知母','苦甘','寒','肺、胃、肾','清热泻火，滋阴润燥','外感热病，肺热燥咳，骨蒸潮热','六至十二','脾虚便溏者慎用'],
+['生地黄','甘苦','寒','心、肝、肾','清热凉血，养阴生津','热入营血，阴虚发热，津伤口渴','九至十五','脾虚湿滞者不宜'],
+['牡丹皮','苦辛','微寒','心、肝、肾','清热凉血，活血祛瘀','热入营血，温毒发斑，跌打伤痛','六至十二','血虚有寒者慎用'],
+['杏仁','苦','微温','肺、大肠','降气止咳平喘，润肠通便','咳嗽气喘，胸满痰多，肠燥便秘','五至九','有小毒，不宜过量'],
+['贝母','苦甘','微寒','肺、心','清热润肺，化痰止咳，散结消肿','肺热燥咳，阴虚劳嗽，瘰疬乳痈','三至九','脾胃虚寒者慎用'],
+['茯苓','甘淡','平','心、脾、肾','利水渗湿，健脾宁心','水肿尿少，脾虚食少，心神不安','九至十五','虚寒精滑者慎用'],
+['泽泻','甘淡','寒','肾、膀胱','利水渗湿，泄热通淋','水肿胀满，小便不利，痰饮眩晕','六至九','肾虚精滑者慎用'],
+['薏苡仁','甘淡','凉','脾、胃、肺','利水渗湿，健脾止泻，除痹排脓','水肿脚气，脾虚泄泻，肺痈肠痈','九至三十','孕妇慎用'],
+['车前子','甘','寒','肝、肾、肺、小肠','清热利尿，渗湿止泻，明目', '水肿胀满，热淋涩痛，目赤肿痛','九至十五','肾虚滑精者慎用'],
+['陈皮','辛苦','温','脾、肺','理气健脾，燥湿化痰','脘腹胀满，食少吐泻，咳嗽痰多','三至九','阴虚燥咳者慎用'],
+['枳实','苦辛','微寒','脾、胃','破气消积，化痰散痞','积滞内停，痞满胀痛，大便不通','三至九','孕妇慎用'],
+['香附','辛微苦','平','肝、脾、三焦','疏肝解郁，理气宽中，调经止痛','肝郁气滞，胸胁胀痛，月经不调','六至九','气虚无滞者慎用'],
+['山楂','酸甘','微温','脾、胃、肝','消食健胃，行气散瘀','肉食积滞，胃脘胀满，瘀血经闭','九至十二','胃酸过多者慎用'],
+['麦芽','甘','平','脾、胃','行气消食，健脾开胃，回乳消胀','食积不消，脾虚食少，乳房胀痛','九至十五','哺乳期妇女不宜'],
+['黄芪','甘','微温','脾、肺','补气升阳，固表止汗，利水消肿','气虚乏力，食少便溏，表虚自汗','九至三十','表实邪盛者不宜'],
+['党参','甘','平','脾、肺','健脾益肺，养血生津','脾肺气虚，食少倦怠，气血不足','九至三十','不宜与藜芦同用'],
+['白术','苦甘','温','脾、胃','健脾益气，燥湿利水，止汗安胎','脾虚食少，腹胀泄泻，胎动不安','六至十二','阴虚燥渴者慎用'],
+['山药','甘','平','脾、肺、肾','补脾养胃，生津益肺，补肾涩精','脾虚食少，肺虚喘咳，肾虚遗精','十五至三十','湿盛中满者不宜'],
+['当归','甘辛','温','肝、心、脾','补血活血，调经止痛，润肠通便','血虚萎黄，月经不调，肠燥便秘','六至十二','湿盛中满者慎用'],
+['熟地黄','甘','微温','肝、肾','补血滋阴，益精填髓','血虚萎黄，心悸失眠，腰膝酸软','九至十五','脾胃虚弱者慎服'],
+['白芍','苦酸','微寒','肝、脾','养血调经，柔肝止痛，平抑肝阳','血虚萎黄，月经不调，胁痛腹痛','六至十五','不宜与藜芦同用'],
+['枸杞子','甘','平','肝、肾','滋补肝肾，益精明目','虚劳精亏，腰膝酸痛，目昏不明','六至十二','外邪实热者慎用'],
+['麦冬','甘微苦','微寒','心、肺、胃','养阴生津，润肺清心','肺燥干咳，阴虚痨嗽，心烦失眠','六至十二','脾胃虚寒者慎用'],
+['川芎','辛','温','肝、胆、心包','活血行气，祛风止痛','胸胁刺痛，月经不调，风湿痹痛','三至九','阴虚火旺者慎用'],
+['丹参','苦','微寒','心、肝','活血祛瘀，通经止痛，清心除烦','胸痹心痛，脘腹胁痛，心烦不眠','九至十五','不宜与藜芦同用'],
+['红花','辛','温','心、肝','活血通经，散瘀止痛','经闭痛经，产后瘀阻，跌打损伤','三至九','孕妇慎用'],
+['桃仁','苦甘','平','心、肝、大肠','活血祛瘀，润肠通便','经闭痛经，跌打损伤，肠燥便秘','五至九','孕妇慎用'],
+['益母草','苦辛','微寒','肝、心包、膀胱','活血调经，利尿消肿，清热解毒','月经不调，痛经经闭，水肿尿少','九至三十','孕妇慎用'],
+['酸枣仁','甘酸','平','肝、胆、心','养心补肝，宁心安神，敛汗','虚烦不眠，惊悸多梦，体虚多汗','九至十五','有实邪郁火者慎用'],
+['远志','苦辛','温','心、肾、肺','安神益智，交通心肾，祛痰消肿','心神不宁，失眠多梦，咳嗽痰多','三至九','胃溃疡者慎用'],
+['五味子','酸甘','温','肺、心、肾','收敛固涩，益气生津，补肾宁心','久咳虚喘，自汗盗汗，心悸失眠','二至六','表邪未解者不宜'],
+['山茱萸','酸涩','微温','肝、肾','补益肝肾，收涩固脱','腰膝酸软，头晕耳鸣，大汗虚脱','六至十二','命门火炽者不宜']
+];
+var TCM_TEXT = TCM_DATA.map(function (r) {
+  return '【' + r[0] + '】味' + r[1] + '，性' + r[2] + '，归' + r[3] + '经。功效：' + r[4] + '。主治：' + r[5] + '。常用量：' + r[6] + '克。禁忌：' + r[7] + '。';
+}).join('\n');
+
+/* 现代诗：本作品原创，自由体 */
+var POEM_TEXT = [
+'夜色落在窗台上',
+'像一只不愿飞走的鸟',
+'我把灯拧到最暗',
+'听见远处火车经过',
+'它替我去了很远的地方',
+'也替我把话说了一半',
+'剩下的留在杯底',
+'慢慢凉',
+'',
+'你把春天折成纸船',
+'放进我掌心的河流',
+'风一吹就散了',
+'可我记得那天的光',
+'是从你肩膀上滑下来的',
+'柔软，并且缓慢',
+'像一句没说完的再见',
+'',
+'雨在深夜练习敲门',
+'敲错了所有的门牌',
+'只有我没有关灯',
+'只有我还在翻那本书',
+'纸页发潮，字迹发胖',
+'去年的句子靠在一起取暖',
+'说好春天就回来',
+'春天却绕了很远的路',
+'',
+'黄昏是一个旧信封',
+'装满了没寄出的云',
+'我沿着河堤一直走',
+'影子被路灯拉得很长',
+'长到可以覆盖童年',
+'和童年里那场小雪',
+'母亲喊我回家吃饭',
+'声音还在巷子尽头',
+'',
+'火车穿过平原的时候',
+'大地把田野叠好',
+'放进远处的抽屉',
+'我想写一封信',
+'地址是某个夏天',
+'收信人忘了名字',
+'但我知道她坐在树下',
+'风动着她的衣角',
+'',
+'我把心事种在阳台',
+'它长出了很小的叶子',
+'没有开花也不结果',
+'却在每个清晨转向光',
+'也许所有的等待',
+'都是这样安静地生长',
+'不说话',
+'也不离开'
+].join('\n');
+
+var CORPORA = {
+  lunxun: { name:'鲁迅《故乡》', desc:'全文节选（公有领域，取自公开网页）。地道的现代白话文，句子长短交错，最适合看它从乱码长成通顺中文。', text:LUXUN_TEXT, seed:'我冒了严寒' },
+  yuhua:  { name:'余华《活着》', desc:'第一章开头节选（引自公开网络版本，仅作演示语料）。短句、白描、口语化，学出来最像人在说话。', text:YUHUA_TEXT, seed:'我比现在年轻' },
+  tcm:    { name:'中药知识', desc:'结构化条目，模板高度一致（味/性/归经/功效/主治）。规律性最强，几十秒就能看到“整句成型”。', text:TCM_TEXT, seed:'【黄芪】味' },
+  poem:   { name:'现代诗',   desc:'自由体短诗，句式松散、跳跃大，最难学。适合用来对比“语料规律性”对学习速度的影响。', text:POEM_TEXT, seed:'夜色落在' }
+};
+
+/* ---------------- 常量与状态 ---------------- */
+var VOCAB_CAP = 700;      // 字符表上限（含未知标记位）：现代小说用字多，450 会把常用字挤成 UNK
+var MIN_CORPUS = 1400;    // 语料太短自动重复到该长度
+var MAX_SAMPLES = 6000;   // 训练样本上限（保证浏览器流畅）
+var SNAP_LEN = 110;       // 快照采样字数
+var LS_MODEL = 'ailab-model-v1';
+var LS_META  = 'ailab-meta-v1';
+
+var DEF = { hidden:64, lr:0.01, seq:12, batch:64, epoch:30, snap:5, temp:0.8, genLen:160 };
+
+var S = {
+  tfReady:false, backend:'', tfVer:'',
+  corpusKey:'lunxun', rawBase:LUXUN_TEXT, text:'', repeat:1, seedInited:false,
+  itos:[], stoi:{}, vocabSize:0, bigrams:{}, trigrams:{},
+  xs:null, ys:null, n:0,
+  model:null, optimizer:null, arch:'lstm', sig:'',
+  training:false, stopFlag:false,
+  history:[], snapshots:[], tpIndex:-1,
+  playIdx:-1, playing:false, playTimer:null,
+  lastBatchLoss:NaN, t0:0, done:0, speed:0, pausedMs:0,
+  warmed:false, warmSig:'', everTrained:false
+};
+
+var ui = {}; // DOM 缓存
+
+/* ---------------- 日志与状态条 ---------------- */
+function setStatus(msg, type) {
+  var chip = ui.statusChip;
+  if (!chip) return;
+  chip.textContent = msg;
+  chip.className = 'badge' + (type ? ' ' + type : '');
+}
+function log(msg, type) {
+  var box = ui.logBox;
+  if (!box) return;
+  var d = document.createElement('div');
+  if (type) d.className = type;
+  var t = new Date();
+  var hh = String(t.getHours()).padStart(2, '0');
+  var mm = String(t.getMinutes()).padStart(2, '0');
+  var ss = String(t.getSeconds()).padStart(2, '0');
+  d.innerHTML = '<span class="t">[' + hh + ':' + mm + ':' + ss + ']</span> ' + escapeHtml(msg);
+  box.appendChild(d);
+  if (type === 'err' && ui.logWrap) ui.logWrap.open = true;   // 出错时把日志自动展开
+  while (box.childNodes.length > 120) box.removeChild(box.firstChild);
+  box.scrollTop = box.scrollHeight;
+}
+
+/* ---------------- 语料处理 ---------------- */
+function prepareCorpus(raw) {
+  var text = String(raw || '').replace(/\r\n?/g, '\n').replace(/[\t ]+/g, ' ');
+  text = text.replace(/\n{3,}/g, '\n\n').trim();
+  var base = text, rep = 1;
+  while (base.length < MIN_CORPUS && rep < 8 && text.length > 0) {
+    base = base + '\n' + text;
+    rep++;
+  }
+  S.text = base;
+  S.repeat = rep;
+}
+function setCorpus(key, customText) {
+  if (key === 'custom') {
+    if (!customText || customText.trim().length < 60) {
+      log('自定义文本太短（至少 60 字），已忽略。', 'err');
+      return false;
+    }
+    S.rawBase = customText;
+  } else {
+    S.rawBase = CORPORA[key].text;
+  }
+  S.corpusKey = key;
+  prepareCorpus(S.rawBase);
+  buildVocab();
+  buildDataset();
+  resetModel();
+  refreshMeta();
+  if (!S.seedInited) {
+    ui.seedInput.value = (CORPORA[key] && CORPORA[key].seed) || S.text.slice(0, 4);
+    S.seedInited = true;
+  }
+  return true;
+}
+function switchCorpusUI(key) {
+  var segs = ui.corpusSeg.querySelectorAll('.segbtn');
+  for (var i = 0; i < segs.length; i++) {
+    var on = segs[i].getAttribute('data-c') === key;
+    if (on) segs[i].classList.add('active'); else segs[i].classList.remove('active');
+  }
+  setCorpus(key);
+  ui.corpusDesc.textContent = CORPORA[key].desc;
+  ui.seedInput.value = CORPORA[key].seed;
+  S.seedInited = true;
+  lastEnv = envKey();
+}
+function getSeed() {
+  var v = ui.seedInput.value.trim();
+  if (v) return v;
+  if (CORPORA[S.corpusKey] && CORPORA[S.corpusKey].seed) return CORPORA[S.corpusKey].seed;
+  return S.text.slice(0, 4);
+}
+
+/* ---------------- 词表与数据集 ---------------- */
+function buildVocab() {
+  var freq = {};
+  var i, c, chs = Array.from(S.text);
+  for (i = 0; i < chs.length; i++) {
+    c = chs[i];
+    freq[c] = (freq[c] || 0) + 1;
+  }
+  var list = Object.keys(freq).sort(function (a, b) { return freq[b] - freq[a]; });
+  if (list.length > VOCAB_CAP - 1) list = list.slice(0, VOCAB_CAP - 1);
+  S.itos = ['\u25cf']; // 0 号保留给未知字符
+  for (i = 0; i < list.length; i++) S.itos.push(list[i]);
+  S.stoi = {};
+  for (i = 1; i < S.itos.length; i++) S.stoi[S.itos[i]] = i;
+  S.vocabSize = S.itos.length;
+  var bg = {}, tg = {};
+  for (i = 0; i < chs.length - 1; i++) bg[chs[i] + chs[i + 1]] = 1;
+  for (i = 0; i < chs.length - 2; i++) tg[chs[i] + chs[i + 1] + chs[i + 2]] = 1;
+  S.bigrams = bg;
+  S.trigrams = tg;
+}
+function encode(str) {
+  var chs = Array.from(String(str || ''));
+  var out = [];
+  for (var i = 0; i < chs.length; i++) {
+    var idx = S.stoi[chs[i]];
+    out.push(idx === undefined ? 0 : idx);
+  }
+  return out;
+}
+function decodeIdx(arr) {
+  var out = '';
+  for (var i = 0; i < arr.length; i++) {
+    var ch = S.itos[arr[i]];
+    out += (ch === undefined ? '?' : ch);
+  }
+  return out;
+}
+function buildDataset() {
+  var chs = Array.from(S.text);
+  var L = readCfg().seq;
+  var total = chs.length - L;
+  if (total <= 0) {
+    S.xs = S.ys = null; S.n = 0;
+    log('语料太短，无法构造样本（需要 > 序列长度 ' + L + ' 字）。', 'err');
+    return false;
+  }
+  var step = Math.max(1, Math.ceil(total / MAX_SAMPLES));
+  var starts = [];
+  for (var i = 0; i < total; i += step) starts.push(i);
+  var n = starts.length;
+  var codes = new Int32Array(chs.length);
+  for (i = 0; i < chs.length; i++) codes[i] = S.stoi[chs[i]] === undefined ? 0 : S.stoi[chs[i]];
+  var xs = new Int32Array(n * L), ys = new Int32Array(n);
+  for (var k = 0; k < n; k++) {
+    var s = starts[k];
+    for (var j = 0; j < L; j++) xs[k * L + j] = codes[s + j];
+    ys[k] = codes[s + L];
+  }
+  S.xs = xs; S.ys = ys; S.n = n;
+  return true;
+}
+
+/* ---------------- 超参数读取 ---------------- */
+function readCfg() {
+  return {
+    hidden: parseInt(ui.pHidden.value, 10),
+    lr: parseFloat(ui.pLr.value),
+    seq: parseInt(ui.pSeq.value, 10),
+    batch: parseInt(ui.pBatch.value, 10),
+    epoch: parseInt(ui.pEpoch.value, 10),
+    snap: parseInt(ui.pSnap.value, 10),
+    temp: parseFloat(ui.pTemp.value),
+    genLen: parseInt(ui.pGenLen.value, 10)
+  };
+}
+function syncLabels() {
+  var c = readCfg();
+  ui.vHidden.textContent = c.hidden;
+  ui.vSeq.textContent = c.seq;
+  ui.vBatch.textContent = c.batch;
+  ui.vEpoch.textContent = c.epoch;
+  ui.vSnap.textContent = c.snap;
+  ui.vTemp.textContent = c.temp.toFixed(2);
+  ui.vGenLen.textContent = c.genLen;
+  ui.archBadge.textContent = ui.pArch.value === 'lstm' ? 'LSTM' : 'MLP';
+  ui.archBadge.className = 'badge info';
+}
+
+/* ---------------- 模型 ---------------- */
+function sigNow(c) {
+  return [S.arch, c.hidden, c.lr, c.seq, S.vocabSize].join('|');
+}
+function disposeModel() {
+  if (S.model) {
+    try { S.model.dispose(); } catch (e) {}
+    S.model = null;
+  }
+  S.optimizer = null;
+}
+function resetModel() {
+  disposeModel();
+  S.sig = '';
+  S.history = [];
+  S.snapshots = [];
+  S.tpIndex = -1;
+  S.playIdx = -1;
+  S.warmed = false;
+  S.everTrained = false;
+  warmTried = {};
+  renderTimeline();
+  drawChart();
+  updateStats();
+  refreshMeta();
+  schedulePrewarm(900);   // 参数变了就重新预热，别把编译成本留到下一次点“开始训练”
+}
+function ensureModel() {
+  var c = readCfg();
+  var sg = sigNow(c);
+  if (S.model && S.sig === sg) return true;
+  if (S.history.length || S.snapshots.length) {
+    log('超参数已变更，重建模型并清空历史曲线与快照。', 'wn');
+    S.history = []; S.snapshots = []; S.tpIndex = -1; S.playIdx = -1;
+  }
+  disposeModel();
+  var V = S.vocabSize, L = c.seq;
+  var emb = Math.max(16, Math.min(64, Math.round(V / 4)));
+  var m = tf.sequential();
+  m.add(tf.layers.embedding({ inputDim: V, outputDim: emb, inputLength: L, name: 'emb' }));
+  if (S.arch === 'mlp') {
+    m.add(tf.layers.flatten());
+    m.add(tf.layers.dense({ units: c.hidden, activation: 'relu' }));
+    m.add(tf.layers.dropout({ rate: 0.1 }));
+    m.add(tf.layers.dense({ units: Math.max(16, Math.round(c.hidden / 2)), activation: 'relu' }));
+  } else {
+    m.add(tf.layers.lstm({ units: c.hidden, returnSequences: false }));
+    m.add(tf.layers.dropout({ rate: 0.1 }));
+  }
+  m.add(tf.layers.dense({ units: V, name: 'logits' }));
+  S.model = m;
+  S.optimizer = tf.train.adam(c.lr);
+  S.sig = sg;
+  try { m.predict(tf.zeros([1, L], 'int32')).dispose(); } catch (e) {}
+  log('模型已建立：' + (S.arch === 'lstm' ? 'LSTM' : 'MLP') +
+      ' · 隐藏层 ' + c.hidden + ' · 序列 ' + L + ' · 词表 ' + V +
+      ' · 参数 ' + m.countParams().toLocaleString('en-US'));
+  refreshMeta();
+  return true;
+}
+
+/* ---------------- GPU 内核预热 ----------------
+ * 第一次调 model.apply / 反向传播时，tfjs 要编译一堆 WebGL shader，
+ * 这一下 0.5~1.5 秒就是「点开始训练卡一下」的真正原因。
+ * 做法：页面空闲时先把模型建好并跑一遍前向+反向（只算梯度、不更新权重），
+ * 把编译成本挪到用户点按钮之前。
+ */
+var warmTimer = null, warmTried = {};
+function warmupKernels() {
+  if (!S.model || !S.vocabSize || !S.tfReady) return false;
+  var L = readCfg().seq, V = S.vocabSize;
+  tf.tidy(function () {
+    var xs = tf.tensor2d(new Array(L).fill(1), [1, L], 'int32');
+    var ys = tf.tensor1d([1], 'int32');
+    var g = tf.variableGrads(function () {
+      var logits = S.model.apply(xs, { training: true });
+      var ls = tf.logSoftmax(logits);
+      var oh = tf.oneHot(ys, V);
+      return tf.mean(tf.neg(tf.sum(tf.mul(oh, ls), 1)));
+    });
+    return g.value;
+  });
+  return true;
+}
+function prewarmNow() {
+  if (!S.tfReady || S.training || !S.n) return;
+  var sig = sigNow(readCfg());
+  if (S.model && S.sig === sig && S.warmed) return;
+  if (warmTried[sig]) return;   // 同一套参数只尝试一次，失败也不反复重试
+  warmTried[sig] = 1;
+  try { if (!ensureModel()) return; } catch (e) { return; }
+  try { warmupKernels(); } catch (e) {}
+  S.warmed = true;
+  S.warmSig = sig;
+  setStatus('引擎已预热', 'ok');
+}
+function schedulePrewarm(delay) {
+  if (warmTimer) { clearTimeout(warmTimer); warmTimer = null; }
+  if (!S.tfReady || S.training || S.model) return;
+  var fire = function () {
+    if (!S.tfReady || S.training || S.model) return;
+    prewarmNow();
+  };
+  warmTimer = setTimeout(function () {
+    warmTimer = null;
+    if (!S.tfReady || S.training || S.model) return;
+    // 尽量挑浏览器真正空闲的时刻再编译，别抢用户滚动/点击的时间
+    if (typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(fire, { timeout: 2500 });
+    } else {
+      fire();
+    }
+  }, typeof delay === 'number' ? delay : 1200);
+}
+
+/* ---------------- 训练 ---------------- */
+function trainBatch(starts) {
+  var L = readCfg().seq;
+  var B = starts.length;
+  var xb = new Array(B * L), yb = new Array(B);
+  for (var k = 0; k < B; k++) {
+    var s = starts[k];
+    for (var j = 0; j < L; j++) xb[k * L + j] = S.xs[s * L + j];
+    yb[k] = S.ys[s];
+  }
+  return tf.tidy(function () {
+    var xs = tf.tensor(xb, [B, L], 'int32');
+    var ys = tf.tensor1d(yb, 'int32');
+    var lossFn = function () {
+      var logits = S.model.apply(xs, { training: true });
+      var ls = tf.logSoftmax(logits);
+      var oh = tf.oneHot(ys, S.vocabSize);
+      return tf.mean(tf.neg(tf.sum(tf.mul(oh, ls), 1)));
+    };
+    var cost = S.optimizer.minimize(lossFn, true);
+    return cost.dataSync()[0];
+  });
+}
+
+/* ---------------- 采样生成 ---------------- */
+async function sampleText(seedStr, length, temp, onProgress) {
+  if (!S.model) return '';
+  var L = readCfg().seq;
+  var idx = encode(seedStr || '');
+  if (idx.length === 0) idx = [1];
+  var cur;
+  if (idx.length >= L) {
+    cur = idx.slice(idx.length - L);
+  } else {
+    cur = idx.slice();
+    while (cur.length < L) cur.unshift(0);
+  }
+  var out = [];
+  for (var step = 0; step < length; step++) {
+    var pick = tf.tidy(function () {
+      var x = tf.tensor2d([cur], [1, L], 'int32');
+      var logits = S.model.predict(x);
+      if (temp <= 0.06) return logits.argMax(1).dataSync()[0];
+      var probs = tf.softmax(logits.div(temp)).dataSync();
+      var r = Math.random(), acc = 0, chosen = probs.length - 1;
+      for (var j = 0; j < probs.length; j++) {
+        acc += probs[j];
+        if (r <= acc) { chosen = j; break; }
+      }
+      return chosen;
+    });
+    out.push(pick);
+    cur = cur.slice(1);
+    cur.push(pick);
+    // 采样是逐字进行的，必须定期让出主线程，否则一次快照就能把页面卡住十几秒
+    if (step % 8 === 7) {
+      if (onProgress) onProgress(step + 1, length);
+      await yieldUI();
+    }
+  }
+  if (onProgress) onProgress(length, length);
+  return decodeIdx(out);
+}
+
+/* ---------------- 生成质量分析 / 转折点 ---------------- */
+function levelOf(s) {
+  if (s >= 0.68) return { name: '基本成句', cls: 'lv4' };
+  if (s >= 0.50) return { name: '初步成词', cls: 'lv3' };
+  if (s >= 0.30) return { name: '碎片拼接', cls: 'lv2' };
+  return { name: '纯乱码', cls: 'lv1' };
+}
+function analyze(txt) {
+  var chs = Array.from(String(txt || ''));
+  if (chs.length < 6) {
+    return { score: 0, bg: 0, tr: 0, nov: 0, cov: 0, maxRun: chs.length, level: '纯乱码', cls: 'lv1' };
+  }
+  var oov = 0, bi = 0, biHit = 0, tri = 0, triHit = 0, rep = 0, run = 1, maxRun = 1, i, g, t;
+  var seen = {};
+  for (i = 0; i < chs.length; i++) {
+    if (chs[i] === '\u25cf') oov++;
+    if (i > 0) {
+      g = chs[i - 1] + chs[i];
+      bi++;
+      if (S.bigrams[g]) biHit++;
+      if (seen[g]) rep++; else seen[g] = 1;
+      if (chs[i] === chs[i - 1]) { run++; if (run > maxRun) maxRun = run; } else { run = 1; }
+    }
+    if (i > 1) {
+      t = chs[i - 2] + chs[i - 1] + chs[i];
+      tri++;
+      if (S.trigrams[t]) triHit++;
+    }
+  }
+  var bg = bi ? biHit / bi : 0;          // 双字组合在语料中出现过的比例（词语感）
+  var tr = tri ? triHit / tri : 0;       // 三字组合命中率（句法/套路感，最能区分“乱码”与“会说”）
+  var nov = bi ? 1 - rep / bi : 0;       // 新片段比例（惩罚 aaaaa 式复读）
+  var cov = 1 - oov / chs.length;        // 字符表覆盖率（惩罚满屏未知符）
+  // 基础分只看“像不像语料里的语言”，复读/未知符作为乘性惩罚，避免随机文本拿到虚高分
+  var score = (0.6 * bg + 0.4 * tr) * (0.55 + 0.45 * nov) * (0.5 + 0.5 * cov);
+  if (maxRun > 3) score *= Math.max(0.35, 1 - (maxRun - 3) * 0.08);
+  score = Math.max(0, Math.min(1, score));
+  var lv = levelOf(score);
+  return {
+    score: Math.round(score * 1000) / 1000,
+    bg: Math.round(bg * 1000) / 1000,
+    tr: Math.round(tr * 1000) / 1000,
+    nov: Math.round(nov * 1000) / 1000,
+    cov: Math.round(cov * 1000) / 1000,
+    maxRun: maxRun, level: lv.name, cls: lv.cls
+  };
+}
+function updateTurningPoint() {
+  var N = S.snapshots.length, T = 0.55, tp = -1, i, j, sum, cnt;
+  for (i = 0; i < N; i++) {
+    if (S.snapshots[i].epoch < 2) continue;
+    if (S.snapshots[i].score >= T) {
+      sum = 0; cnt = 0;
+      for (j = i; j < N; j++) { sum += S.snapshots[j].score; cnt++; }
+      if (sum / Math.max(1, cnt) >= T * 0.8) { tp = i; break; }
+    }
+  }
+  S.tpIndex = tp;
+}
+function addSnapshot(epoch, loss, txt) {
+  var a = analyze(txt);
+  var snap = {
+    epoch: epoch, loss: loss, text: txt, score: a.score, level: a.level, cls: a.cls,
+    detail: a
+  };
+  // 只有原本就停在最后一帧（或没开始看过）时才自动跟随新快照，用户回看旧帧时不打扰
+  var follow = S.playIdx < 0 || S.playIdx >= S.snapshots.length - 1;
+  S.snapshots.push(snap);
+  S.snapshots.sort(function (x, y) { return x.epoch - y.epoch; });
+  if (follow) S.playIdx = S.snapshots.length - 1;
+  updateTurningPoint();
+  renderTimeline();
+  renderPlayback(Math.min(S.playIdx, S.snapshots.length - 1), follow);
+}
+
+/* ---------------- 时间线 / 大字快照 ---------------- */
+function levelIdxOf(cls) {
+  return cls === 'lv1' ? 1 : cls === 'lv2' ? 2 : cls === 'lv3' ? 3 : cls === 'lv4' ? 4 : 0;
+}
+function setMeter(lv) {
+  var nodes = ui.evoMeter ? ui.evoMeter.children : [];
+  for (var i = 0; i < nodes.length; i++) {
+    nodes[i].className = (lv > i) ? ('on lv' + lv) : '';
+  }
+}
+/* 大字区：一眼看到“第几轮 / 像不像人话 / 它现在写了什么” */
+function renderHero() {
+  if (!ui.evoText) return;
+  var s = S.snapshots[S.playIdx];
+  if (!s) {
+    ui.evoEpoch.textContent = '第 — 轮';
+    ui.evoLevel.textContent = '等待训练';
+    ui.evoLevel.className = 'evo-level';
+    ui.evoScore.textContent = '—';
+    ui.evoText.className = 'evo-text ph';
+    ui.evoText.textContent = '它还没开口。点上面的「▶ 开始训练」，几秒后这里会出现它写的第一段字（多半是乱码），然后一轮比一轮像人话。';
+    setMeter(0);
+    if (ui.evoNow) ui.evoNow.style.borderLeftColor = '#17372c';
+    ui.evoTP.textContent = '还没发现转折点';
+    ui.evoTP.className = 'evo-tp';
+    return;
+  }
+  ui.evoEpoch.textContent = '第 ' + s.epoch + ' 轮';
+  ui.evoLevel.textContent = s.level;
+  ui.evoLevel.className = 'evo-level ' + s.cls;
+  ui.evoScore.textContent = Math.round(s.score * 100);
+  ui.evoText.className = 'evo-text';
+  if (ui.evoText.textContent !== s.text) {
+    ui.evoText.textContent = s.text;
+    ui.evoText.scrollTop = 0;
+  }
+  setMeter(levelIdxOf(s.cls));
+  if (ui.evoNow) ui.evoNow.style.borderLeftColor = ({ lv1: '#ff5f6d', lv2: '#ffb454', lv3: '#4bb8ff', lv4: '#3ee5a4' })[s.cls] || '#17372c';
+  if (S.tpIndex >= 0 && S.snapshots[S.tpIndex]) {
+    ui.evoTP.textContent = '✦ 转折点：第 ' + S.snapshots[S.tpIndex].epoch + ' 轮，从这里开始像人话';
+    ui.evoTP.className = 'evo-tp hit';
+  } else {
+    ui.evoTP.textContent = '还没发现转折点（继续训练）';
+    ui.evoTP.className = 'evo-tp';
+  }
+}
+function renderTimeline() {
+  var box = ui.timeline;
+  if (!box) return;
+  box.innerHTML = '';
+  if (!S.snapshots.length) {
+    box.innerHTML = '<div class="empty guide">' +
+      '<div class="guide-h">还没开始 —— 三步就能看到它进化：</div>' +
+      '<div class="g"><b>1</b><span>点上面的「▶ 开始训练」</span></div>' +
+      '<div class="g"><b>2</b><span>几秒后它写下第一段字（基本是乱码）</span></div>' +
+      '<div class="g"><b>3</b><span>之后每学几轮存一帧，拖滑块回放</span></div>' +
+      '</div>';
+    ui.playSlider.max = '0';
+    ui.playSlider.value = '0';
+    ui.playIdx.textContent = '0 / 0';
+    renderHero();
+    return;
+  }
+  for (var i = 0; i < S.snapshots.length; i++) {
+    var s = S.snapshots[i];
+    var d = document.createElement('div');
+    d.className = 'snap' + (i === S.tpIndex ? ' turning' : '') + (i === S.playIdx ? ' active' : '');
+    d.setAttribute('data-i', String(i));
+    d.setAttribute('data-lv', String(levelIdxOf(s.cls)));
+    d.innerHTML =
+      '<div class="snap-head">' +
+        '<span class="ep">第 ' + s.epoch + ' 轮</span>' +
+        '<span class="chip ' + s.cls + '">' + s.level + '</span>' +
+        (i === S.tpIndex ? '<span class="tp-chip">✦ 转折</span>' : '') +
+        '<span class="sc">' + Math.round(s.score * 100) + '/100</span>' +
+      '</div>' +
+      '<pre class="snap-text">' + escapeHtml(s.text) + '</pre>';
+    box.appendChild(d);
+  }
+  if (S.playIdx < 0 || S.playIdx > S.snapshots.length - 1) S.playIdx = S.snapshots.length - 1;
+  ui.playSlider.max = String(S.snapshots.length - 1);
+  ui.playSlider.value = String(S.playIdx);
+  ui.playIdx.textContent = (S.playIdx + 1) + ' / ' + S.snapshots.length;
+  var act = box.querySelector('.snap.active');
+  if (act) box.scrollTop = Math.max(0, act.offsetTop - box.clientHeight + act.offsetHeight + 6);
+  renderHero();
+}
+function renderPlayback(i, scroll) {
+  var items = ui.timeline.querySelectorAll('.snap');
+  if (!items.length) { S.playIdx = -1; renderHero(); return; }
+  if (i < 0) i = 0;
+  if (i > items.length - 1) i = items.length - 1;
+  S.playIdx = i;
+  for (var k = 0; k < items.length; k++) {
+    if (k === i) items[k].classList.add('active');
+    else items[k].classList.remove('active');
+  }
+  ui.playSlider.value = String(i);
+  ui.playIdx.textContent = (i + 1) + ' / ' + items.length;
+  renderHero();
+  if (scroll) {
+    var box = ui.timeline;
+    var top = items[i].offsetTop, bottom = top + items[i].offsetHeight;
+    if (top < box.scrollTop || bottom > box.scrollTop + box.clientHeight) {
+      box.scrollTop = Math.max(0, top - 6);
+    }
+  }
+}
+function stopPlay() {
+  S.playing = false;
+  if (S.playTimer) { clearInterval(S.playTimer); S.playTimer = null; }
+  ui.btnPlay.textContent = '▶ 回放';
+}
+
+/* ---------------- loss 曲线 ---------------- */
+function drawChart() {
+  var cv = ui.lossCanvas;
+  if (!cv) return;
+  var ctx = cv.getContext('2d');
+  var dpr = window.devicePixelRatio || 1;
+  var w = cv.clientWidth || 600, h = cv.clientHeight || 220;
+  if (cv.width !== Math.floor(w * dpr) || cv.height !== Math.floor(h * dpr)) {
+    cv.width = Math.floor(w * dpr);
+    cv.height = Math.floor(h * dpr);
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  var padL = 46, padR = 12, padT = 14, padB = 24;
+  var pw = Math.max(10, w - padL - padR), ph = Math.max(10, h - padT - padB);
+
+  ctx.strokeStyle = '#16232f';
+  ctx.lineWidth = 1;
+  ctx.fillStyle = '#48607a';
+  ctx.font = '10px monospace';
+  var rows = 4, r, y;
+  for (r = 0; r <= rows; r++) {
+    y = padT + ph * r / rows;
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(padL + pw, y);
+    ctx.stroke();
+  }
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+
+  var H = S.history;
+  var total = readCfg().epoch;
+  if (!H.length) {
+    ctx.strokeStyle = '#16232f';
+    ctx.strokeRect(padL, padT, pw, ph);
+    ctx.textAlign = 'center';
+    var fs1 = w < 420 ? 11 : 12, fs2 = w < 420 ? 10 : 11;
+    ctx.fillStyle = '#7d9ab0';
+    ctx.font = fs1 + 'px monospace';
+    ctx.fillText('点上面的「▶ 开始训练」', w / 2, h / 2 - 16);
+    ctx.fillStyle = '#4d6a80';
+    ctx.font = fs2 + 'px monospace';
+    ctx.fillText('loss 曲线会在这里实时画出来', w / 2, h / 2 + 4);
+    ctx.fillText('每 N 轮还会自动存一张进化快照 ↓', w / 2, h / 2 + 24);
+    return;
+  }
+  var losses = [];
+  for (var i = 0; i < H.length; i++) losses.push(H[i].loss);
+  var mx = Math.max.apply(null, losses), mn = Math.min.apply(null, losses);
+  if (!isFinite(mx) || !isFinite(mn)) return;
+  if (mx - mn < 0.4) { mx += 0.2; mn -= 0.2; }
+  var pad = (mx - mn) * 0.12;
+  mx += pad; mn -= pad;
+  if (mn < 0) mn = 0;
+  for (r = 0; r <= rows; r++) {
+    y = padT + ph * r / rows;
+    var val = mx - (mx - mn) * r / rows;
+    ctx.fillStyle = '#48607a';
+    ctx.textAlign = 'right';
+    ctx.fillText(val.toFixed(2), padL - 6, y);
+  }
+  ctx.strokeStyle = '#16232f';
+  ctx.strokeRect(padL, padT, pw, ph);
+
+  var xAt = function (epoch) {
+    var maxE = Math.max(total, H[H.length - 1].epoch, 1);
+    return padL + pw * (epoch / maxE);
+  };
+  var yAt = function (loss) {
+    var t = (loss - mn) / Math.max(1e-6, mx - mn);
+    t = Math.max(0, Math.min(1, t));
+    return padT + ph * (1 - t);
+  };
+
+  // 快照标记竖线
+  for (i = 0; i < S.snapshots.length; i++) {
+    var sx = xAt(S.snapshots[i].epoch);
+    ctx.strokeStyle = 'rgba(75,184,255,.18)';
+    ctx.beginPath();
+    ctx.moveTo(sx, padT);
+    ctx.lineTo(sx, padT + ph);
+    ctx.stroke();
+  }
+  // 转折点
+  if (S.tpIndex >= 0 && S.tpIndex < S.snapshots.length) {
+    var tx = xAt(S.snapshots[S.tpIndex].epoch);
+    ctx.save();
+    ctx.setLineDash([4, 3]);
+    ctx.strokeStyle = '#ffb454';
+    ctx.beginPath();
+    ctx.moveTo(tx, padT);
+    ctx.lineTo(tx, padT + ph);
+    ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = '#ffb454';
+    ctx.textAlign = 'left';
+    ctx.fillText('转折点 e' + S.snapshots[S.tpIndex].epoch, Math.min(tx + 4, padL + pw - 60), padT + 10);
+  }
+
+  // 曲线
+  ctx.beginPath();
+  for (i = 0; i < H.length; i++) {
+    var px = xAt(H[i].epoch), py = yAt(H[i].loss);
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.strokeStyle = '#3ee5a4';
+  ctx.lineWidth = 2;
+  ctx.shadowColor = 'rgba(62,229,164,.55)';
+  ctx.shadowBlur = 8;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // 面积
+  if (H.length > 1) {
+    ctx.lineTo(xAt(H[H.length - 1].epoch), padT + ph);
+    ctx.lineTo(xAt(H[0].epoch), padT + ph);
+    ctx.closePath();
+    var grad = ctx.createLinearGradient(0, padT, 0, padT + ph);
+    grad.addColorStop(0, 'rgba(62,229,164,.22)');
+    grad.addColorStop(1, 'rgba(62,229,164,0)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+  }
+  // 最新点
+  var lx = xAt(H[H.length - 1].epoch), ly = yAt(H[H.length - 1].loss);
+  ctx.beginPath();
+  ctx.arc(lx, ly, 3.2, 0, Math.PI * 2);
+  ctx.fillStyle = '#eafff6';
+  ctx.fill();
+
+  ctx.fillStyle = '#48607a';
+  ctx.textAlign = 'left';
+  ctx.fillText('epoch 0', padL + 2, h - 8);
+  ctx.textAlign = 'right';
+  ctx.fillText('epoch ' + Math.max(total, H[H.length - 1].epoch), padL + pw - 2, h - 8);
+}
+
+/* ---------------- 统计面板 ---------------- */
+function refreshMeta() {
+  ui.mChars.textContent = Array.from(S.text).length.toLocaleString('en-US');
+  ui.mVocab.textContent = S.vocabSize;
+  ui.mSamples.textContent = S.n.toLocaleString('en-US');
+  ui.mParams.textContent = S.model ? S.model.countParams().toLocaleString('en-US') : '0';
+}
+function updateStats(epoch, total) {
+  if (typeof epoch === 'number') ui.sEpoch.textContent = epoch + ' / ' + total;
+  if (isFinite(S.lastBatchLoss)) ui.sBatchLoss.textContent = S.lastBatchLoss.toFixed(4);
+  if (S.history.length) {
+    var last = S.history[S.history.length - 1];
+    ui.sEpochLoss.textContent = last.loss.toFixed(4);
+  }
+  if (S.speed > 0) ui.sSpeed.textContent = Math.round(S.speed) + ' 样本/秒';
+}
+function setTrainingUI(on) {
+  ui.btnTrain.disabled = on;
+  ui.btnStop.disabled = !on;
+  ui.btnClear.disabled = on;
+  ui.btnQuick.disabled = on;
+  ui.paramFs.disabled = on;
+  ui.btnLoadCustom.disabled = on;
+  ui.btnSaveModel.disabled = on;
+  ui.btnLoadModel.disabled = on;
+  ui.btnDelModel.disabled = on;
+  ui.btnGen.disabled = on;
+  var segs = ui.corpusSeg.querySelectorAll('.segbtn');
+  for (var i = 0; i < segs.length; i++) segs[i].disabled = on;
+}
+
+/* ---------------- 训练主循环 ---------------- */
+async function runTraining() {
+  if (S.training) return;
+  if (warmTimer) { clearTimeout(warmTimer); warmTimer = null; }
+
+  /* 先把按钮状态切过去、让浏览器先把“准备中”画出来，再干重活。
+     否则建模型 / 编译 GPU 内核会挡在第一次渲染之前，看起来就像点下去卡死了。 */
+  S.training = true;
+  S.stopFlag = false;
+  setTrainingUI(true);
+  setStatus('准备中', 'info');
+  ui.progressText.className = 'badge info';
+  ui.progressText.textContent = '准备中…';
+
+  function abortStart(msg) {
+    if (msg) { log(msg, 'err'); setStatus('启动失败', 'bad'); }
+    S.training = false;
+    S.stopFlag = false;
+    setTrainingUI(false);
+    ui.progressText.className = 'badge';
+    ui.progressText.textContent = '未开始';
+  }
+
+  if (!S.tfReady) {
+    if (typeof tf === 'undefined') { abortStart('TensorFlow.js 未加载，请检查网络后刷新页面。'); return; }
+    ui.progressText.textContent = '初始化引擎…';
+    await yieldUI();
+    try { await setupTf(); } catch (e) { abortStart('初始化失败：' + e.message); return; }
+  }
+
+  ui.progressText.textContent = '准备数据…';
+  await yieldUI();
+  if (!S.n) {
+    if (!buildDataset()) { setStatus('语料不足', 'bad'); abortStart('语料不足，无法训练。'); return; }
+  }
+
+  ui.progressText.textContent = '搭建模型…';
+  await yieldUI();
+  try {
+    if (!ensureModel()) { abortStart(null); return; }
+  } catch (e) { abortStart('模型构建失败：' + e.message); return; }
+
+  if (!S.warmed || S.warmSig !== sigNow(readCfg())) {
+    ui.progressText.textContent = '首次编译内核…';
+    await yieldUI();
+    try { warmupKernels(); } catch (e) {}
+    S.warmed = true;
+    S.warmSig = sigNow(readCfg());
+  }
+
+  setStatus('训练中', 'ok');
+
+  var c = readCfg();
+  var total = c.epoch;
+  if (!S.xs || S.xs.length !== S.n * c.seq) buildDataset();
+
+  var order = new Int32Array(S.n);
+  for (var q = 0; q < S.n; q++) order[q] = q;
+
+  S.t0 = pf(); S.done = 0; S.speed = 0; S.pausedMs = 0; S.lastBatchLoss = NaN;
+  var startEp = S.history.length ? S.history[S.history.length - 1].epoch : 0;
+  var snapSet = {}, slowWarned = false;
+
+  ui.sCorpus.textContent = corpusShort() + '/' + (S.arch === 'lstm' ? 'LSTM' : 'MLP');
+  ui.trainProgress.style.width = '0%';
+  ui.progressText.textContent = '准备中…';
+  ui.progressText.className = 'badge ok';
+  log('开始训练：' + corpusLabel() + ' · 共 ' + total + ' 轮 · ' + S.n + ' 条样本 · 批 ' + c.batch +
+      ' · 后端 ' + String(S.backend).toUpperCase() + '（随时可点停止）', 'ok');
+  await yieldUI();
+
+  for (var ep = startEp + 1; ep <= startEp + total; ep++) {
+    var idx = ep - startEp;
+    for (var i = order.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = order[i]; order[i] = order[j]; order[j] = tmp;
+    }
+    var sum = 0, cnt = 0;
+    for (var p = 0; p < S.n; p += c.batch) {
+      var end = Math.min(p + c.batch, S.n);
+      var arr = [];
+      for (var k = p; k < end; k++) arr.push(order[k]);
+
+      var tB = pf();
+      var lv = trainBatch(arr);
+      var dtB = pf() - tB;
+
+      if (!isFinite(lv)) {
+        log('损失出现 NaN/Inf，训练中止。建议把学习率降到 0.005 或更低。', 'err');
+        S.stopFlag = true;
+        break;
+      }
+      S.lastBatchLoss = lv;
+      sum += lv; cnt++;
+      S.done += (end - p);
+
+      var elapsedMs = Math.max(1, pf() - S.t0 - S.pausedMs);
+      S.speed = S.done / (elapsedMs / 1000);
+      var overall = Math.min(1, (idx - 1 + end / Math.max(1, S.n)) / total);
+
+      ui.sEpoch.textContent = idx + ' / ' + total;
+      ui.sBatchLoss.textContent = lv.toFixed(4);
+      ui.sSpeed.textContent = Math.round(S.speed) + ' 样本/秒';
+      var eta = overall > 0.008 ? (elapsedMs / overall - elapsedMs) : 0;
+      ui.sTime.textContent = fmtTime(elapsedMs) + (overall > 0.008 && overall < 0.999 ? ' / 剩 ' + fmtTime(Math.max(0, eta)) : '');
+      ui.trainProgress.style.width = (overall * 100).toFixed(1) + '%';
+      ui.progressText.textContent = '训练中 ' + Math.round(overall * 100) + '%';
+      if (cnt % 2 === 0) drawChartLive();
+
+      if (dtB > 800 && !slowWarned) {
+        slowWarned = true;
+        log('单批耗时 ' + Math.round(dtB) + 'ms（约 ' + Math.round(S.speed) + ' 样本/秒）。若使用 CPU 后端属正常，可把轮数调小或换台有 GPU 的机器。', 'wn');
+      }
+      // 每批都让出主线程 —— 保证页面始终可点击、可停止
+      await yieldUI();
+      if (S.stopFlag) break;
+    }
+    if (S.stopFlag) break;
+
+    var epochLoss = sum / Math.max(1, cnt);
+    S.history.push({ epoch: ep, loss: epochLoss });
+    S.everTrained = true;
+    drawChart();
+    ui.sEpochLoss.textContent = epochLoss.toFixed(4);
+    ui.progressText.textContent = '第 ' + ep + ' 轮 · loss ' + epochLoss.toFixed(3);
+
+    var needSnap = (idx === 1) || (idx % c.snap === 0) || (idx === total);
+    if (needSnap && !snapSet[ep]) {
+      snapSet[ep] = 1;
+      var txt = '';
+      try {
+        ui.progressText.textContent = '第 ' + ep + ' 轮 · 采样快照…';
+        var tSnap = pf();
+        txt = await sampleText(getSeed(), SNAP_LEN, c.temp, function (d, t) {
+          ui.progressText.textContent = '采样快照 ' + d + '/' + t;
+        });
+        S.pausedMs += (pf() - tSnap);   // 采样不算进“训练速度”
+      } catch (e) {
+        log('采样失败：' + (e && e.message ? e.message : e), 'err');
+      }
+      if (txt) {
+        addSnapshot(ep, epochLoss, txt);
+        var sn = S.snapshots[S.snapshots.length - 1];
+        log('快照：第 ' + ep + ' 轮 · ' + sn.level + ' · 像人话 ' + Math.round(sn.score * 100) + '/100', 'ok');
+      }
+      drawChart();
+      await yieldUI();
+    }
+  }
+
+  var stopped = S.stopFlag;
+  S.training = false;
+  S.stopFlag = false;
+  setTrainingUI(false);
+  drawChart();
+  updateStats();
+  refreshMeta();
+
+  var finish = S.history.length ? S.history[S.history.length - 1] : null;
+  if (!stopped && finish) ui.trainProgress.style.width = '100%';
+  ui.progressText.textContent = finish ? ('结束 · 第 ' + finish.epoch + ' 轮 loss ' + finish.loss.toFixed(3)) : '已停止';
+  ui.progressText.className = 'badge ok';
+  setStatus('训练结束', 'ok');
+  var spent = Math.max(1, pf() - S.t0 - S.pausedMs);
+  log('训练结束：共 ' + S.history.length + ' 轮，耗时 ' + fmtTime(spent) + '，快照 ' + S.snapshots.length + ' 条' +
+      (S.tpIndex >= 0
+        ? '，转折点在第 ' + S.snapshots[S.tpIndex].epoch + ' 轮（结构分 ' + S.snapshots[S.tpIndex].score.toFixed(2) + '）。'
+        : '；尚未检测到明显转折点，可增加轮数或换更规律的语料。'),
+      S.tpIndex >= 0 ? 'ok' : 'wn');
+  if (!S.tpIndex && S.snapshots.length) {
+    log('提示：转折点判定需要「三字组合命中率」稳定超过阈值，多训几轮更明显。', 'wn');
+  }
+}
+function corpusLabel() {
+  return CORPORA[S.corpusKey] ? CORPORA[S.corpusKey].name : '自定义语料';
+}
+/* 统计格只有 ~95px 宽，用短名，否则“LSTM”会被折成两行 */
+function corpusShort() {
+  var m = { lunxun: '鲁迅', yuhua: '余华', tcm: '中药', poem: '现代诗', custom: '自定义' };
+  return m[S.corpusKey] || '自定义';
+}
+function drawChartLive() {
+  // 训练中按批次轻量重绘（沿用已有历史点 + 当前批损失作为临时点）
+  drawChart();
+  var H = S.history;
+  if (!H.length) return;
+  var cv = ui.lossCanvas, ctx = cv.getContext('2d');
+  var dpr = window.devicePixelRatio || 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#ffb454';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('live', 4, 12);
+}
+
+/* ---------------- 导出进化报告 ---------------- */
+function buildReport() {
+  var c = readCfg();
+  var name = CORPORA[S.corpusKey] ? CORPORA[S.corpusKey].name : '自定义文本';
+  var lines = [];
+  lines.push('==============================================');
+  lines.push('  AI 训练实验室 · 神经网络进化报告');
+  lines.push('==============================================');
+  lines.push('生成时间：' + new Date().toLocaleString('zh-CN'));
+  lines.push('运行环境：TensorFlow.js ' + S.tfVer + ' / 后端 ' + S.backend + ' / 全部计算在浏览器本地完成');
+  lines.push('');
+  lines.push('【模型配置】');
+  lines.push('  架构：' + (S.arch === 'lstm' ? 'LSTM（嵌入层 + LSTM + 全连接）' : 'MLP（嵌入层 + 展平 + 两层全连接）'));
+  lines.push('  隐藏层大小：' + c.hidden + '    学习率：' + c.lr + '    序列长度：' + c.seq);
+  lines.push('  批大小：' + c.batch + '    训练轮数：' + c.epoch + '    快照间隔：每 ' + c.snap + ' 轮');
+  lines.push('  采样温度：' + c.temp.toFixed(2) + '    采样长度：' + SNAP_LEN + ' 字');
+  lines.push('  参数量：' + (S.model ? S.model.countParams().toLocaleString('en-US') : '未知'));
+  lines.push('');
+  lines.push('【语料】');
+  lines.push('  来源：' + name);
+  lines.push('  有效字符数：' + Array.from(S.text).length + '（原始不足 ' + MIN_CORPUS + " 字时自动重复 " + S.repeat + " 次）");
+  lines.push('  字符表大小：' + S.vocabSize + '    训练样本数：' + S.n);
+  lines.push('');
+  lines.push('【训练结果】');
+  if (S.history.length) {
+    lines.push('  已完成轮数：' + S.history.length);
+    lines.push('  首轮 loss：' + S.history[0].loss.toFixed(4) + '    末轮 loss：' + S.history[S.history.length - 1].loss.toFixed(4));
+  } else {
+    lines.push('  尚未训练。');
+  }
+  if (S.tpIndex >= 0) {
+    var tp = S.snapshots[S.tpIndex];
+    lines.push('  转折点：第 ' + tp.epoch + ' 轮（结构分 ' + tp.score.toFixed(2) + '，等级「' + tp.level + '」）——输出首次稳定脱离纯乱码');
+  } else {
+    lines.push('  转折点：未检测到（第 2 轮之后的结构分始终低于 0.55）。建议增加轮数、减小学习率或更换更规律的语料。');
+  }
+  lines.push('');
+  lines.push('【指标说明】');
+  lines.push('  结构分 = (0.6×bigram命中率 + 0.4×trigram命中率) × (0.55 + 0.45×新片段比例) × (0.5 + 0.5×字符表覆盖率)');
+  lines.push('  再对超长连续重复字符施加乘性惩罚。trigram（三字组合）命中率最能区分“乱码”与“会说”。');
+  lines.push('  等级：>=0.68 基本成句 / 0.50~0.68 初步成词 / 0.30~0.50 碎片拼接 / <0.30 纯乱码');
+  lines.push('  转折点：第 2 轮之后首次结构分 >= 0.55 且此后均值不低于阈值 80% 的快照。');
+  lines.push('');
+  lines.push('【进化快照时间线】');
+  if (!S.snapshots.length) {
+    lines.push('  （无）');
+  } else {
+    for (var i = 0; i < S.snapshots.length; i++) {
+      var s = S.snapshots[i];
+      lines.push('----------------------------------------------');
+      lines.push('第 ' + s.epoch + ' 轮 | loss ' + s.loss.toFixed(4) + ' | 结构分 ' + s.score.toFixed(3) +
+                 ' | 等级：' + s.level + (i === S.tpIndex ? '  <<<< 转折点' : ''));
+      lines.push('  指标：bigram命中 ' + Math.round(s.detail.bg * 100) + '% · trigram命中 ' +
+                 Math.round((s.detail.tr || 0) * 100) + '% · 新片段 ' + Math.round(s.detail.nov * 100) +
+                 '% · 覆盖率 ' + Math.round(s.detail.cov * 100) + '% · 最长连击 ' + s.detail.maxRun);
+      lines.push('  输出：' + s.text);
+    }
+  }
+  lines.push('----------------------------------------------');
+  lines.push('报告结束 · 由 ai-lab.html 本地生成');
+  return lines.join('\n');
+}
+function exportReport() {
+  var txt = buildReport();
+  var name = 'ai-evolution-report-' + Date.now() + '.txt';
+  try {
+    var blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    log('进化报告已导出：' + name, 'ok');
+    setStatus('报告已导出', 'ok');
+  } catch (e) {
+    log('导出失败：' + e.message, 'err');
+    ui.genOut.textContent = txt;
+  }
+}
+
+/* ---------------- 模型存档 localStorage ---------------- */
+function applyCorpus(key, raw) {
+  S.corpusKey = key;
+  S.rawBase = raw;
+  prepareCorpus(raw);
+  buildVocab();
+  buildDataset();
+  resetModel();
+  refreshMeta();
+}
+function updateModelNote(has, meta) {
+  if (has && meta && meta.cfg) {
+    ui.modelNote.textContent = '检测到存档：' + (meta.archName || '模型') +
+      ' · 保存于 ' + new Date(meta.saved || Date.now()).toLocaleString('zh-CN') +
+      ' · 隐藏层 ' + meta.cfg.hidden + ' · 序列 ' + meta.cfg.seq + ' · 已训练 ' + (meta.epochs || 0) + ' 轮';
+  } else if (has && meta) {
+    ui.modelNote.textContent = '检测到本地存档（元信息不完整），可尝试加载。';
+  } else {
+    ui.modelNote.textContent = '未检测到本地存档。保存后可在下次打开时直接加载继续训练或续写。';
+  }
+}
+async function saveModel() {
+  if (!S.tfReady) { log('TensorFlow.js 未就绪。', 'err'); return; }
+  if (!S.model || !S.everTrained) { log('还没有训练过的模型可保存，请先训练。', 'err'); return; }
+  try {
+    ui.btnSaveModel.disabled = true;
+    setStatus('保存中', 'info');
+    await S.model.save('localstorage://' + LS_MODEL);
+    var meta = {
+      arch: S.arch,
+      archName: S.arch === 'lstm' ? 'LSTM' : 'MLP',
+      cfg: readCfg(),
+      corpusKey: S.corpusKey,
+      itos: S.itos,
+      vocabSize: S.vocabSize,
+      rawBase: S.rawBase,
+      epochs: S.history.length,
+      saved: Date.now()
+    };
+    var str = JSON.stringify(meta);
+    if (str.length > 1400000) {
+      meta.rawBase = String(S.rawBase).slice(0, 20000);
+      str = JSON.stringify(meta);
+      log('自定义语料较大，存档中仅保留前 20000 字用于还原字符表。', 'wn');
+    }
+    localStorage.setItem(LS_META, str);
+    log('模型已保存到 localStorage。', 'ok');
+    setStatus('已保存', 'ok');
+    updateModelNote(true, meta);
+  } catch (e) {
+    log('保存失败：' + (e && e.message ? e.message : e) + '（常见原因：localStorage 配额不足）', 'err');
+    setStatus('保存失败', 'bad');
+  }
+  ui.btnSaveModel.disabled = false;
+}
+async function loadModel() {
+  if (!S.tfReady) { log('TensorFlow.js 未就绪。', 'err'); return; }
+  if (S.training) { log('训练进行中，请先停止。', 'wn'); return; }
+  var metaStr = null;
+  try { metaStr = localStorage.getItem(LS_META); } catch (e) {}
+  if (!metaStr) { log('未找到本地存档。', 'err'); return; }
+  var meta;
+  try { meta = JSON.parse(metaStr); } catch (e) { log('存档解析失败。', 'err'); return; }
+  try {
+    setStatus('加载中', 'info');
+    ui.btnLoadModel.disabled = true;
+    S.arch = meta.arch === 'mlp' ? 'mlp' : 'lstm';
+    ui.pArch.value = S.arch;
+    if (meta.cfg) {
+      if (meta.cfg.hidden) ui.pHidden.value = meta.cfg.hidden;
+      if (meta.cfg.seq) ui.pSeq.value = meta.cfg.seq;
+      if (meta.cfg.lr) ui.pLr.value = String(meta.cfg.lr);
+      if (meta.cfg.batch) ui.pBatch.value = meta.cfg.batch;
+      if (meta.cfg.temp) ui.pTemp.value = meta.cfg.temp;
+    }
+    syncLabels();
+    lastEnv = envKey();
+    applyCorpus(meta.corpusKey && CORPORA[meta.corpusKey] ? meta.corpusKey : 'custom',
+                meta.rawBase || S.rawBase);
+    if (S.vocabSize !== meta.vocabSize) {
+      log('字符表大小与存档不一致（' + S.vocabSize + ' vs ' + meta.vocabSize + '），仍尝试加载。', 'wn');
+    }
+    var m = await tf.loadLayersModel('localstorage://' + LS_MODEL);
+    var outUnits = m.outputs[0].shape[m.outputs[0].shape.length - 1];
+    if (outUnits !== S.vocabSize) {
+      log('加载失败：存档输出维度 ' + outUnits + ' 与当前字符表 ' + S.vocabSize + ' 不匹配。', 'err');
+      setStatus('加载失败', 'bad');
+      ui.btnLoadModel.disabled = false;
+      return;
+    }
+    disposeModel();
+    S.model = m;
+    S.everTrained = true;
+    S.optimizer = tf.train.adam(readCfg().lr);
+    S.sig = envKey();
+    ui.seedInput.value = getSeed();
+    S.seedInited = true;
+    refreshMeta();
+    log('模型已从 localStorage 加载：' + m.countParams().toLocaleString('en-US') + ' 个参数，可直接续写或继续训练。', 'ok');
+    setStatus('已加载', 'ok');
+    updateModelNote(true, meta);
+  } catch (e) {
+    log('加载失败：' + (e && e.message ? e.message : e), 'err');
+    setStatus('加载失败', 'bad');
+  }
+  ui.btnLoadModel.disabled = false;
+}
+async function delModel() {
+  if (S.training) { log('训练进行中，请先停止。', 'wn'); return; }
+  try { localStorage.removeItem(LS_META); } catch (e) {}
+  updateModelNote(false, null);
+  log('本地存档已删除。', 'wn');
+  setStatus('存档已删', 'warn');
+  try { await tf.io.removeModel('localstorage://' + LS_MODEL); } catch (e) {}
+}
+
+/* ---------------- 事件绑定 ---------------- */
+function envKey() {
+  var c = readCfg();
+  return [S.arch, c.hidden, c.lr, c.seq, S.vocabSize].join('|');
+}
+var lastEnv = '';
+function onParamChange() {
+  syncLabels();
+  var k = envKey();
+  if (k !== lastEnv) {
+    lastEnv = k;
+    if (S.training) return;
+    buildDataset();
+    resetModel();
+  }
+}
+function cacheDom() {
+  var ids = ['tfBadge','archBadge','statusChip','corpusSeg','corpusDesc','customText','btnLoadCustom',
+             'mChars','mVocab','mSamples','mParams','paramFs','pArch','pHidden','vHidden','pLr','pSeq','vSeq',
+             'pBatch','vBatch','pEpoch','vEpoch','pSnap','vSnap','pTemp','vTemp','btnResetParam',
+             'btnSaveModel','btnLoadModel','btnDelModel','modelNote',
+             'btnTrain','btnStop','btnClear','btnQuick','trainProgress','progressText','lossCanvas','sEpoch','sBatchLoss','sEpochLoss','sCorpus',
+             'sSpeed','sTime','logBox','logWrap','btnPrev','btnPlay','btnNext','playSlider','playIdx','timeline',
+             'evoEpoch','evoLevel','evoScore','evoText','evoMeter','evoTP','evoNow','btnExport',
+             'seedInput','pGenLen','vGenLen','btnGen','btnGenRand','genOut'];
+  for (var i = 0; i < ids.length; i++) ui[ids[i]] = el(ids[i]);
+}
+function bindEvents() {
+  ui.corpusSeg.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('.segbtn') : null;
+    if (!b) return;
+    if (S.training) { log('训练进行中，请先停止再切换语料。', 'wn'); return; }
+    var key = b.getAttribute('data-c');
+    var segs = ui.corpusSeg.querySelectorAll('.segbtn');
+    for (var i = 0; i < segs.length; i++) segs[i].classList.remove('active');
+    b.classList.add('active');
+    if (key === 'custom') {
+      var t = ui.customText.value.trim();
+      if (t.length < 60) { log('请先在文本框粘贴至少 60 字的自定义语料。', 'err'); return; }
+      setCorpus('custom', t);
+      log('已载入自定义语料：' + t.length + ' 字，字符表 ' + S.vocabSize + '。', 'ok');
+    } else {
+      setCorpus(key);
+      ui.corpusDesc.textContent = CORPORA[key].desc;
+      log('已切换语料：' + CORPORA[key].name + '，字符表 ' + S.vocabSize + '，样本 ' + S.n + '。', 'ok');
+    }
+    ui.seedInput.value = getSeed();
+    S.seedInited = true;
+    lastEnv = envKey();
+    ui.customText.value = ui.customText.value; // 保持内容
+  });
+  ui.btnLoadCustom.addEventListener('click', function () {
+    var t = ui.customText.value.trim();
+    if (t.length < 60) { log('自定义文本至少需要 60 字。', 'err'); return; }
+    var segs = ui.corpusSeg.querySelectorAll('.segbtn');
+    for (var i = 0; i < segs.length; i++) segs[i].classList.remove('active');
+    ui.corpusSeg.querySelector('[data-c="custom"]').classList.add('active');
+    setCorpus('custom', t);
+    ui.corpusDesc.textContent = '自定义语料：' + t.length + ' 字。句式越规律，进化过程越明显。';
+    if (!ui.seedInput.value.trim()) ui.seedInput.value = t.slice(0, 4);
+    lastEnv = envKey();
+    log('已载入自定义语料：' + Array.from(S.text).length + ' 有效字符，字符表 ' + S.vocabSize + '，样本 ' + S.n + '。', 'ok');
+  });
+  ui.pArch.addEventListener('change', function () { S.arch = ui.pArch.value === 'mlp' ? 'mlp' : 'lstm'; onParamChange(); });
+  [ui.pHidden, ui.pSeq, ui.pBatch, ui.pEpoch, ui.pSnap, ui.pTemp, ui.pGenLen].forEach(function (n) {
+    n.addEventListener('input', function () { syncLabels(); });
+    n.addEventListener('change', onParamChange);
+  });
+  ui.pLr.addEventListener('change', onParamChange);
+  ui.btnResetParam.addEventListener('click', function () {
+    ui.pArch.value = 'lstm'; S.arch = 'lstm';
+    ui.pHidden.value = DEF.hidden; ui.pLr.value = String(DEF.lr); ui.pSeq.value = DEF.seq;
+    ui.pBatch.value = DEF.batch; ui.pEpoch.value = DEF.epoch; ui.pSnap.value = DEF.snap;
+    ui.pTemp.value = DEF.temp; ui.pGenLen.value = DEF.genLen;
+    syncLabels(); onParamChange();
+    log('参数已恢复默认。', 'ok');
+  });
+  ui.btnTrain.addEventListener('click', function () { runTraining(); });
+  ui.btnQuick.addEventListener('click', function () {
+    if (S.training) return;
+    if (S.corpusKey !== 'tcm') switchCorpusUI('tcm');   // 中药条目最规律，最快看到“成句”
+    ui.pHidden.value = 32; ui.pSeq.value = 8; ui.pBatch.value = 64;
+    ui.pEpoch.value = 6; ui.pSnap.value = 2;
+    syncLabels();
+    onParamChange();
+    log('已套用「快速体验」：中药语料 · 隐藏层 32 · 序列 8 · 6 轮 · 每 2 轮存快照。', 'ok');
+    runTraining();
+  });
+  ui.btnStop.addEventListener('click', function () {
+    if (S.training) { S.stopFlag = true; setStatus('停止中', 'warn'); log('收到停止指令，本轮结束后停止。'); }
+  });
+  ui.btnClear.addEventListener('click', function () {
+    if (S.training) return;
+    S.history = []; S.snapshots = []; S.tpIndex = -1; S.playIdx = -1;
+    S.lastBatchLoss = NaN; S.speed = 0;
+    ui.sBatchLoss.textContent = '—'; ui.sEpochLoss.textContent = '—';
+    ui.sSpeed.textContent = '—'; ui.sTime.textContent = '—';
+    ui.sEpoch.textContent = '0 / ' + readCfg().epoch;
+    ui.progressText.textContent = '未开始'; ui.progressText.className = 'badge';
+    renderTimeline(); drawChart();
+    log('已清空曲线与快照（模型权重保留）。', 'wn');
+  });
+  ui.btnPrev.addEventListener('click', function () { stopPlay(); renderPlayback(S.playIdx - 1, true); });
+  ui.btnNext.addEventListener('click', function () { stopPlay(); renderPlayback(S.playIdx + 1, true); });
+  ui.playSlider.addEventListener('input', function () { stopPlay(); renderPlayback(parseInt(ui.playSlider.value, 10), true); });
+  ui.btnPlay.addEventListener('click', function () {
+    if (!S.snapshots.length) { log('还没有快照可回放。', 'wn'); return; }
+    if (S.playing) { stopPlay(); return; }
+    S.playing = true;
+    ui.btnPlay.textContent = '⏸ 暂停';
+    renderPlayback(0, true);
+    S.playTimer = setInterval(function () {
+      if (S.playIdx >= S.snapshots.length - 1) { stopPlay(); return; }
+      renderPlayback(S.playIdx + 1, true);
+    }, 900);
+  });
+  ui.timeline.addEventListener('click', function (e) {
+    var card = e.target.closest ? e.target.closest('.snap') : null;
+    if (!card) return;
+    stopPlay();
+    renderPlayback(parseInt(card.getAttribute('data-i'), 10), false);
+  });
+  ui.btnExport.addEventListener('click', exportReport);
+  ui.btnGen.addEventListener('click', function () {
+    if (!S.model || !S.everTrained) { log('还没有训练过的模型：先点一次「开始训练」，或加载 localStorage 存档。', 'err'); return; }
+    var c = readCfg();
+    var seed = getSeed();
+    ui.btnGen.disabled = true;
+    ui.genOut.textContent = '生成中…';
+    setTimeout(async function () {
+      try {
+        ui.genOut.textContent = '生成中…（逐字生成，请稍候）';
+        var out = await sampleText(seed, c.genLen, c.temp, function (d, t) {
+          ui.genOut.textContent = '生成中… ' + d + '/' + t;
+        });
+        ui.genOut.textContent = '【种子】' + seed + '\n' + out;
+        log('续写完成（' + c.genLen + ' 字，温度 ' + c.temp.toFixed(2) + '）。', 'ok');
+      } catch (err2) {
+        log('生成失败：' + err2.message, 'err');
+        ui.genOut.textContent = '生成失败：' + err2.message;
+      }
+      ui.btnGen.disabled = false;
+    }, 30);
+  });
+  ui.btnGenRand.addEventListener('click', function () {
+    if (!S.text) return;
+    var len = Array.from(S.text).length;
+    if (len < 8) return;
+    var s = Math.floor(Math.random() * (len - 6));
+    var seed = Array.from(S.text).slice(s, s + 4).join('');
+    ui.seedInput.value = seed;
+    log('随机种子已设置：' + seed);
+  });
+  ui.btnSaveModel.addEventListener('click', saveModel);
+  ui.btnLoadModel.addEventListener('click', loadModel);
+  ui.btnDelModel.addEventListener('click', delModel);
+  var t = null;
+  window.addEventListener('resize', function () {
+    if (t) clearTimeout(t);
+    t = setTimeout(drawChart, 160);
+  });
+}
+
+/* ---------------- TF 环境 ---------------- */
+async function setupTf() {
+  try { await tf.setBackend('webgl'); } catch (e) {}
+  try { await tf.ready(); } catch (e) {}
+  var b = tf.getBackend();
+  if (b !== 'webgl') {
+    try { await tf.setBackend('cpu'); await tf.ready(); b = tf.getBackend(); } catch (e) {}
+  }
+  S.backend = b || 'unknown';
+  S.tfVer = (tf.version && tf.version.tfjs) ? tf.version.tfjs : 'unknown';
+  S.tfReady = true;
+  ui.tfBadge.textContent = 'TF.js ' + S.tfVer + ' · ' + String(S.backend).toUpperCase();
+  ui.tfBadge.className = 'badge ok';
+  log('运行环境就绪：TensorFlow.js ' + S.tfVer + ' / 后端 ' + String(S.backend).toUpperCase(), 'ok');
+  if (String(S.backend).toLowerCase() !== 'webgl') {
+    ui.pHidden.value = 32; ui.pSeq.value = 10; ui.pBatch.value = 64;
+    ui.pEpoch.value = 10; ui.pSnap.value = 3;
+    syncLabels(); onParamChange();
+    log('未检测到 WebGL，已回退到 CPU 并自动调低参数（隐藏层 32 / 10 轮），避免训练过慢。', 'wn');
+  }
+  // 引擎就绪后趁空闲把模型和 GPU 内核先编译好，点“开始训练”才不会卡一下
+  schedulePrewarm(600);
+}
+function tfFailed(msg) {
+  ui.tfBadge.textContent = 'TF.js 未加载';
+  ui.tfBadge.className = 'badge bad';
+  setStatus('环境异常', 'bad');
+  ui.btnTrain.disabled = true;
+  ui.btnGen.disabled = true;
+  log(msg, 'err');
+}
+function tryAltCdn() {
+  return new Promise(function (resolve, reject) {
+    var s = document.createElement('script');
+    s.src = 'https://unpkg.com/@tensorflow/tfjs@4.22.0/dist/tf.min.js';
+    s.onload = function () { resolve(); };
+    s.onerror = function () { reject(new Error('备用 CDN 也无法加载')); };
+    document.head.appendChild(s);
+  });
+}
+
+/* ---------------- 启动 ---------------- */
+function init() {
+  cacheDom();
+  bindEvents();
+  ui.corpusDesc.textContent = CORPORA.lunxun.desc;
+  S.arch = ui.pArch.value === 'mlp' ? 'mlp' : 'lstm';
+  prepareCorpus(S.rawBase);
+  buildVocab();
+  buildDataset();
+  lastEnv = envKey();
+  syncLabels();
+  refreshMeta();
+  renderTimeline();
+  drawChart();
+  ui.sEpoch.textContent = '0 / ' + readCfg().epoch;
+  ui.sCorpus.textContent = corpusShort() + '/' + (S.arch === 'lstm' ? 'LSTM' : 'MLP');
+  ui.trainProgress.style.width = '0%';
+  ui.seedInput.value = CORPORA.lunxun.seed;
+  var metaStr = null;
+  try { metaStr = localStorage.getItem(LS_META); } catch (e) {}
+  if (metaStr) {
+    try { updateModelNote(true, JSON.parse(metaStr)); } catch (e) {}
+  }
+  if (typeof tf === 'undefined') {
+    tfFailed('无法加载 TensorFlow.js。请检查网络后刷新页面（需要访问 CDN）。');
+    return;
+  }
+  try { tf.enableProdMode(); } catch (e) {}
+  setupTf().catch(function (e) { tfFailed('初始化失败：' + e.message); });
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function () {
+    if (typeof tf === 'undefined') {
+      tryAltCdn().then(init).catch(function () { init(); });
+    } else {
+      init();
+    }
+  });
+} else {
+  if (typeof tf === 'undefined') {
+    tryAltCdn().then(init).catch(function () { init(); });
+  } else {
+    init();
+  }
+}
+})();
+</script>
+</body>
+</html>

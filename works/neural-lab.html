@@ -1,0 +1,1639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>Neural Lab · 神经网络训练沙盒</title>
+<style>
+:root{
+  --bg:#06080f;
+  --panel:rgba(14,18,28,.80);
+  --line:rgba(255,255,255,.10);
+  --line2:rgba(255,255,255,.055);
+  --txt:#e9edf5;
+  --dimc:#8a94a8;
+  --acc:#6ea8ff;
+  --acc2:#b487ff;
+  --ok:#5fd6a4;
+  --bad:#ff7a6b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
+  font:13px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+
+#app{position:fixed;inset:0;display:grid;
+  grid-template-columns:minmax(320px,1fr) 340px;grid-template-rows:1fr;gap:12px;padding:12px}
+
+/* ---------- 左：数据视图 ---------- */
+/* 解说条在「图的上方」单独占一行，图自己占满剩下的空间——
+   原来解说浮在图上，手机上几乎把决策边界全盖住了 */
+#left{position:relative;display:flex;flex-direction:column;gap:7px;padding:7px;
+  border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  background:radial-gradient(120% 100% at 50% 0%,#0c1120 0%,#06080f 70%)}
+#stage{position:relative;flex:1 1 auto;min-height:150px;overflow:hidden;border-radius:9px}
+#cvData{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+#left .tag{flex:0 0 auto;padding:1px 3px 0;pointer-events:none}
+#left .tag h1{font-size:15px;font-weight:650;letter-spacing:.6px;
+  background:linear-gradient(92deg,#fff,#9fc4ff 45%,#c8a4ff);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+#left .tag p{font-size:10.5px;color:var(--dimc);margin-top:1px}
+/* 指标条：图的下方单独一行，小字号、不压图 */
+#readout{flex:0 0 auto;display:flex;align-items:center;gap:10px;min-height:0;
+  padding:0 3px;font-variant-numeric:tabular-nums}
+#metrics{display:flex;align-items:baseline;gap:11px;flex:1 1 auto;min-width:0;overflow:hidden}
+#metrics div{display:flex;align-items:baseline;gap:3px;font-size:9.5px;color:#6f7b91;
+  white-space:nowrap;letter-spacing:.01em}
+#metrics b{font-size:11.5px;color:var(--txt);font-weight:600}
+#probe{flex:0 0 auto;display:flex;align-items:baseline;gap:4px;font-size:9.5px;color:#6f7b91;
+  white-space:nowrap;padding:2px 8px;border-radius:6px;
+  border:1px solid var(--line2);background:rgba(255,255,255,.035)}
+#probe b{font-size:11px;color:var(--acc);font-weight:600}
+#probe i{font-style:normal;opacity:.45;margin:0 3px}
+
+/* ---------- 右：分栏 ---------- */
+#right{display:flex;flex-direction:column;gap:10px;min-height:0;
+  overflow-y:auto;overflow-x:hidden;padding-right:2px;padding-bottom:56px}
+#right::-webkit-scrollbar{width:6px}
+#right::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:3px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:13px;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);overflow:hidden;flex:0 0 auto}
+.card h3{font-size:10.5px;letter-spacing:1.1px;color:#6f7b91;font-weight:600;
+  padding:9px 13px 7px;text-transform:uppercase}
+#cvNet{display:block;width:100%;height:158px}
+#cvLoss{display:block;width:100%;height:104px}
+
+#panel{flex:1 1 0;min-height:150px;display:flex;flex-direction:column;
+  background:var(--panel);border:1px solid var(--line);border-radius:13px;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);overflow:hidden}
+#panel .body{flex:1 1 auto;overflow-y:auto;padding:4px 13px 14px}
+#panel .body::-webkit-scrollbar{width:6px}
+#panel .body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:3px}
+
+.sec{margin-bottom:12px;padding-bottom:11px;border-bottom:1px solid var(--line2)}
+.sec:last-child{border-bottom:0}
+.sec h4{font-size:10.5px;letter-spacing:1px;color:#6f7b91;font-weight:600;margin:9px 0 8px;text-transform:uppercase}
+
+button{font:inherit;color:#dbe3f0;background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.10);border-radius:8px;padding:6px 8px;cursor:pointer;
+  font-size:11.5px;transition:background .13s,border-color .13s,transform .08s;user-select:none}
+button:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.20)}
+button:active{transform:translateY(1px)}
+button.on{background:linear-gradient(180deg,rgba(180,135,255,.32),rgba(180,135,255,.16));
+  border-color:rgba(180,135,255,.48);color:#f0e9ff}
+button.pri{background:linear-gradient(180deg,rgba(110,168,255,.30),rgba(110,168,255,.16));
+  border-color:rgba(110,168,255,.45);color:#eaf2ff}
+button.wide{width:100%}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.row{display:flex;gap:6px;margin-top:7px}
+
+.sl{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+.sl span{font-size:11.5px;color:#a4afc2;flex:0 0 66px}
+.sl input[type=range]{flex:1 1 auto}
+.sl i{font-size:10.5px;color:var(--acc);font-variant-numeric:tabular-nums;min-width:40px;text-align:right;font-style:normal}
+
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:18px;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:2px;
+  background:linear-gradient(90deg,rgba(110,168,255,.85),rgba(180,135,255,.85))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;
+  background:#fff;margin-top:-5px;box-shadow:0 1px 5px rgba(0,0,0,.5)}
+input[type=range]::-moz-range-track{height:3px;border-radius:2px;background:rgba(255,255,255,.25)}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radius:50%;background:#fff}
+
+select{width:100%;font:inherit;font-size:11.5px;color:#dbe3f0;background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.12);border-radius:7px;padding:5px 7px;cursor:pointer;outline:none}
+select option{background:#141a28;color:#dbe3f0}
+
+.toggle{display:flex;align-items:center;justify-content:space-between;padding:4px 0;font-size:11.5px;color:#a4afc2;cursor:pointer}
+.sw{width:34px;height:19px;border-radius:10px;background:rgba(255,255,255,.13);position:relative;transition:background .18s;flex:0 0 auto}
+.sw::after{content:"";position:absolute;left:2px;top:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:transform .18s}
+.toggle.on .sw{background:linear-gradient(90deg,#6ea8ff,#b487ff)}
+.toggle.on .sw::after{transform:translateX(15px)}
+
+.note{font-size:10.5px;color:#69738a;line-height:1.5;margin-top:7px}
+
+#toast{position:fixed;left:50%;top:22px;transform:translate(-50%,-14px);z-index:30;
+  padding:8px 16px;background:rgba(20,26,40,.95);border:1px solid rgba(110,168,255,.35);
+  border-radius:9px;font-size:12px;color:#dfe8f7;opacity:0;pointer-events:none;transition:opacity .22s,transform .22s}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+
+@media (max-width:900px){
+  #app{grid-template-columns:1fr;grid-template-rows:minmax(410px,1fr) auto;padding:8px;gap:8px}
+  /* 右栏（网络 / 曲线 / 控制台）自己滚，别把左边的图挤没 */
+  #right{max-height:33vh}
+  #stage{min-height:200px}
+}
+  /* ---------- 图上的实时标注（不是助手面板） ---------- */
+  #anno{position:relative;flex:0 0 auto;z-index:3;padding:8px 12px 9px;border-radius:10px;
+    max-height:min(44%,240px);overflow-y:auto;overscroll-behavior:contain;
+    background:rgba(9,13,21,.92);border:1px solid var(--line);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  #a-txt,#a-next,#a-round,#a-loss{transition:opacity .4s ease}
+  #anno .a1{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  #a-round{font-size:12px;font-weight:600;color:var(--txt);font-variant-numeric:tabular-nums}
+  #a-stage{font-size:10.5px;font-weight:600;padding:2px 9px;border-radius:20px;
+    border:1px solid rgba(255,255,255,.18);color:#e6ecf8;background:rgba(255,255,255,.08);
+    transition:background .35s,border-color .35s}
+  #a-loss{font-size:10.5px;color:var(--dimc);font-variant-numeric:tabular-nums}
+  #a-bar{margin-top:6px;height:3px;border-radius:2px;background:rgba(255,255,255,.10);overflow:hidden}
+  #a-fill{display:block;height:100%;width:0;border-radius:2px;
+    background:linear-gradient(90deg,#6ea8ff,#b487ff);transition:width .8s ease}
+  #a-txt{margin-top:6px;font-size:11px;line-height:1.68;color:#c6cede;
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+  #a-next{margin-top:3px;font-size:11px;line-height:1.68;color:#9ed6ff;
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+  #a-qs{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}
+  #a-qs .q{font:inherit;font-size:10.5px;color:var(--dimc);background:rgba(255,255,255,.05);
+    border:1px solid var(--line);border-radius:6px;padding:3px 8px;cursor:pointer;
+    transition:color .15s,border-color .15s}
+  #a-qs .q:hover{color:var(--txt);border-color:var(--acc)}
+  #a-ask{margin-top:6px;display:flex;gap:6px}
+  #a-in{flex:1;min-width:0;font:inherit;font-size:11px;color:var(--txt);
+    background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:6px;
+    padding:4px 9px;outline:none}
+  #a-in:focus{border-color:var(--acc)}
+  #a-go{font:inherit;font-size:11px;font-weight:600;color:#08101c;background:var(--acc);
+    border:none;border-radius:6px;padding:4px 12px;cursor:pointer;white-space:nowrap}
+
+  /* 提问的回答：直接标在图上，十几秒后淡出，不做成聊天气泡 */
+  /* 回答批注盖在「解说文字」上（absolutely 定在 #anno 里），图永远完整可见 */
+  #a-note{position:absolute;left:0;right:0;top:0;bottom:0;z-index:4;
+    overflow-y:auto;overscroll-behavior:contain;
+    opacity:0;pointer-events:none;
+    padding:10px 12px;border-radius:9px;font-size:11px;line-height:1.7;color:#dde5f3;
+    background:rgba(8,12,20,.97);border:1px solid rgba(110,168,255,.34);
+    box-shadow:0 12px 34px rgba(0,0,0,.55);transition:opacity .28s}
+  /* 出现时不位移：位置就是解说条的 padding box，永远压不到图上 */
+  #a-note.show{opacity:1;pointer-events:auto}
+  #a-note b{color:var(--acc2);font-weight:600}
+  #a-note .q{display:block;font-size:10.5px;color:#7f8ca3;margin-bottom:4px}
+
+  @media (max-width:900px){
+    #left{padding:6px;gap:5px}
+    #left .tag h1{font-size:12.5px}
+    #left .tag p{display:none}
+    #anno{padding:7px 10px 8px}
+    #a-round{font-size:11.5px}
+    #a-stage{font-size:10px;padding:1px 8px}
+    #a-txt{font-size:10.5px;line-height:1.6;-webkit-line-clamp:3}
+    #a-next{font-size:10.5px;line-height:1.6;-webkit-line-clamp:2}
+    #a-qs{display:none}
+    #a-note{left:0;right:0;top:0;bottom:0}
+    /* 手机上只留 4 个常用指标，参数量/帧率让位给图 */
+    #metrics{gap:8px}
+    #metrics div{font-size:9px;gap:2px}
+    #metrics b{font-size:11px}
+    #metrics .mx{display:none}
+    /* 手机上没有多余宽度：探针数值直接画在图上触点旁，这条整条隐藏 */
+    #probe{display:none !important}
+  }
+  /* 手机横屏：宽而极矮，单列会把图裁掉，改回左右分栏 */
+  @media (max-height:560px) and (min-width:640px){
+    #app{grid-template-columns:1fr 300px;grid-template-rows:1fr;gap:8px;padding:8px}
+    #right{max-height:none}
+    #stage{min-height:120px}
+    #left .tag{display:none}                 /* 横屏没高度，标题让位给图 */
+    #left{padding:5px;gap:4px}
+    #anno{padding:5px 9px 6px}
+    #a-txt{-webkit-line-clamp:2;margin-top:4px;font-size:10px;line-height:1.55}
+    #a-next{-webkit-line-clamp:1;font-size:10px;line-height:1.55}
+    #a-bar{margin-top:4px}
+    #a-ask{margin-top:4px}
+    #a-in{padding:3px 8px;font-size:10.5px}
+    #a-go{padding:3px 10px;font-size:10.5px}
+    #a-round{font-size:11px}
+    #a-stage{font-size:9.5px;padding:1px 7px}
+    #a-loss{font-size:9.5px}
+  }
+  /* 矮屏（小手机 / 横屏）进一步压解说，保证决策边界至少还有 150px */
+  @media (max-height:700px){
+    #app{grid-template-rows:minmax(380px,1fr) auto}
+    #right{max-height:28vh}
+    #left .tag{display:none}          /* 矮屏优先保证图 */
+    #a-ask{margin-top:4px}
+    #a-in{padding:3px 8px;font-size:10.5px}
+    #a-go{padding:3px 9px;font-size:10.5px}
+    #a-txt{-webkit-line-clamp:2}
+    #a-next{-webkit-line-clamp:1}
+    #anno{padding:6px 10px 7px}
+    #a-bar{margin-top:4px}
+    #a-ask{margin-top:5px}
+  }
+
+  /* 掉帧时自动降级：关掉毛玻璃、提高不透明度，省掉每帧的背景模糊 */
+  body.lowfx #anno,body.lowfx .card,body.lowfx #metrics,body.lowfx #probe,body.lowfx #a-note{
+    backdrop-filter:none;-webkit-backdrop-filter:none}
+  body.lowfx #anno,body.lowfx .card{background:rgba(10,14,22,.94)}
+  body.lowfx #a-note{background:rgba(8,12,20,.98)}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- ================= 左：数据视图 ================= -->
+  <div id="left">
+    <div class="tag">
+      <h1>NEURAL LAB</h1>
+      <p>在浏览器里手写反向传播，实时训练一个多层感知机</p>
+    </div>
+    <div id="anno">
+      <div class="a1">
+        <span id="a-round">第 0 轮 · 0 步</span>
+        <span id="a-stage">准备中</span>
+        <span id="a-loss">损失 —</span>
+      </div>
+      <div id="a-bar"><i id="a-fill"></i></div>
+      <div id="a-txt">正在初始化……</div>
+      <div id="a-next">先把第一批样本过一遍，损失会从 0.69 往下掉。</div>
+      <div id="a-qs">
+        <button class="q" data-k="status">训练到哪一步了</button>
+        <button class="q" data-k="stuck">损失为什么不降</button>
+        <button class="q" data-k="lr">学习率怎么调</button>
+        <button class="q" data-k="overfit">什么是过拟合</button>
+        <button class="q" data-k="act">激活函数怎么选</button>
+        <button class="q" data-k="size">网络有多大</button>
+      </div>
+      <div id="a-ask">
+        <input id="a-in" type="text" maxlength="80" placeholder="问一句，例如：反向传播是怎么回事？">
+        <button id="a-go">标注</button>
+      </div>
+      <div id="a-note"></div>
+    </div>
+
+    <div id="stage">
+      <canvas id="cvData"></canvas>
+    </div>
+
+    <div id="readout">
+      <div id="metrics">
+        <div>步数<b id="m-step">0</b></div>
+        <div>轮次<b id="m-epoch">0</b></div>
+        <div>损失<b id="m-loss">—</b></div>
+        <div>准确率<b id="m-acc">—</b></div>
+        <div class="mx">参数量<b id="m-params">0</b></div>
+        <div class="mx">帧率<b id="m-fps">0</b></div>
+      </div>
+      <div id="probe">探针 <b id="p-xy">—</b><i>·</i>输出 <b id="p-out">0.500</b></div>
+    </div>
+  </div>
+
+  <!-- ================= 右：网络 / 曲线 / 控制台 ================= -->
+  <div id="right">
+    <div class="card">
+      <h3>网络结构与实时激活</h3>
+      <canvas id="cvNet"></canvas>
+    </div>
+
+    <div class="card">
+      <h3>损失 / 准确率</h3>
+      <canvas id="cvLoss"></canvas>
+    </div>
+
+    <div id="panel">
+      <div class="body">
+
+        <div class="sec">
+          <h4>数据集</h4>
+          <div class="grid3">
+            <button data-d="spiral" class="on">螺旋</button>
+            <button data-d="circle">同心圆</button>
+            <button data-d="xor">异或</button>
+            <button data-d="wave">波浪</button>
+            <button data-d="moon">双月</button>
+            <button data-d="gauss">高斯</button>
+          </div>
+          <div class="sl" style="margin-top:9px"><span>样本数</span><input type="range" id="r-n" min="40" max="500" value="220"><i id="v-n">220</i></div>
+          <div class="sl"><span>噪声</span><input type="range" id="r-no" min="0" max="60" value="14"><i id="v-no">0.14</i></div>
+          <div class="row"><button id="btn-resample" class="wide">重新采样</button></div>
+        </div>
+
+        <div class="sec">
+          <h4>网络结构</h4>
+          <div class="sl"><span>隐藏层数</span><input type="range" id="r-l" min="1" max="4" value="2"><i id="v-l">2</i></div>
+          <div class="sl"><span>每层宽度</span><input type="range" id="r-w" min="2" max="12" value="8"><i id="v-w">8</i></div>
+          <div class="sl"><span>激活函数</span>
+            <select id="sel-act">
+              <option value="tanh" selected>Tanh</option>
+              <option value="relu">ReLU</option>
+              <option value="sigmoid">Sigmoid</option>
+            </select>
+          </div>
+          <div class="note">改结构或激活函数会重建网络并从头训练。</div>
+        </div>
+
+        <div class="sec">
+          <h4>训练</h4>
+          <div class="sl"><span>优化器</span>
+            <select id="sel-opt">
+              <option value="adam" selected>Adam</option>
+              <option value="momentum">SGD + 动量</option>
+              <option value="sgd">SGD</option>
+            </select>
+          </div>
+          <div class="sl"><span>学习率</span><input type="range" id="r-lr" min="0" max="100" value="59"><i id="v-lr">0.059</i></div>
+          <div class="sl"><span>L2 正则</span><input type="range" id="r-l2" min="0" max="100" value="10"><i id="v-l2">0.0006</i></div>
+          <div class="sl"><span>批量大小</span><input type="range" id="r-bs" min="1" max="64" value="24"><i id="v-bs">24</i></div>
+          <div class="sl"><span>每帧步数</span><input type="range" id="r-sp" min="1" max="40" value="10"><i id="v-sp">10</i></div>
+          <div class="row">
+            <button id="btn-run" class="pri wide">暂停训练</button>
+          </div>
+          <div class="row">
+            <button id="btn-step">单步 25</button>
+            <button id="btn-reset">重置权重</button>
+          </div>
+        </div>
+
+        <div class="sec">
+          <h4>显示</h4>
+          <div class="toggle on" id="t-bound"><span>决策边界</span><i class="sw"></i></div>
+          <div class="toggle on" id="t-grid"><span>坐标网格</span><i class="sw"></i></div>
+          <div class="toggle on" id="t-w"><span>网络连线按权重着色</span><i class="sw"></i></div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+(function(){
+
+/* =======================================================================
+   工具
+   ======================================================================= */
+const $ = function(id){ return document.getElementById(id); };
+const clamp = function(v,a,b){ return v<a?a:(v>b?b:v); };
+const rand = function(a,b){ return a + Math.random()*(b-a); };
+let toastTimer = null;
+function toast(msg){
+  const el = $("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.classList.remove("show"); }, 1500);
+}
+function randn(){
+  let u = 0, v = 0;
+  while(u === 0) u = Math.random();
+  while(v === 0) v = Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+
+/* =======================================================================
+   画布
+   ======================================================================= */
+function setupCanvas(cv){
+  const c = cv.getContext("2d");
+  function fit(force){
+    const dpr = Math.min(window.devicePixelRatio || 1, quality.dpr);
+    const w = cv.clientWidth || 300, h = cv.clientHeight || 150;
+    const pw = Math.max(1, Math.round(w*dpr));
+    const ph = Math.max(1, Math.round(h*dpr));
+    if(force || cv.width !== pw || cv.height !== ph){
+      cv.width = pw; cv.height = ph;
+      c.setTransform(dpr,0,0,dpr,0,0);
+    }
+    return { w:w, h:h };
+  }
+  return { ctx:c, fit:fit, w:0, h:0 };
+}
+const D = setupCanvas($("cvData"));
+const N = setupCanvas($("cvNet"));
+const L = setupCanvas($("cvLoss"));
+
+/* =======================================================================
+   配置
+   ======================================================================= */
+const cfg = {
+  data:"spiral", n:220, noise:0.14,
+  layers:2, width:8, act:"tanh",
+  opt:"adam", lr:0.06, l2:0.0006, bs:24, stepsPerFrame:10,
+  running:true,
+  showBound:true, showGrid:true, showW:true
+};
+
+/* =======================================================================
+   数据集
+   ======================================================================= */
+let X = null, Y = null, Ns = 0;
+
+function genSpiral(n, noise){
+  const xs = new Float64Array(n*2), ys = new Float64Array(n);
+  const half = n>>1;
+  for(let i=0;i<half;i++){
+    /* 0.7 圈：视觉上仍是双螺旋，且默认网络能稳定学会 */
+    const t = (i/(half-1))*1.4*Math.PI;
+    const r = 0.06 + 0.86*(i/(half-1));
+    let a = Math.cos(t)*r, b = Math.sin(t)*r;
+    xs[i*2] = clamp(a + randn()*noise*0.5, -1.3, 1.3);
+    xs[i*2+1] = clamp(b + randn()*noise*0.5, -1.3, 1.3);
+    ys[i] = 0;
+    const j = i+half;
+    xs[j*2] = clamp(-a + randn()*noise*0.5, -1.3, 1.3);
+    xs[j*2+1] = clamp(-b + randn()*noise*0.5, -1.3, 1.3);
+    ys[j] = 1;
+  }
+  if(n % 2 === 1){ xs[(n-1)*2]=rand(-1,1); xs[(n-1)*2+1]=rand(-1,1); ys[n-1]=0; }
+  return { X:xs, Y:ys };
+}
+function genCircle(n, noise){
+  const xs = new Float64Array(n*2), ys = new Float64Array(n);
+  for(let i=0;i<n;i++){
+    const inner = i < n/2;
+    const r = inner ? rand(0, 0.42) : rand(0.62, 0.98);
+    const a = Math.random()*Math.PI*2;
+    xs[i*2]   = clamp(Math.cos(a)*r + randn()*noise*0.4, -1.3, 1.3);
+    xs[i*2+1] = clamp(Math.sin(a)*r + randn()*noise*0.4, -1.3, 1.3);
+    ys[i] = inner ? 0 : 1;
+  }
+  return { X:xs, Y:ys };
+}
+function genXor(n, noise){
+  const xs = new Float64Array(n*2), ys = new Float64Array(n);
+  for(let i=0;i<n;i++){
+    const qx = Math.random()<0.5 ? -1 : 1;
+    const qy = Math.random()<0.5 ? -1 : 1;
+    const r = rand(0.16, 0.92);
+    const a = Math.random()*Math.PI*2;
+    xs[i*2]   = clamp(qx*r*Math.abs(Math.cos(a)) + randn()*noise*0.35, -1.3, 1.3);
+    xs[i*2+1] = clamp(qy*r*Math.abs(Math.sin(a)) + randn()*noise*0.35, -1.3, 1.3);
+    ys[i] = (qx === qy) ? 0 : 1;
+  }
+  return { X:xs, Y:ys };
+}
+function genWave(n, noise){
+  const xs = new Float64Array(n*2), ys = new Float64Array(n);
+  for(let i=0;i<n;i++){
+    const x = rand(-1.1, 1.1);
+    const border = 0.42*Math.sin(x*Math.PI*1.6);
+    const y = rand(-1.1, 1.1);
+    xs[i*2]   = clamp(x + randn()*noise*0.2, -1.3, 1.3);
+    xs[i*2+1] = clamp(y + randn()*noise*0.2, -1.3, 1.3);
+    ys[i] = y > border ? 1 : 0;
+  }
+  return { X:xs, Y:ys };
+}
+function genMoon(n, noise){
+  const xs = new Float64Array(n*2), ys = new Float64Array(n);
+  for(let i=0;i<n;i++){
+    const up = i < n/2;
+    const a = rand(0, Math.PI);
+    let pxa, pyb;
+    if(up){ pxa = Math.cos(a)-0.5; pyb = Math.sin(a)-0.22; }
+    else  { pxa = 0.5-Math.cos(a);  pyb = 0.30-Math.sin(a); }
+    xs[i*2]   = clamp(pxa + randn()*noise*0.35, -1.3, 1.3);
+    xs[i*2+1] = clamp(pyb + randn()*noise*0.35, -1.3, 1.3);
+    ys[i] = up ? 0 : 1;
+  }
+  return { X:xs, Y:ys };
+}
+function genGauss(n, noise){
+  const xs = new Float64Array(n*2), ys = new Float64Array(n);
+  for(let i=0;i<n;i++){
+    const c = i < n/2 ? -0.5 : 0.5;
+    xs[i*2]   = clamp(c + randn()*(0.28+noise*0.5), -1.3, 1.3);
+    xs[i*2+1] = clamp(-c*0.7 + randn()*(0.28+noise*0.5), -1.3, 1.3);
+    ys[i] = i < n/2 ? 0 : 1;
+  }
+  return { X:xs, Y:ys };
+}
+const genMap = { spiral:genSpiral, circle:genCircle, xor:genXor, wave:genWave, moon:genMoon, gauss:genGauss };
+
+function buildData(){
+  const g = genMap[cfg.data] || genSpiral;
+  const r = g(cfg.n, cfg.noise);
+  X = r.X; Y = r.Y; Ns = cfg.n;
+  perm = new Int32Array(Ns);
+  for(let i=0;i<Ns;i++) perm[i] = i;
+  shufflePerm();
+  ptr = 0; stepCount = 0; epoch = 0;
+  lossHist.length = 0; accHist.length = 0;
+  curLoss = NaN; curAcc = NaN;
+  dispLoss = NaN; dispAcc = NaN;
+  wrongMask = new Uint8Array(0);
+}
+
+/* =======================================================================
+   网络
+   ======================================================================= */
+let net = null;
+
+function actFn(z, kind){
+  if(kind === "tanh") return Math.tanh(z);
+  if(kind === "relu") return z > 0 ? z : 0;
+  return 1/(1+Math.exp(-clamp(z,-40,40)));
+}
+function actDeriv(a, z, kind){
+  if(kind === "tanh") return 1 - a*a;
+  if(kind === "relu") return z > 0 ? 1 : 0;
+  return a*(1-a);
+}
+
+function buildNet(){
+  const sizes = [2];
+  for(let i=0;i<cfg.layers;i++) sizes.push(cfg.width);
+  sizes.push(1);
+  const Ln = sizes.length - 1;
+  const layers = new Array(Ln);
+  let params = 0;
+  for(let l=1;l<=Ln;l++){
+    const nin = sizes[l-1], nout = sizes[l];
+    const isOut = (l === Ln);
+    const kind = isOut ? "sigmoid" : cfg.act;
+    const W = new Float64Array(nin*nout);
+    const b = new Float64Array(nout);
+    /* Xavier / He 初始化 */
+    if(kind === "relu"){
+      const s = Math.sqrt(2/nin);
+      for(let i=0;i<W.length;i++) W[i] = randn()*s;
+    }else{
+      let lim = Math.sqrt(6/(nin+nout));
+      /* sigmoid 非零中心且易饱和，实测需要更大初始尺度才不会开局就躺平 */
+      if(kind === "sigmoid" && !isOut) lim *= 2.5;
+      for(let i=0;i<W.length;i++) W[i] = rand(-lim, lim);
+    }
+    layers[l-1] = {
+      nin:nin, nout:nout, kind:kind,
+      W:W, b:b,
+      dW:new Float64Array(nin*nout), db:new Float64Array(nout),
+      mW:new Float64Array(nin*nout), vW:new Float64Array(nin*nout),
+      mb:new Float64Array(nout),     vb:new Float64Array(nout),
+      velW:new Float64Array(nin*nout), velB:new Float64Array(nout),
+      z:new Float64Array(nout), a:new Float64Array(nout), d:new Float64Array(nout)
+    };
+    params += nin*nout + nout;
+  }
+  net = {
+    sizes:sizes, layers:layers, L:Ln, params:params,
+    inA:new Float64Array(2)
+  };
+  /* 探针激活缓存 */
+  probeActs = sizes.map(function(s){ return new Float64Array(s); });
+  t = 0;
+}
+
+/* ---- 单样本前向（用于可视化 / 预测） ---- */
+function forwardOne(x1, x2, outActs){
+  const lays = net.layers;
+  let prev = net.inA;
+  prev[0] = x1; prev[1] = x2;
+  if(outActs) { outActs[0][0] = x1; outActs[0][1] = x2; }
+  for(let i=0;i<lays.length;i++){
+    const l = lays[i];
+    const pa = (i === 0) ? prev : lays[i-1].a;
+    for(let o=0;o<l.nout;o++){
+      let s = l.b[o];
+      const off = o*l.nin;
+      for(let k=0;k<l.nin;k++) s += l.W[off+k]*pa[k];
+      l.z[o] = s;
+      l.a[o] = actFn(s, l.kind);
+    }
+    if(outActs) outActs[i+1].set(l.a);
+  }
+  return lays[lays.length-1].a[0];
+}
+
+/* ---- 批量训练 ---- */
+let perm = null, ptr = 0, stepCount = 0, epoch = 0, t = 0;
+let lossHist = [], accHist = [];
+let curLoss = NaN, curAcc = NaN;
+/* 显示读数用指数平滑，否则 batch 噪声会让数字乱跳 */
+let dispLoss = NaN, dispAcc = NaN;
+
+function shufflePerm(){
+  for(let i=Ns-1;i>0;i--){
+    const j = (Math.random()*(i+1))|0;
+    const tmp = perm[i]; perm[i] = perm[j]; perm[j] = tmp;
+  }
+  ptr = 0;
+}
+
+function trainStep(){
+  if(!net || Ns === 0) return;
+  const bs = Math.min(cfg.bs, Ns);
+  const lays = net.layers;
+  const Ln = net.L;
+
+  if(ptr + bs > Ns){ shufflePerm(); epoch++; }
+
+  /* 清零梯度 */
+  for(let i=0;i<Ln;i++){
+    lays[i].dW.fill(0);
+    lays[i].db.fill(0);
+  }
+
+  let loss = 0, correct = 0;
+  for(let s=0;s<bs;s++){
+    const idx = perm[ptr+s];
+    const x1 = X[idx*2], x2 = X[idx*2+1], y = Y[idx];
+
+    /* 前向 */
+    let pa = net.inA;
+    pa[0] = x1; pa[1] = x2;
+    for(let i=0;i<Ln;i++){
+      const l = lays[i];
+      for(let o=0;o<l.nout;o++){
+        let sum = l.b[o];
+        const off = o*l.nin;
+        for(let k=0;k<l.nin;k++) sum += l.W[off+k]*pa[k];
+        l.z[o] = sum;
+        l.a[o] = actFn(sum, l.kind);
+      }
+      pa = l.a;
+    }
+    /* 注意：上面的循环里 pa 初值为 inA，之后是上一层 a —— 正确 */
+
+    const p = clamp(lays[Ln-1].a[0], 1e-7, 1-1e-7);
+    loss += -(y*Math.log(p) + (1-y)*Math.log(1-p));
+    if((p >= 0.5 ? 1 : 0) === y) correct++;
+
+    /* 反向 */
+    const last = lays[Ln-1];
+    last.d[0] = last.a[0] - y;
+    for(let l=Ln-2;l>=0;l--){
+      const cur = lays[l], nxt = lays[l+1];
+      for(let i=0;i<cur.nout;i++){
+        let sum = 0;
+        for(let o=0;o<nxt.nout;o++) sum += nxt.W[o*nxt.nin+i]*nxt.d[o];
+        cur.d[i] = sum * actDeriv(cur.a[i], cur.z[i], cur.kind);
+      }
+    }
+    /* 累积 */
+    let prevA = net.inA;
+    for(let l=0;l<Ln;l++){
+      const lay = lays[l];
+      const src = (l === 0) ? prevA : lays[l-1].a;
+      for(let o=0;o<lay.nout;o++){
+        const g = lay.d[o];
+        lay.db[o] += g;
+        const off = o*lay.nin;
+        for(let k=0;k<lay.nin;k++) lay.dW[off+k] += g*src[k];
+      }
+    }
+  }
+  ptr += bs;
+
+  const inv = 1/bs;
+  loss *= inv;
+  const l2 = cfg.l2;
+  t++;
+
+  /* 更新 */
+  for(let l=0;l<Ln;l++){
+    const lay = lays[l];
+    updateArr(lay.W, lay.dW, lay.mW, lay.vW, lay.velW, inv, l2);
+    updateArr(lay.b, lay.db, lay.mb, lay.vb, lay.velB, inv, l2);
+  }
+
+  curLoss = loss;
+  if(lossHist.length > 600){ lossHist.splice(0, 100); }
+  lossHist.push(loss);
+
+  /* 准确率：多数步用 batch 估计，每 10 步算一次全量（读数更真实） */
+  const batchAcc = correct/bs;
+  curAcc = (stepCount % 10 === 0) ? fullAccuracy() : batchAcc;
+  if(accHist.length > 600) accHist.splice(0, 100);
+  accHist.push(curAcc);
+
+  stepCount++;
+
+  dispLoss = isNaN(dispLoss) ? loss : dispLoss*0.94 + loss*0.06;
+  dispAcc  = isNaN(dispAcc)  ? curAcc : dispAcc*0.90 + curAcc*0.10;
+}
+
+function updateArr(P, G, M, V, VEL, inv, l2){
+  const n = P.length;
+  const lr = cfg.lr;
+  if(cfg.opt === "sgd"){
+    for(let i=0;i<n;i++) P[i] -= lr*(G[i]*inv + l2*P[i]);
+  }else if(cfg.opt === "momentum"){
+    const mu = 0.9;
+    for(let i=0;i<n;i++){
+      const g = G[i]*inv + l2*P[i];
+      VEL[i] = mu*VEL[i] - lr*g;
+      P[i] += VEL[i];
+    }
+  }else{
+    const b1 = 0.9, b2 = 0.999, eps = 1e-8;
+    const c1 = 1 - Math.pow(b1, t), c2 = 1 - Math.pow(b2, t);
+    for(let i=0;i<n;i++){
+      const g = G[i]*inv + l2*P[i];
+      M[i] = b1*M[i] + (1-b1)*g;
+      V[i] = b2*V[i] + (1-b2)*g*g;
+      const mh = M[i]/c1, vh = V[i]/c2;
+      P[i] -= lr*mh/(Math.sqrt(vh) + eps);
+    }
+  }
+}
+
+function fullAccuracy(){
+  let ok = 0;
+  for(let i=0;i<Ns;i++){
+    const p = forwardOne(X[i*2], X[i*2+1], null);
+    if((p >= 0.5 ? 1 : 0) === Y[i]) ok++;
+  }
+  return Ns ? ok/Ns : 0;
+}
+
+/* =======================================================================
+   决策边界
+   ======================================================================= */
+let GRID = (window.innerWidth <= 900) ? 84 : 112;
+const bcv = document.createElement("canvas");
+bcv.width = GRID; bcv.height = GRID;
+const bctx = bcv.getContext("2d");
+let bimg = bctx.createImageData(GRID, GRID);
+let boundDirty = true;
+/* 历史最好的损失：判定「已经收敛」用（必须早于第一次 rebuild 调用，避免 TDZ） */
+let bestLoss = Infinity;
+/* 画质档位：掉帧时统一降一档（低分辨率画布 + 更粗的边界网格 + 更低重算频率） */
+const quality = { dpr:(window.innerWidth <= 900 ? 1.5 : 2), boundEvery:2, wrongEvery:2, fx:true };
+let bRow = 0;                 /* 渐进渲染游标：当前已经画到第几行 */
+function rebuildBound(){
+  bcv.width = GRID; bcv.height = GRID;
+  bimg = bctx.createImageData(GRID, GRID);
+  bRow = 0;
+  boundDirty = true;
+  if(net){                    /* 重建时先画满一次，别让开场看到空白 */
+    do { renderBoundary(GRID); } while(boundDirty);
+  }
+}
+/* 每帧只推进一小片：112×112 分 4 帧画完，
+   单帧开销和原来 56×56 一次画完持平，但图细了一倍 */
+function boundSlice(){ return Math.max(6, Math.ceil(GRID/6)); }
+
+function renderBoundary(slice){
+  const d = bimg.data;
+  const span = 1.25;
+  const rows = Math.min(slice || GRID, GRID - bRow);
+  const jEnd = bRow + rows;
+  for(let j=bRow;j<jEnd;j++){
+    const y = span - (j+0.5)*(2*span/GRID);
+    for(let i=0;i<GRID;i++){
+      const x = -span + (i+0.5)*(2*span/GRID);
+      const p = clamp(forwardOne(x, y, null), 0, 1);
+      const q = (p-0.5)*2;               /* -1 .. 1 */
+      const a = Math.abs(q);
+      let r,g,b;
+      if(q >= 0){ r = 40 + 205*a; g = 58 + 70*a;  b = 92 - 40*a; }
+      else      { r = 30 - 20*a;  g = 74 - 6*a;   b = 120 + 100*a; }
+      const k = (j*GRID + i)*4;
+      d[k]   = r|0;
+      d[k+1] = g|0;
+      d[k+2] = b|0;
+      d[k+3] = 255;
+    }
+  }
+  bctx.putImageData(bimg, 0, 0, 0, bRow, GRID, rows);
+  bRow = jEnd;
+  if(bRow >= GRID){ bRow = 0; boundDirty = false; }
+}
+
+/* =======================================================================
+   数据视图渲染
+   ======================================================================= */
+let probe = { x:0, y:0, on:false };
+let probeActs = null;
+let wrongMask = new Uint8Array(0);
+
+function updateWrong(){
+  if(!net || Ns === 0) return;
+  if(wrongMask.length !== Ns) wrongMask = new Uint8Array(Ns);
+  for(let i=0;i<Ns;i++){
+    const p = forwardOne(X[i*2], X[i*2+1], null);
+    wrongMask[i] = ((p >= 0.5 ? 1 : 0) !== Y[i]) ? 1 : 0;
+  }
+}
+
+/* 决策边界画成正方形：边距按短边比例走，小图上不再浪费 26px×2 */
+function mapRect(w, h){
+  const m = Math.min(w, h);
+  const pad = clamp(m*0.045, 4, 20);
+  const size = Math.max(1, Math.min(w - pad*2, h - pad*2));
+  return { size:size, ox:(w - size)/2, oy:(h - size)/2, pad:pad };
+}
+
+function drawData(){
+  const c = D.ctx, w = D.w, h = D.h;
+  c.clearRect(0,0,w,h);
+  const R = mapRect(w, h), size = R.size, ox = R.ox, oy = R.oy;
+  const span = 1.25;
+  const px = function(x){ return ox + (x + span)/(2*span)*size; };
+  const py = function(y){ return oy + (span - y)/(2*span)*size; };
+
+  if(cfg.showBound){
+    if(cfg.running || boundDirty) renderBoundary(boundSlice());
+    c.save();
+    c.imageSmoothingEnabled = true;
+    c.globalAlpha = 0.92;
+    c.drawImage(bcv, px(-span), py(span), size, size);
+    c.restore();
+  }else{
+    c.fillStyle = "#080b14";
+    c.fillRect(px(-span), py(span), size, size);
+  }
+
+  if(cfg.showGrid){
+    c.save();
+    c.strokeStyle = "rgba(255,255,255,.055)";
+    c.lineWidth = 1;
+    for(let v=-1; v<=1.0001; v+=0.25){
+      c.beginPath(); c.moveTo(px(v), py(-span)); c.lineTo(px(v), py(span)); c.stroke();
+      c.beginPath(); c.moveTo(px(-span), py(v)); c.lineTo(px(span), py(v)); c.stroke();
+    }
+    c.strokeStyle = "rgba(255,255,255,.13)";
+    c.beginPath(); c.moveTo(px(0), py(-span)); c.lineTo(px(0), py(span)); c.stroke();
+    c.beginPath(); c.moveTo(px(-span), py(0)); c.lineTo(px(span), py(0)); c.stroke();
+    c.restore();
+  }
+
+  /* 数据点 */
+  const r = clamp(size/150, 2.0, 4.6);
+  for(let i=0;i<Ns;i++){
+    const x = px(X[i*2]), y = py(X[i*2+1]);
+    const lab = Y[i];
+    c.beginPath();
+    c.arc(x, y, r, 0, Math.PI*2);
+    c.fillStyle = lab === 1 ? "#ff9a5c" : "#7fb2ff";
+    c.fill();
+    c.lineWidth = 1;
+    c.strokeStyle = lab === 1 ? "rgba(255,175,120,.55)" : "rgba(140,185,255,.55)";
+    c.stroke();
+  }
+
+  /* 边框 */
+  c.strokeStyle = "rgba(255,255,255,.10)";
+  c.lineWidth = 1;
+  c.strokeRect(px(-span), py(span), size, size);
+
+  /* 探针 */
+  if(probe.on){
+    const x = px(probe.x), y = py(probe.y);
+    c.save();
+    c.strokeStyle = "rgba(255,255,255,.55)";
+    c.lineWidth = 1;
+    c.setLineDash([3,3]);
+    c.beginPath(); c.moveTo(px(-span), y); c.lineTo(px(span), y); c.stroke();
+    c.beginPath(); c.moveTo(x, py(-span)); c.lineTo(x, py(span)); c.stroke();
+    c.setLineDash([]);
+    c.beginPath(); c.arc(x, y, 4.5, 0, Math.PI*2);
+    c.strokeStyle = "#fff"; c.lineWidth = 1.6; c.stroke();
+    /* 图本身不宽时（手机），把「输出 0.38」直接标在触点旁边，
+       省掉一条独立的数据条，图一点都不会被压 */
+    if(w < 640){
+      const txt = probeOut.toFixed(2);
+      c.font = "600 11px -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif";
+      const tw = c.measureText(txt).width;
+      let bx = x + 10, by = y - 26;
+      if(bx + tw + 14 > px(span)) bx = x - tw - 20;
+      if(by < py(span) + 2) by = y + 8;
+      c.fillStyle = "rgba(6,10,18,.82)";
+      c.beginPath();
+      c.roundRect ? c.roundRect(bx, by, tw + 14, 19, 6) : c.rect(bx, by, tw + 14, 19);
+      c.fill();
+      c.strokeStyle = "rgba(255,255,255,.20)"; c.lineWidth = 1; c.stroke();
+      c.fillStyle = "#9ed6ff";
+      c.textAlign = "left"; c.textBaseline = "middle";
+      c.fillText(txt, bx + 7, by + 10);
+    }
+    c.restore();
+  }
+
+  /* 错分点标记（白色外环） */
+  if(net && wrongMask.length === Ns){
+    c.save();
+    c.strokeStyle = "rgba(255,255,255,.62)";
+    c.lineWidth = 1;
+    for(let i=0;i<Ns;i++){
+      if(wrongMask[i]){
+        c.beginPath();
+        c.arc(px(X[i*2]), py(X[i*2+1]), r+2.4, 0, Math.PI*2);
+        c.stroke();
+      }
+    }
+    c.restore();
+  }
+
+  /* 轮次 / 阶段已经搬到图上方的解说条里，画布内不再重复写字，
+     只在错分样本成堆的地方画一个虚线圈 */
+  let wx=0, wy=0, wn=0;
+  for(let i=0;i<Ns;i++) if(wrongMask[i]){ wx+=X[i*2]; wy+=X[i*2+1]; wn++; }
+  if(wn >= 3 && quality.fx){
+    wx/=wn; wy/=wn;
+    let rad = 0;
+    for(let i=0;i<Ns;i++) if(wrongMask[i]) rad = Math.max(rad, Math.hypot(X[i*2]-wx, X[i*2+1]-wy));
+    const rr = Math.max(14, (rad/(2*span))*size + 9);
+    c.beginPath();
+    c.arc(px(wx), py(wy), rr, 0, Math.PI*2);
+    c.strokeStyle = "rgba(255,255,255,.45)";
+    c.lineWidth = 1; c.setLineDash([4,3]); c.stroke(); c.setLineDash([]);
+    /* 标签自带深色底衬：压在白圈上也读得清 */
+    const lab = "错分 " + wn;
+    c.font = "600 10.5px -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif";
+    c.textAlign = "left"; c.textBaseline = "middle";
+    const lw = c.measureText(lab).width;
+    const lx = Math.max(px(-span) + 5, Math.min(px(wx) + rr*0.72, px(span) - lw - 9));
+    const ly = Math.max(py(span) + 12, py(wy) - rr - 6);
+    c.fillStyle = "rgba(6,10,18,.70)";
+    c.beginPath();
+    if(c.roundRect) c.roundRect(lx - 5, ly - 8.5, lw + 10, 17, 5);
+    else c.rect(lx - 5, ly - 8.5, lw + 10, 17);
+    c.fill();
+    c.fillStyle = "rgba(255,255,255,.92)";
+    c.fillText(lab, lx, ly);
+  }
+  c.restore();
+}
+
+/* =======================================================================
+   网络结构图
+   ======================================================================= */
+function drawNet(){
+  const c = N.ctx, w = N.w, h = N.h;
+  c.clearRect(0,0,w,h);
+  if(!net) return;
+  const sizes = net.sizes;
+  const Ln = net.L;
+  const nLay = sizes.length;
+  const padX = 30, padY = 16;
+  const usableW = w - padX*2;
+  const usableH = h - padY*2;
+
+  const pos = [];
+  for(let l=0;l<nLay;l++){
+    const cnt = sizes[l];
+    const cx = padX + (nLay === 1 ? 0 : usableW*l/(nLay-1));
+    const arr = [];
+    for(let i=0;i<cnt;i++){
+      const cy = padY + (cnt === 1 ? usableH/2 : usableH*i/(cnt-1));
+      arr.push({ x:cx, y:cy });
+    }
+    pos.push(arr);
+  }
+
+  /* 连线 */
+  const lw = cfg.showW;
+  for(let l=0;l<Ln;l++){
+    const lay = net.layers[l];
+    const src = pos[l], dst = pos[l+1];
+    for(let o=0;o<lay.nout;o++){
+      for(let i=0;i<lay.nin;i++){
+        const wgt = lay.W[o*lay.nin+i];
+        const mag = Math.min(1, Math.abs(wgt)/1.8);
+        if(mag < 0.035) continue;
+        if(lw){
+          c.strokeStyle = wgt >= 0
+            ? "rgba(110,180,255," + (0.16 + 0.62*mag).toFixed(3) + ")"
+            : "rgba(255,130,110," + (0.16 + 0.62*mag).toFixed(3) + ")";
+        }else{
+          c.strokeStyle = "rgba(170,185,210," + (0.10 + 0.34*mag).toFixed(3) + ")";
+        }
+        c.lineWidth = 0.5 + mag*2.1;
+        c.beginPath();
+        c.moveTo(src[i].x, src[i].y);
+        c.lineTo(dst[o].x, dst[o].y);
+        c.stroke();
+      }
+    }
+  }
+
+  /* 节点 */
+  const acts = probeActs;
+  for(let l=0;l<nLay;l++){
+    const cnt = sizes[l];
+    const rad = clamp(Math.min(usableH/(cnt*2.6), 8.5), 3.2, 8.5);
+    for(let i=0;i<cnt;i++){
+      const p = pos[l][i];
+      let a = 0;
+      if(l === 0) a = probe.on ? (i === 0 ? probe.x : probe.y) : 0;
+      else a = acts[l][i];
+      const av = clamp(a, -1, 1);
+      const mag = Math.min(1, Math.abs(av));
+      let fill;
+      if(av >= 0) fill = "rgba(" + (60 + 195*mag|0) + "," + (110 + 90*mag|0) + "," + (170 + 60*mag|0) + ",1)";
+      else        fill = "rgba(" + (170 + 60*mag|0) + "," + (110 - 20*mag|0) + "," + (110 + 90*mag|0) + ",1)";
+      c.beginPath();
+      c.arc(p.x, p.y, rad, 0, Math.PI*2);
+      c.fillStyle = fill;
+      c.fill();
+      c.lineWidth = 1.1;
+      c.strokeStyle = "rgba(255,255,255,.32)";
+      c.stroke();
+    }
+  }
+
+  /* 标注 */
+  c.fillStyle = "rgba(150,162,182,.85)";
+  c.font = "10px -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif";
+  c.textAlign = "center";
+  c.fillText("输入", pos[0][0].x, h-4);
+  c.fillText("输出", pos[nLay-1][0].x, h-4);
+  if(nLay > 2) c.fillText("隐藏 ×" + (nLay-2), pos[1][0].x, h-4);
+}
+
+/* =======================================================================
+   损失曲线
+   ======================================================================= */
+function drawLoss(){
+  const c = L.ctx, w = L.w, h = L.h;
+  c.clearRect(0,0,w,h);
+  const pad = 8;
+  const gw = w - pad*2, gh = h - pad*2 - 10;
+
+  c.strokeStyle = "rgba(255,255,255,.07)";
+  c.lineWidth = 1;
+  for(let i=0;i<=4;i++){
+    const y = pad + gh*i/4;
+    c.beginPath(); c.moveTo(pad, y); c.lineTo(pad+gw, y); c.stroke();
+  }
+
+  let maxL = 0.1;
+  for(let i=0;i<lossHist.length;i++) if(lossHist[i] > maxL) maxL = lossHist[i];
+  maxL = Math.min(maxL, 4);
+
+  if(lossHist.length > 1){
+    const n = lossHist.length;
+    const start = Math.max(0, n - 320);
+    const cnt = n - start;
+    /* 损失 */
+    c.beginPath();
+    for(let k=0;k<cnt;k++){
+      const v = clamp(lossHist[start+k]/maxL, 0, 1);
+      const x = pad + gw*(k/(cnt-1));
+      const y = pad + gh*(1-v);
+      if(k === 0) c.moveTo(x,y); else c.lineTo(x,y);
+    }
+    c.strokeStyle = "rgba(255,150,110,.95)";
+    c.lineWidth = 1.5;
+    c.stroke();
+    /* 准确率（batch 估计，做平滑） */
+    c.beginPath();
+    const win = Math.max(1, Math.floor(cnt/40));
+    for(let k=0;k<cnt;k++){
+      let s = 0, m = 0;
+      for(let q=Math.max(0,k-win); q<=Math.min(cnt-1,k+win); q++){ s += accHist[start+q]; m++; }
+      const v = clamp(s/Math.max(1,m), 0, 1);
+      const x = pad + gw*(k/(cnt-1));
+      const y = pad + gh*(1-v);
+      if(k === 0) c.moveTo(x,y); else c.lineTo(x,y);
+    }
+    c.strokeStyle = "rgba(110,220,170,.9)";
+    c.lineWidth = 1.4;
+    c.stroke();
+  }
+
+  /* 图例 */
+  c.font = "10px -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif";
+  c.textAlign = "left";
+  c.fillStyle = "rgba(255,150,110,.95)";
+  c.fillRect(pad, h-9, 8, 2.5);
+  c.fillStyle = "rgba(190,200,215,.85)";
+  c.fillText("损失 ≤ " + maxL.toFixed(2), pad+12, h-6);
+  c.fillStyle = "rgba(110,220,170,.9)";
+  c.fillRect(pad+86, h-9, 8, 2.5);
+  c.fillStyle = "rgba(190,200,215,.85)";
+  c.fillText("准确率", pad+98, h-6);
+}
+
+/* =======================================================================
+   UI
+   ======================================================================= */
+function bindSlider(id, vid, fn, fmt){
+  const el = $(id), lab = $(vid);
+  function upd(){
+    const v = parseFloat(el.value);
+    fn(v);
+    lab.textContent = fmt(v);
+  }
+  el.addEventListener("input", upd);
+  upd();
+}
+bindSlider("r-n","v-n", function(v){ cfg.n = Math.round(v); rebuild(); }, function(v){ return String(Math.round(v)); });
+bindSlider("r-no","v-no", function(v){ cfg.noise = v/100; rebuild(); }, function(v){ return (v/100).toFixed(2); });
+bindSlider("r-l","v-l", function(v){ cfg.layers = Math.round(v); rebuildNet(); }, function(v){ return String(Math.round(v)); });
+bindSlider("r-w","v-w", function(v){ cfg.width = Math.round(v); rebuildNet(); }, function(v){ return String(Math.round(v)); });
+bindSlider("r-lr","v-lr", function(v){ cfg.lr = 0.001*Math.pow(1000, v/100); },
+  function(v){ const lr = 0.001*Math.pow(1000, v/100); return lr < 0.01 ? lr.toFixed(4) : lr.toFixed(3); });
+bindSlider("r-l2","v-l2", function(v){ cfg.l2 = (v/100)*0.006; }, function(v){ return ((v/100)*0.006).toFixed(4); });
+bindSlider("r-bs","v-bs", function(v){ cfg.bs = Math.round(v); }, function(v){ return String(Math.round(v)); });
+bindSlider("r-sp","v-sp", function(v){ cfg.stepsPerFrame = Math.round(v); }, function(v){ return String(Math.round(v)); });
+
+$("sel-act").addEventListener("change", function(){
+  cfg.act = this.value;
+  rebuildNet();
+  if(cfg.act === "sigmoid"){
+    /* sigmoid 非零中心、易饱和，实测收敛明显慢于 tanh / ReLU */
+    if(cfg.lr < 0.1){
+      const el = $("r-lr");
+      const v = Math.round(Math.log(120)/Math.log(1000)*100*10)/10;
+      el.value = String(v);
+      el.dispatchEvent(new Event("input"));
+      toast("Sigmoid 收敛很慢，已把学习率提到 " + cfg.lr.toFixed(3));
+    }else{
+      toast("Sigmoid 收敛明显慢于 Tanh / ReLU，可观察对比");
+    }
+  }
+});
+$("sel-opt").addEventListener("change", function(){ cfg.opt = this.value; });
+
+document.querySelectorAll("[data-d]").forEach(function(btn){
+  btn.addEventListener("click", function(){
+    document.querySelectorAll("[data-d]").forEach(function(b){ b.classList.remove("on"); });
+    btn.classList.add("on");
+    cfg.data = btn.getAttribute("data-d");
+    rebuild();
+  });
+});
+
+$("btn-run").addEventListener("click", function(){
+  cfg.running = !cfg.running;
+  this.textContent = cfg.running ? "暂停训练" : "开始训练";
+  this.classList.toggle("pri", cfg.running);
+});
+$("btn-step").addEventListener("click", function(){
+  for(let i=0;i<25;i++) trainStep();
+  boundDirty = true;
+  toast("已训练 25 步");
+});
+$("btn-reset").addEventListener("click", function(){ rebuildNet(); toast("权重已重置"); });
+$("btn-resample").addEventListener("click", function(){ rebuild(); toast("已重新采样"); });
+
+function bindToggle(id, fn, initial){
+  const el = $(id);
+  el.classList.toggle("on", !!initial);
+  el.addEventListener("click", function(){
+    const on = !el.classList.contains("on");
+    el.classList.toggle("on", on);
+    fn(on);
+  });
+}
+bindToggle("t-bound", function(v){ cfg.showBound = v; }, true);
+bindToggle("t-grid",  function(v){ cfg.showGrid = v; }, true);
+bindToggle("t-w",     function(v){ cfg.showW = v; },   true);
+
+/* 探针 */
+function toDataXY(clientX, clientY){
+  const cv = $("cvData");
+  const rect = cv.getBoundingClientRect();
+  const w = D.w, h = D.h;
+  const R = mapRect(w, h), size = R.size, ox = R.ox, oy = R.oy;
+  const span = 1.25;
+  const lx = (clientX - rect.left)*(w/rect.width);
+  const ly = (clientY - rect.top)*(h/rect.height);
+  const x = (lx - ox)/size*2*span - span;
+  const y = span - (ly - oy)/size*2*span;
+  return { x:x, y:y };
+}
+$("cvData").addEventListener("mousemove", function(e){
+  const p = toDataXY(e.clientX, e.clientY);
+  probe.x = p.x; probe.y = p.y; probe.on = true;
+});
+$("cvData").addEventListener("mouseleave", function(){
+  probe.on = false; probe.x = 0; probe.y = 0;
+});
+$("cvData").addEventListener("touchmove", function(e){
+  if(e.touches.length){
+    const p = toDataXY(e.touches[0].clientX, e.touches[0].clientY);
+    probe.x = p.x; probe.y = p.y; probe.on = true;
+  }
+}, { passive:true });
+
+/* =======================================================================
+   重建
+   ======================================================================= */
+function rebuild(){
+  buildData();
+  buildNet();
+  bestLoss = Infinity;
+  boundDirty = true;
+}
+function rebuildNet(){
+  buildNet();
+  /* 重建网络后训练进度也必须归零，否则曲线和步数会串味 */
+  stepCount = 0; epoch = 0;
+  curLoss = NaN; curAcc = NaN;
+  dispLoss = NaN; dispAcc = NaN;
+  bestLoss = Infinity;
+  lossHist.length = 0; accHist.length = 0;
+  if(perm && Ns){ ptr = 0; shufflePerm(); }
+  wrongMask = new Uint8Array(0);
+  boundDirty = true;
+}
+
+/* =======================================================================
+   主循环
+   ======================================================================= */
+let lastT = performance.now(), sayTick = 0, sayNow = null, lastSayT = 0;
+let fpsAcc = 0, fpsN = 0, fpsShown = 0;
+let uiTick = 0, wrongTick = 0;
+/* 探针状态：probeOut 同时给 readout 和画布上的数值框用 */
+let probeShown = false, probeOut = 0.5;
+
+let lowFpsN = 0, degraded = false;
+function degrade(){
+  if(window.__nlab && window.__nlab.noDegrade) return;   /* 测试/演示时可锁住画质 */
+  degraded = true;
+  quality.dpr = 1; quality.boundEvery = 4; quality.wrongEvery = 4; quality.fx = false;
+  GRID = 64;                 /* 降档也只是从 112/84 降到 64，仍然比原来的 56 细 */
+  rebuildBound();
+  fitAll();
+  document.body.classList.add("lowfx");
+}
+function frame(now){
+  const raw = (now - lastT)/1000;
+  lastT = now;
+  fpsAcc += raw; fpsN++;
+  if(fpsAcc >= 0.5){
+    fpsShown = fpsN/fpsAcc; fpsAcc = 0; fpsN = 0;
+    /* 连续 1.5 s 掉到 40 fps 以下就自动降一档画质（只降一次，不来回抖） */
+    if(!degraded && fpsShown > 1 && fpsShown < 40){
+      if(++lowFpsN >= 3) degrade();
+    }else if(fpsShown >= 45){ lowFpsN = 0; }
+  }
+
+  if(cfg.running && net && Ns){
+    for(let i=0;i<cfg.stepsPerFrame;i++) trainStep();
+    if(isFinite(dispLoss) && dispLoss < bestLoss) bestLoss = dispLoss;
+  }
+
+  /* 探针前向（驱动网络图激活） */
+  if(net){
+    const px = probe.on ? probe.x : 0;
+    const py = probe.on ? probe.y : 0;
+    const out = forwardOne(px, py, probeActs);
+    probeOut = out;
+    if(probe.on !== probeShown){
+      probeShown = probe.on;
+      $("probe").classList.toggle("on", probeShown);
+    }
+    if(probe.on){
+      $("p-xy").textContent = px.toFixed(2) + ", " + py.toFixed(2);
+      $("p-out").textContent = out.toFixed(3);
+    }else{
+      $("p-xy").textContent = "—";
+      $("p-out").textContent = out.toFixed(3);
+    }
+  }
+
+  drawData();
+  drawNet();
+
+  /* 按时间刷新讲解：低帧率下也不会像按帧计数那样迟迟不更新 */
+  /* 讲解放慢：0.9 s 查一次，但内容约 2.8 s 才换（阶段一变立即换）。
+     刚开始损失剧烈变化时也不会满屏跳字，观感更稳 */
+  if(now - lastSayT > 900 && window.__nlab && window.__nlab.tickSay){ lastSayT = now; window.__nlab.tickSay(); }
+
+  if(++wrongTick % quality.wrongEvery === 0) updateWrong();
+  drawLoss();
+
+  if(++uiTick % 5 === 0){
+    $("m-step").textContent = String(stepCount);
+    $("m-epoch").textContent = String(epoch);
+    $("m-loss").textContent = isNaN(dispLoss) ? "—" : dispLoss.toFixed(4);
+    $("m-acc").textContent = isNaN(dispAcc) ? "—" : (dispAcc*100).toFixed(1) + "%";
+    $("m-params").textContent = net ? String(net.params) : "0";
+    $("m-fps").textContent = fpsShown.toFixed(0);
+  }
+
+  requestAnimationFrame(frame);
+}
+
+/* =======================================================================
+   启动
+   ======================================================================= */
+function fitAll(force){
+  const a = D.fit(force); D.w = a.w; D.h = a.h;
+  const b = N.fit(force); N.w = b.w; N.h = b.h;
+  const c = L.fit(force); L.w = c.w; L.h = c.h;
+}
+window.addEventListener("resize", function(){ fitAll(false); });
+/* 解说文字变长会让 #stage 变矮，window 不会派发 resize。
+   不同步的话画布缓冲会停留在旧尺寸，图被 CSS 拉伸——又小又糊 */
+if(window.ResizeObserver){
+  let pending = 0;
+  const ro = new ResizeObserver(function(){
+    if(pending) return;
+    pending = requestAnimationFrame(function(){
+      pending = 0;
+      const h0 = D.h, w0 = D.w;
+      fitAll(false);
+      if(D.h !== h0 || D.w !== w0) boundDirty = true;
+    });
+  });
+  ro.observe($("cvData")); ro.observe($("cvNet")); ro.observe($("cvLoss"));
+}
+fitAll();
+buildData();
+buildNet();
+requestAnimationFrame(frame);
+
+/* 暴露给自动化测试 */
+window.__nlab = {
+  cfg:cfg,
+  get net(){ return net; },
+  get step(){ return stepCount; },
+  get loss(){ return curLoss; },
+  get smoothLoss(){ return dispLoss; },
+  get smoothAcc(){ return dispAcc; },
+  train:function(n){ for(let i=0;i<(n||1);i++) trainStep(); },
+  acc:fullAccuracy,
+  forward:function(x,y){ return forwardOne(x,y,null); },
+  setData:function(d){ cfg.data = d; rebuild(); },
+  data:function(){ return { X:X, Y:Y, n:Ns }; },
+  tutor:function(q){ return answer(q); },
+  say:function(){ return statusLine(); },
+  /* 主循环每 24 帧调一次，刷新讲解文字 */
+  tickSay:function(force){ tickAnno(!!force); },
+  stage:function(){ return stageInfo(); },
+  note:function(q){ showNote(q); },
+  /* 画布几何：给自动化测试核对「边界是否铺满可用区域」 */
+  boundGrid:function(){ return GRID; },
+  drawCost:function(){ const t = performance.now(); drawData(); return performance.now() - t; },
+  setGrid:function(g){ GRID = g; rebuildBound(); },
+  /* 测一片边界的耗时（每帧就花这么多） */
+  sliceCost:function(){ const t = performance.now(); renderBoundary(boundSlice()); return performance.now() - t; },
+  mapInfo:function(){ return mapRect(D.w, D.h); },
+  probeOn:function(){ return probe.on; }
+};
+
+/* =======================================================================
+   实时讲解 + 问答：所有回答都基于当前真实状态，不是预设台词
+   ======================================================================= */
+function pctV(v){ return isNaN(v) ? "—" : (v*100).toFixed(1) + "%"; }
+function lossV(){ return isNaN(dispLoss) ? "—" : dispLoss.toFixed(4); }
+function dataName(){
+  return ({spiral:"双螺旋", circle:"同心圆", xor:"异或", wave:"波浪", moon:"双月", gauss:"高斯"})[cfg.data] || cfg.data;
+}
+function actName(){ return ({tanh:"Tanh", relu:"ReLU", sigmoid:"Sigmoid"})[cfg.act] || cfg.act; }
+function optName(){ return ({adam:"Adam", momentum:"SGD + 动量", sgd:"SGD"})[cfg.opt] || cfg.opt; }
+/* 近两个窗口的损失均值之差（负=在下降）。用窗口均值而非单点，
+   否则单个 batch 的噪声会让「损失上升」误报 */
+function recentDelta(){
+  const h = lossHist;
+  if(h.length < 20) return NaN;
+  const n = Math.min(30, Math.floor(h.length / 2));
+  let a = 0, b = 0;
+  for(let i = 0; i < n; i++){ a += h[h.length - 1 - i]; b += h[h.length - 1 - n - i]; }
+  return (a - b) / n;
+}
+function statusLine(){
+  if(!net || !Ns) return "还没有数据。先在上边挑一个数据集，网络会自动开始训练。";
+  const d = recentDelta();
+  let s = "已训练 <b>" + stepCount + "</b> 步（第 " + epoch + " 轮），损失 <b>" + lossV() +
+          "</b>，准确率 <b>" + pctV(dispAcc) + "</b>。";
+  if(!cfg.running) s += " 训练已暂停。";
+  if(isNaN(d)) s += " 样本还没跑满一轮，稍等片刻。";
+  else if(d < -0.01) s += " 损失正在快速下降，网络已经抓住了数据的大致形状。";
+  else if(d < -0.001) s += " 损失缓慢下降，进入细节精调阶段。";
+  else if(d > 0.008) s += " 损失反而在上升，通常是学习率过大，每一步都越过了最低点。";
+  else s += " 损失基本走平，这组配置差不多到它的极限了。";
+  return s;
+}
+function diagnose(){
+  const h = lossHist;
+  if(h.length < 40) return "才跑了 " + stepCount + " 步，先让它再跑一会儿——多数情况下几百步内损失就会明显下降。";
+  const d = recentDelta();
+  if(d < -0.002) return "损失其实还在降（近两个窗口均值差 " + (-d).toFixed(4) + "），只是速度慢下来了，属于正常的精调阶段。";
+  const tips = [];
+  if(cfg.lr < 0.012) tips.push("学习率只有 " + cfg.lr.toFixed(4) + "，每步几乎推不动权重。试着调到 0.03–0.1。");
+  else if(cfg.lr > 0.18) tips.push("学习率 " + cfg.lr.toFixed(3) + " 偏大，容易在最低点附近来回震荡甚至发散。降到 0.05 左右试试。");
+  if(cfg.layers * cfg.width < 12) tips.push("网络容量偏小（" + cfg.layers + " 层 × " + cfg.width + " 宽），可能表达不了这个边界的形状。加宽或加深一点。");
+  if(cfg.noise > 0.25) tips.push("噪声设到 " + cfg.noise.toFixed(2) + "，两类样本本身就互相重叠，准确率存在天然上限——这不是网络的问题。");
+  if(cfg.act === "sigmoid") tips.push("隐藏层用 Sigmoid 容易出现梯度饱和，换成 Tanh 通常收敛快得多。");
+  if(cfg.l2 > 0.01) tips.push("L2 正则 " + cfg.l2.toFixed(4) + " 偏强，把权重压得太小，反而限制了拟合能力。可以调小。");
+  if(!tips.length) tips.push("这组配置看来已经接近它能达到的水平：准确率 " + pctV(dispAcc) + "。想再提高，可以换更难的数据集、加大网络，或降低噪声。");
+  return tips.join(" ");
+}
+function answer(q){
+  const s = (q || "").trim();
+  if(!s) return "输入你想问的，比如「损失为什么不降」「学习率怎么调」。";
+  if(/^(stuck)$/.test(s)) return diagnose();
+  if(/^(status)$/.test(s)) return statusLine();
+  if(/^(lr)$/.test(s)) return "当前学习率 " + cfg.lr.toFixed(4) + "（优化器 " + optName() + "）。经验判断：损失缓慢但稳定下降 → 可以调大 2–3 倍；损失剧烈跳动甚至变大 → 调小到 1/3。Adam 自带步长缩放，对学习率的容忍度比纯 SGD 高得多。";
+  if(/^(overfit)$/.test(s)) return "过拟合就是网络把训练样本里的噪声也当成规律记住了：训练准确率很高，但决策边界会为了迎合个别离群点而长出扭曲的「触手」。在这个演示里可以直接看出来——把噪声调大，如果边界开始绕着单个点打转，就是过拟合。缓解方法是减小网络、加大 L2 正则（当前 " + cfg.l2.toFixed(4) + "）或增加样本数（当前 " + Ns + " 个）。";
+  if(/^(act)$/.test(s)) return {tanh:"当前隐藏层用 Tanh：输出在 (−1,1)，零中心、梯度比 Sigmoid 大，收敛通常最快，所以是这里的默认。",
+    relu:"当前隐藏层用 ReLU：正值区梯度恒为 1，不容易梯度消失；但负值区会「死掉」——一旦某个神经元被推到恒负，它就再也不更新了。",
+    sigmoid:"当前隐藏层用 Sigmoid：它把输出压到 (0,1)，两端梯度趋近 0（梯度饱和），训练会明显变慢，所以一般只用在输出层做概率。"}[cfg.act] + " 输出层固定是 Sigmoid，因为要输出 0–1 之间的概率。";
+  if(/^(size)$/.test(s)) return "当前结构 " + (net ? net.sizes.join(" → ") : "—") + "，共 " + (net ? net.params : 0) + " 个可训练参数（每层是「输入数 × 输出数 + 偏置数」）。对比一下：样本只有 " + Ns + " 个，参数却比样本还多，这正是它能把边界画得很弯、也因此容易过拟合的原因。";
+
+  /* ---- 自然语言匹配 ---- */
+  if(/(梯度消失|梯度爆炸|vanish|explod)/.test(s)) return "梯度消失就是反向传播时，误差信号从输出层往回传，会被逐层相乘的导数越缩越小，传到前面的层已经接近 0，浅层权重几乎不动。Sigmoid / Tanh 在饱和区导数接近 0，是典型诱因；ReLU 在正值区导数恒为 1，所以能缓解。当前隐藏层是 " + actName() + "，" + (cfg.act === "sigmoid" ? "正好是最容易碰到这个麻烦的组合，换 ReLU 或 Tanh 试试看。" : "这方面问题不大。") + "当前学习率 " + cfg.lr.toFixed(4) + "，网络 " + (net ? net.sizes.join(" → ") : "—") + "。";
+  if(/(epoch|轮次|一轮|多少轮|第几轮|跑完)/.test(s)) return "一轮（epoch）＝把所有 " + Ns + " 个样本都过一遍。当前批量 " + cfg.bs + "，所以一轮约 " + Math.max(1, Math.ceil(Ns / Math.max(1, cfg.bs))) + " 步；已经跑了 " + stepCount + " 步，相当于第 " + epoch + " 轮。一般几百轮之内就能看清形状，之后每轮的收益会越来越小。";
+  if(/(深度|为什么.*叫|多层|层数|加层|隐藏层.*(干吗|干嘛|作用|意义|用处)|层.*作用|特征)/.test(s)) return "「深度」指把多个隐藏层叠起来。单层只能切一刀直线；第二层能把前一层的若干条直线组合成多边形；再往上就能用很少的神经元表达很复杂的形状。当前隐藏层是 " + (net ? net.sizes.slice(1, -1).join("、") : "—") + "。但层数不是越多越好——太深梯度更难传回去，参数一多也更容易过拟合。当前共 " + (net ? net.params : 0) + " 个参数，样本只有 " + Ns + " 个。";
+  if(/(训练集|测试集|验证集|划分|留出)/.test(s)) return "严格做法是把数据切成三份：训练集用来更新权重，验证集用来挑超参数，测试集只在最后用一次、报告真实水平。这个演示为了直观只用了一份数据，所以画面上的准确率其实是「训练准确率」，通常偏乐观——真正衡量好坏要看它没见过的数据。当前训练准确率 " + pctV(dispAcc) + "。";
+  if(/(归一化|标准化|batch ?norm|bn\b|量纲)/.test(s)) return "归一化是把每个输入维度压到相近的尺度。不这么做的话，损失曲面会被拉成又长又窄的峡谷，梯度下降得来回震荡很久才挪到谷底；压平之后曲面接近圆形，收敛快得多。这里的数据本来就落在 [−1,1] 附近，所以暂时看不出差别；换成真实数据（比如「收入」和「年龄」同框）效果会非常明显。";
+  if(/(早停|什么时候.*(停|收手|够|行)|还要跑|跑多久|early|够了|该停)/.test(s)) return (function(){
+    const d2 = recentDelta();
+    const flat = !(d2 < -0.0015);
+    return "常用的停止信号是「早停」：验证损失连续若干轮不再下降就收手，别把后面的时间全花在拟合噪声上。" +
+      (flat ? "从损失曲线看，最近这段时间已经基本走平（近两个窗口的变化 " + (isNaN(d2) ? "—" : d2.toFixed(4)) + "），再跑收益很小，建议调学习率、换结构或换数据集。" :
+              "目前还在稳定下降（近两个窗口变化 " + d2.toFixed(4) + "），可以继续跑一会儿再看。") +
+      "当前 " + stepCount + " 步 / 损失 " + lossV() + " / 准确率 " + pctV(dispAcc) + "。";
+  })();
+  if(/(你是谁|能做什么|怎么用|介绍一下|帮助|help|能干什么)/.test(s)) return "我是这个沙盒自带的讲解器，回答全部基于此刻真实的训练状态，不是背好的台词：已跑多少步、损失多少、准确率多少、用的什么结构和超参数，都在这里实时刷新。能聊训练进展、损失为什么不降、学习率/批量/L2 怎么调、过拟合、激活函数与优化器的区别、反向传播原理、决策边界怎么读。也可以点图下方标注条上的快捷标签，或在输入框里随便问。";
+  if(/(准确率|多少|怎么样|进展|到哪|状态|现在|如何|几步|第几轮)/.test(s)) return statusLine();
+  if(/(不降|降不|卡住|停滞|不动|走平|收敛不了|不下降|没变化|为什么.*损失|损失.*为什么)/.test(s)) return diagnose();
+  if(/(损失|loss|交叉熵)/.test(s)) return "当前损失 " + lossV() + "，用的是二分类交叉熵：预测越偏离真实标签，这个值越大。完美预测趋近 0，瞎猜时约为 0.693（ln 2），所以看到它从 0.69 往下走才说明真的在学。" + diagnose();
+  if(/(学习率|lr|步长)/.test(s)) return answer("lr");
+  if(/(过拟合|泛化|overfit|记住|背下来)/.test(s)) return answer("overfit");
+  if(/(激活|relu|tanh|sigmoid)/.test(s)) return answer("act");
+  if(/(参数|多大|规模|结构|几层|宽度|神经元)/.test(s)) return answer("size");
+  if(/(优化器|adam|sgd|动量|momentum)/.test(s)) return "当前用 " + optName() + "。SGD 直接沿负梯度走一步，简单但对学习率敏感；带动量会累积历史方向，能冲出浅的局部坑；Adam 额外按各参数梯度的历史幅度缩放步长，几乎不用调学习率就能稳定收敛，所以是这里的默认。";
+  if(/(批量|batch|bs)/.test(s)) return "批量大小 " + cfg.bs + "。批量越小，每步越嘈杂但越便宜、也更容易跳出局部最优；批量越大，梯度估得越准但每步更贵。这里共有 " + Ns + " 个样本，批量 " + cfg.bs + " 意味着跑完一整轮需要 " + Math.ceil(Ns / Math.max(1, cfg.bs)) + " 步。";
+  if(/(正则|l2|惩罚|权重衰减)/.test(s)) return "L2 正则当前 " + cfg.l2.toFixed(4) + "。它在损失里额外加一项「权重平方和 × 系数」，逼着网络用更小的权重，等价于偏好更平滑的决策边界。调大能抑制过拟合，但调过头会让网络欠拟合、连基本形状都画不出来。";
+  if(/(反向传播|梯度|原理|怎么学|链式|怎么训练|为什么能)/.test(s)) return "每一步做三件事：① 前向——用当前权重把输入算成预测；② 用交叉熵量出预测和标签差多少；③ 反向传播——按链式法则把这个差距从输出层往输入层逐层分摊，算出每个权重该往哪个方向调、调多少，最后按学习率 " + cfg.lr.toFixed(4) + " 迈一小步。每秒重复 " + (cfg.running ? cfg.stepsPerFrame : 0) + " × 60 次左右，损失就一点点降下来了。";
+  if(/(边界|决策|色带|颜色|区分|分类面)/.test(s)) return "画面上的色带是网络对平面上每个点的输出概率：亮的一侧是它判定为正类的区域，中间那条过渡带就是决策边界。边界越贴合数据的真实分界、过渡带越窄，说明分类越有把握。当前准确率 " + pctV(dispAcc) + "。";
+  if(/(数据|样本|数据集|噪声|换一个)/.test(s)) return "当前数据集是" + dataName() + "，共 " + Ns + " 个样本，噪声 " + cfg.noise.toFixed(2) + "。噪声决定两类重叠的程度——它越大，理论上能达到的准确率上限就越低。想换一个，在右上「数据集」里点选即可，网络会自动重建并从头训练。";
+  if(/(重置|初始化|权重|xavier|he)/.test(s)) return "「重置权重」会按 Xavier（Sigmoid/Tanh）或 He（ReLU）的尺度重新随机初始化所有权重，训练计数归零。这能让你观察同一组超参数下不同初始点带来的差异——有时收敛很快，有时会卡住很久。改网络结构或激活函数也会自动触发重建。";
+  if(/(慢|卡|性能|帧率|加速)/.test(s)) return "当前每帧训练 " + cfg.stepsPerFrame + " 步，批量 " + cfg.bs + "。想加快收敛就调大「每帧步数」；想看清每一步的变化就调小它，或者用「单步 25」手动推进。决策边界是分帧刷新的（大图也感觉不到卡顿），关掉它可以明显提升帧率；卡的时候页面还会自动降一档画质。";
+  return "这个我还没覆盖。目前能聊：训练进展、损失为什么不降、学习率与批量怎么调、过拟合、激活函数/优化器/正则的作用、网络规模、反向传播原理、决策边界怎么看。也可以点图下方标注条上的快捷标签。";
+}
+/* ---- 绑定 ---- */
+/* =======================================================================
+   图上的标注：阶段解说 + 提问批注
+   ======================================================================= */
+const annoBox = $("a-in"), annoNote = $("a-note");
+  let noteTimer = null;
+
+  /* ---------------- 训练阶段：现在在哪 / 为什么 / 接下来会怎样 ---------------- */
+  let stageCache = { key:"init", name:"准备中", color:"#9fb0c8", detail:"", next:"", prog:0 };
+  let stageCacheT = -1e9;
+  /* 阶段切换的最小间隔：刚开始损失剧烈波动，若每次判定都换名字，
+     徽标会在「快速下降 / 精调 / 平台 / 反弹」之间来回跳，看着很乱 */
+  let stageKey = "init", stageSwitchT = -1e9;
+  function classify(d){
+    /* 已经收敛（损失很低 / 准确率很高）后就认作平台期：
+       后期 Adam 会在最优点附近持续小幅跳动，若还按逐段差值判定，
+       徽标会不停在「精调 / 反弹 / 发散」之间横跳，那不是真实趋势 */
+    const settled = (isFinite(bestLoss) && bestLoss < 0.12) || (isFinite(dispAcc) && dispAcc > 0.955);
+    if(settled){
+      /* 只有真的学坏了（损失涨到历史最好的两倍多且明显偏高）才算发散 */
+      if(isFinite(dispLoss) && dispLoss > Math.max(0.25, bestLoss*2.2)) return "up";
+      return "flat";
+    }
+    if(d < -0.012) return "fast";
+    if(d < -0.0015) return "tune";
+    if(d > 0.006)  return "up";
+    if(d > 0.0015) return "bump";
+    return "flat";
+  }
+  /* 各阶段的「离开门限」：比进入门限宽，避免在小噪声里反复横跳 */
+  function shouldLeave(k, d){
+    if(k === "fast") return d > -0.004;                    /* 掉得不够快了 */
+    if(k === "tune") return d > -0.0010 || d < -0.020;     /* 走平了，或又明显加速 */
+    if(k === "flat") return d < -0.006 || d > 0.010;       /* 又开始降，或明显反弹 */
+    if(k === "bump") return d < -0.004 || d > 0.009;       /* 回到下降，或真发散 */
+    if(k === "up")   return d < 0.004;                     /* 不再上升 */
+    return true;
+  }
+  function stageInfo(){
+    const now = performance.now();
+    if(now - stageCacheT < 400 && stageCache.detail) return stageCache;
+    stageCacheT = now;
+    const d = recentDelta();
+    const acc = isNaN(dispAcc) ? 0 : dispAcc;
+    const stepsPerEpoch = Math.max(1, Math.ceil(Ns / Math.max(1, cfg.bs)));
+    const prog = clamp((0.693 - (isNaN(dispLoss) ? 0.693 : dispLoss)) / 0.62, 0, 1);
+
+    /* 1) 先按数据判定原始阶段 */
+    const raw = (!net || !Ns) ? "init"
+              : (stepCount < stepsPerEpoch ? "start" : classify(d));
+
+    /* 2) 滞回（hysteresis）：离开当前阶段的门限比进入时宽得多。
+          训练后期损失已被 batch 噪声主导，若每次判定都换名字，
+          徽标会在「快速下降 / 精调 / 平台 / 反弹」之间来回跳，看着很乱 */
+    if(stageKey === "init" || stageKey === "start" || raw === "init" || raw === "start"){
+      if(raw !== stageKey){ stageKey = raw; stageSwitchT = now; }
+    }else if(raw !== stageKey && shouldLeave(stageKey, d) && now - stageSwitchT >= 3000){
+      stageKey = raw; stageSwitchT = now;
+    }
+    const key = stageKey;
+
+    /* 3) 按最终阶段写解说 */
+    let name = "平台期", color = "#8fd8ff", detail = "", next = "";
+    if(key === "init"){
+      name = "准备中"; color = "#9fb0c8";
+      detail = "还没有数据。在右上方挑一个数据集，网络会自动建好并开始训练。";
+      next = "选好数据后，先跑完第一轮，损失会从 0.69（瞎猜）往下掉。";
+    }else if(key === "start"){
+      name = "起步期"; color = "#ffc46b";
+      detail = "刚随机初始化，所有权重都在零附近，输出几乎都是 0.5，决策边界还是一团糊。"
+             + "第一轮还没跑完，网络正在找大方向——具体跑到哪一步看左边的数字。";
+      next = "损失会明显往下掉，边界开始朝两类之间的空隙靠过去。";
+    }else if(key === "fast"){
+      name = "快速下降期"; color = "#7ef0c0";
+      detail = "损失 " + lossV() + "，每 " + cfg.bs + " 个样本更新一次，近两个窗口平均掉了 "
+             + Math.abs(d).toFixed(4) + "。这说明梯度方向稳定，网络正在把大轮廓学进去："
+             + "决策边界从一团糊逐渐变成能分开两类的形状，准确率已经到 " + pctV(acc) + "。";
+      next = "还会继续掉，但速度会越来越慢；等曲线明显变平，就进入精调期了。";
+    }else if(key === "tune"){
+      name = "精调期"; color = "#9ed6ff";
+      detail = "损失 " + lossV() + "，近两个窗口只掉了 " + Math.abs(d).toFixed(4)
+             + "。大轮廓已经学会，剩下的是把边界往个别顽固样本上微调，"
+             + "准确率在 " + pctV(acc) + " 附近小幅抖动是正常现象（每个 batch 的噪声）。";
+      next = "再跑一两百步收益就很小了。想更准可以加大网络、降低噪声，或把学习率调大一点再冲一下。";
+    }else if(key === "up"){
+      name = "震荡 / 发散"; color = "#ff8f7a";
+      detail = "损失 " + lossV() + "，近两个窗口反而涨了 " + d.toFixed(4)
+             + "。一般是步长太大，一步跨过了最优点，在谷底两侧来回跳。当前学习率 "
+             + cfg.lr.toFixed(4) + "，优化器 " + optName() + "。";
+      next = "照这个趋势会继续变差。把学习率降到现在的 1/3，或改用 Adam（自带步长缩放）。";
+    }else if(key === "bump"){
+      name = "小幅反弹"; color = "#ffd08a";
+      detail = "损失 " + lossV() + "，近两个窗口涨了 " + d.toFixed(4)
+             + "。幅度不大，多半只是 batch 噪声：每步只看 " + cfg.bs + " 个样本，梯度本身就有抖动。";
+      next = "如果继续涨超过 0.006 就是学习率偏大，需要调小；否则属于正常抖动，不用管。";
+    }else{
+      name = "平台期"; color = "#b487ff";
+      detail = "损失 " + lossV() + "（历史最好 " + (isFinite(bestLoss) ? bestLoss.toFixed(4) : "—")
+             + "），准确率 " + pctV(acc) + "，近两个窗口变化只有 " + (isNaN(d) ? 0 : d).toFixed(4)
+             + "。已经摸到这组配置的上限：剩下的上下浮动是 Adam 在最优点附近的小幅跳动，不是没收敛。";
+      next = "继续跑意义不大。想再提高，就换更难的数据集、加大网络或降低噪声；"
+           + "也可以调大「每帧步数」加速观察，或用「重置权重」换个初始点试试。";
+    }
+    stageCache = { key:key, name:name, color:color, detail:detail, next:next, prog:prog };
+    return stageCache;
+  }
+
+  /* ---------------- 把解说写进图上的标注条（带 diff，避免无谓重排） ---------------- */
+  let lastAnnoT = -1e9, lastKey = "";
+  function setTxt(el, v){ if(el && el.textContent !== v) el.textContent = v; }
+  /* 换文案时轻微淡入，避免「硬切」造成的跳字观感 */
+  function setWords(el, v){
+    if(!el || el.textContent === v) return;
+    el.textContent = v;
+    el.style.opacity = "0.35";
+    clearTimeout(el._fade);
+    el._fade = setTimeout(function(){ el.style.opacity = "1"; }, 40);
+  }
+  function updateNumbers(st){
+    setTxt($("a-round"), "第 " + epoch + " 轮 · " + stepCount + " 步");
+    setTxt($("a-stage"), st.name);
+    const sg = $("a-stage");
+    if(sg && sg.style.borderColor !== st.color){ sg.style.borderColor = st.color; sg.style.color = st.color; }
+    setTxt($("a-loss"), "损失 " + lossV() + " · 准确率 " + pctV(dispAcc));
+    const w = (st.prog*100).toFixed(1) + "%";
+    const fl = $("a-fill");
+    if(fl && fl.style.width !== w) fl.style.width = w;
+  }
+  function updateWords(st){
+    setWords($("a-txt"), st.detail);
+    setWords($("a-next"), "接下来：" + st.next);
+  }
+  function updateAnno(st){
+    st = st || stageInfo();
+    updateNumbers(st);
+    updateWords(st);
+  }
+  function tickAnno(force){
+    const st = stageInfo();
+    const t = performance.now();
+    /* 数字跟着训练走（约 0.9 s 一跳，看得出在跑）；
+       解说文字慢得多：约 2.8 s 才换一次，阶段一变才立刻换——刚开训时不会满屏跳字 */
+    updateNumbers(st);
+    if(!force && t - lastAnnoT < 2800 && st.key === lastKey) return;
+    lastAnnoT = t; lastKey = st.key;
+    updateWords(st);
+  }
+
+  /* ---------------- 提问：回答标在图上，不是对话气泡 ---------------- */
+  function esc(s){
+    return String(s).replace(/[&<>"]/g, function(c){
+      return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" })[c];
+    });
+  }
+  function showNote(q, label){
+    const a = answer(q);
+    annoNote.innerHTML = "<span class='q'>问：" + esc(label || q) + "</span>" + a;
+    annoNote.classList.add("show");
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(function(){ annoNote.classList.remove("show"); }, 12000);
+    return a;
+  }
+  for(const btn of document.querySelectorAll("#a-qs .q")){
+    btn.addEventListener("click", function(){ showNote(btn.dataset.k, btn.textContent); });
+  }
+  function ask(){
+    const v = annoBox.value.trim();
+    if(!v) return;
+    showNote(v, v);
+    annoBox.value = "";
+  }
+  $("a-go").addEventListener("click", ask);
+  annoBox.addEventListener("keydown", function(e){ if(e.key === "Enter") ask(); });
+
+  __nlab.showAnswer = function(q){ return showNote(q, q); };
+  __nlab.tickAnno = tickAnno;
+updateAnno();
+__nlab.tickSay();
+
+})();
+</script>
+</body>
+</html>

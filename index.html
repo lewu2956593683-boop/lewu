@@ -20,6 +20,22 @@
 <link rel="canonical" href="https://lewu.pages.dev/">
 <link rel="preload" as="image" href="bg-mobile.webp" media="(max-width:999px)">
 <link rel="preload" as="image" href="bg-desktop.webp" media="(min-width:1000px)">
+<script>
+  /* 音频优先：趁 CSS 还没解析完就把《无仙》放进下载队列，进站更快出声。
+     播放器后面直接复用 window.__bgm，不会重复下载。 */
+  (function(){
+    try{
+      var a=new Audio();
+      a.preload='auto'; a.volume=0.15; a.autoplay=true;
+      a.setAttribute('playsinline','');
+      a.setAttribute('webkit-playsinline','');
+      a.src='wuxian.m4a';
+      window.__bgm=a;
+      var p=a.play(); if(p&&p.catch)p.catch(function(){});
+    }catch(e){}
+  })();
+</script>
+<link rel="preload" as="image" href="avatar.jpg" fetchpriority="high">
 <link rel="apple-touch-icon" href="avatar.jpg">
 <script>
   /* 首屏主题：默认进「墨夜」。这段必须在 CSS 之前跑完，
@@ -33,6 +49,15 @@
   }catch(e){
     document.documentElement.setAttribute('data-theme','moye');
     document.documentElement.classList.add('dark');
+  }
+  /* 壁纸默认「云之门」，也提前挂上，避免进站后从照片闪一下再变。
+     两张竖版手机壁纸在电脑上直接跳过（不然裁切很难看） */
+  try{
+    var _b=localStorage.getItem('lewu_bg2')||'wall-cloud';
+    if((_b==='wall-cloudcut'||_b==='wall-anime')&&window.matchMedia('(min-width:1000px)').matches)_b='wall-cloud';
+    if(_b!=='photo')document.documentElement.setAttribute('data-bg',_b);
+  }catch(e){
+    document.documentElement.setAttribute('data-bg','wall-cloud');
   }
 </script>
 <style>
@@ -175,7 +200,9 @@
 
   /* 关于 */
   .about p{font-size:14.5px;line-height:2;color:var(--ink-2);}
+  .about p+p{margin-top:12px;}
   .about p b{color:var(--ink);font-weight:600;}
+  .about-tags{display:flex;flex-wrap:wrap;gap:9px;margin-top:20px;}
 
   /* Bento 网格 */
   .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;}
@@ -200,6 +227,48 @@
   .wb{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:500;letter-spacing:.3px;
     color:var(--acc);background:var(--glass);border:1px solid var(--glass-bd);vertical-align:1px;line-height:1.5;
     transition:color .5s ease,border-color .5s ease;}
+  /* ===== 网页区：紧凑小卡片 ===== */
+  .webzone{margin-top:20px;padding-top:18px;border-top:1px solid rgba(127,216,205,.22);}
+  .wz-head{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-bottom:12px;}
+  .wz-head h3{font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px;color:var(--ink);}
+  .wz-head .wz-note{font-size:11px;color:var(--ink-2);opacity:.75;line-height:1.6;}
+  .wz-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+  .wz-card{position:relative;display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:14px;
+    text-decoration:none;background:var(--glass);border:1px solid var(--glass-bd);
+    transition:transform .18s ease,background .3s ease,box-shadow .3s ease,border-color .3s ease;}
+  .wz-card:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(70,110,130,.16);border-color:rgba(127,216,205,.45);}
+  .wz-card:active{transform:scale(.985)}
+  .wz-ic{flex:0 0 38px;width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:19px;
+    background:linear-gradient(135deg,var(--c1,#5aa9a0),var(--c2,#8b7fd4));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 4px 12px rgba(40,60,80,.18);}
+  .wz-meta{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .wz-meta b{font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .wz-meta i{font-style:normal;font-size:10.5px;line-height:1.55;color:var(--ink-2);margin-top:2px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .wz-head .wz-src{padding:1px 8px;border-radius:999px;font-size:9.5px;line-height:1.6;letter-spacing:.5px;
+    color:var(--acc2);border:1px solid rgba(139,127,212,.32);background:rgba(139,127,212,.12);}
+  .wz-go{flex:none;font-size:11px;color:var(--ink-2);opacity:.45;transition:opacity .2s,transform .2s;}
+  .wz-card:hover .wz-go{opacity:.8;transform:translate(1px,-1px);}
+  /* 最后一张落单时横向拉满，和上面两排左右都对齐 */
+  .wz-card:last-child:nth-child(3n+1){grid-column:1/-1}
+  html.dark .wz-card:hover{box-shadow:0 10px 26px rgba(0,0,0,.28);}
+  @media(max-width:999px){
+    .wz-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;}
+    .wz-card:last-child:nth-child(2n+1){grid-column:1/-1}
+  }
+  @media(max-width:640px){
+    .webzone{margin-top:16px;padding-top:14px;}
+    .wz-grid{gap:8px;}
+    .wz-card{padding:9px;gap:8px;border-radius:12px;}
+    .wz-ic{flex:0 0 32px;width:32px;height:32px;font-size:16px;border-radius:9px;}
+    .wz-meta b{font-size:11.5px;}
+    .wz-meta i{font-size:9.5px;line-height:1.5;margin-top:1px;}
+    .wz-go{display:none;}
+    .wz-head h3{font-size:13px;}
+    .wz-head .wz-src{font-size:9px;padding:0 6px;}
+    .wz-head .wz-note{font-size:10px;}
+  }
+  @media(max-width:520px){.wz-grid{grid-template-columns:1fr;}}
   /* 下载安装按钮 */
   .dl-btn{display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:10px 20px;border:none;border-radius:999px;cursor:pointer;text-decoration:none;
     font-size:13px;font-weight:600;letter-spacing:.5px;color:#fff;font-family:inherit;
@@ -324,6 +393,151 @@
   html[data-theme="mublue"] .b3{background:radial-gradient(circle,#3a2f5c,transparent 65%)}
   html[data-theme="mublue"] .card{box-shadow:0 12px 32px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.08)}
 
+/* ===== 可切换背景（纯 CSS 渐变，不额外加载图片） ===== */
+  html[data-bg="nebula"] body::after{
+    opacity:1;
+    background-image:
+      radial-gradient(circle at 18% 12%,rgba(150,130,235,.32),transparent 55%),
+      radial-gradient(circle at 82% 30%,rgba(240,140,190,.26),transparent 55%),
+      radial-gradient(circle at 60% 95%,rgba(120,190,220,.22),transparent 60%),
+      linear-gradient(150deg,#f6f4ff,#ecebfb 55%,#fdeef4);
+  }
+  html.dark[data-bg="nebula"] body::after{
+    background-image:
+      radial-gradient(circle at 18% 12%,rgba(108,80,220,.48),transparent 58%),
+      radial-gradient(circle at 82% 30%,rgba(200,80,160,.34),transparent 58%),
+      radial-gradient(circle at 60% 95%,rgba(60,140,200,.30),transparent 62%),
+      linear-gradient(160deg,#070a15,#120d2a 55%,#1a0f28);
+  }
+  html[data-bg="aurora"] body::after{
+    opacity:1;
+    background-image:
+      radial-gradient(circle at 20% 10%,rgba(90,190,160,.35),transparent 55%),
+      radial-gradient(circle at 78% 22%,rgba(140,200,140,.30),transparent 55%),
+      radial-gradient(circle at 50% 92%,rgba(120,200,220,.24),transparent 60%),
+      linear-gradient(150deg,#eefaf2,#e6f4ec 55%,#eaf7f0);
+  }
+  html.dark[data-bg="aurora"] body::after{
+    background-image:
+      radial-gradient(circle at 20% 8%,rgba(60,210,160,.40),transparent 55%),
+      radial-gradient(circle at 78% 22%,rgba(120,220,140,.30),transparent 55%),
+      radial-gradient(circle at 50% 95%,rgba(60,150,220,.30),transparent 62%),
+      linear-gradient(160deg,#050e12,#071820 55%,#08151a);
+  }
+  html[data-bg="paper"] body::after{
+    opacity:1;
+    background-image:
+      radial-gradient(circle at 50% 0%,rgba(255,255,255,.65),transparent 72%),
+      linear-gradient(155deg,#f7f1e6,#f3ecdf 55%,#efe5d5);
+  }
+  html.dark[data-bg="paper"] body::after{
+    background-image:
+      radial-gradient(circle at 50% 0%,rgba(255,240,210,.10),transparent 72%),
+      linear-gradient(160deg,#14110c,#1a1610 55%,#120f0a);
+  }
+
+ /* ===== 壁纸背景：4 张图片 + 2 段视频，选中才加载（不影响进站速度） ===== */
+  /* 压暗这层调得很轻，尽量让壁纸露出来；文字可读性交给卡片玻璃自己撑住 */
+  html[data-bg="wall-cloud"] body::after{
+    opacity:1;background-image:url("wall-cloud.webp");
+  }
+  html.dark[data-bg="wall-cloud"] body::after{
+    background-image:linear-gradient(180deg,rgba(6,10,18,.36),rgba(6,10,18,.16) 45%,rgba(6,10,18,.52)),url("wall-cloud.webp");
+  }
+  html:not(.dark)[data-bg="wall-cloud"] body::after{
+    background-image:linear-gradient(180deg,rgba(248,251,255,.42),rgba(248,251,255,.18) 45%,rgba(248,251,255,.52)),url("wall-cloud.webp");
+  }
+  html[data-bg="wall-suit"] body::after{
+    opacity:1;background-image:url("wall-suit.webp");
+  }
+  html.dark[data-bg="wall-suit"] body::after{
+    background-image:linear-gradient(180deg,rgba(6,10,18,.36),rgba(6,10,18,.16) 45%,rgba(6,10,18,.52)),url("wall-suit.webp");
+  }
+  html:not(.dark)[data-bg="wall-suit"] body::after{
+    background-image:linear-gradient(180deg,rgba(248,251,255,.42),rgba(248,251,255,.18) 45%,rgba(248,251,255,.52)),url("wall-suit.webp");
+  }
+  /* 两张竖版（手机尺寸）壁纸：手机上正好铺满，桌面上裁到画面中间偏上的位置 */
+  html[data-bg="wall-cloudcut"] body::after{
+    opacity:1;background-image:url("wall-cloudcut.webp");background-position:center 40%;
+  }
+  html.dark[data-bg="wall-cloudcut"] body::after{
+    background-image:linear-gradient(180deg,rgba(6,10,18,.34),rgba(6,10,18,.14) 45%,rgba(6,10,18,.50)),url("wall-cloudcut.webp");
+  }
+  html:not(.dark)[data-bg="wall-cloudcut"] body::after{
+    background-image:linear-gradient(180deg,rgba(248,251,255,.40),rgba(248,251,255,.16) 45%,rgba(248,251,255,.50)),url("wall-cloudcut.webp");
+  }
+  html[data-bg="wall-anime"] body::after{
+    opacity:1;background-image:url("wall-anime.webp");background-position:center 22%;
+  }
+  html.dark[data-bg="wall-anime"] body::after{
+    background-image:linear-gradient(180deg,rgba(6,10,18,.30),rgba(6,10,18,.12) 45%,rgba(6,10,18,.48)),url("wall-anime.webp");
+  }
+  html:not(.dark)[data-bg="wall-anime"] body::after{
+    background-image:linear-gradient(180deg,rgba(248,251,255,.38),rgba(248,251,255,.14) 45%,rgba(248,251,255,.48)),url("wall-anime.webp");
+  }
+  /* 手机上竖图整张铺满，不要再裁 */
+  @media(max-width:999px){
+    html[data-bg="wall-cloudcut"] body::after,
+    html.dark[data-bg="wall-cloudcut"] body::after,
+    html:not(.dark)[data-bg="wall-cloudcut"] body::after{background-position:center top}
+    html[data-bg="wall-anime"] body::after,
+    html.dark[data-bg="wall-anime"] body::after,
+    html:not(.dark)[data-bg="wall-anime"] body::after{background-position:center top}
+  }
+  /* 视频壁纸：等第一帧真正解码出来（.vbg-ready）再露脸，加载期间仍显示上一张壁纸 */
+  html[data-bg^="video"].vbg-ready body::after{opacity:0}
+  .bg-video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;
+    z-index:-1;opacity:0;pointer-events:none;transition:opacity .5s ease}
+  html[data-bg^="video"].vbg-ready .bg-video{opacity:1}
+  .bg-scrim{position:fixed;inset:0;z-index:-1;opacity:0;pointer-events:none;
+    transition:opacity .5s ease;
+    background:linear-gradient(180deg,rgba(6,10,18,.34),rgba(6,10,18,.14) 45%,rgba(6,10,18,.48))}
+  html[data-bg^="video"].vbg-ready .bg-scrim{opacity:1}
+  html:not(.dark)[data-bg^="video"].vbg-ready .bg-scrim{
+    background:linear-gradient(180deg,rgba(247,250,254,.42),rgba(247,250,254,.16) 45%,rgba(247,250,254,.50))}
+
+ /* ===== 用壁纸时首页让一让：卡片更透、装饰收起，让壁纸露出来 ===== */
+  html:not(.dark)[data-bg^="wall"],html:not(.dark)[data-bg^="video"]{
+    --glass:rgba(255,255,255,.30);--glass-bd:rgba(255,255,255,.52);
+  }
+  html.dark[data-bg^="wall"],html.dark[data-bg^="video"]{
+    --glass:rgba(8,14,22,.26);--glass-bd:rgba(255,255,255,.15);
+  }
+  html.dark[data-bg^="wall"] nav,html.dark[data-bg^="video"] nav{--glass:rgba(8,14,22,.34)}
+  html:not(.dark)[data-bg^="wall"] nav,html:not(.dark)[data-bg^="video"] nav{--glass:rgba(255,255,255,.40)}
+  html[data-bg^="wall"] .side-deco,html[data-bg^="video"] .side-deco{display:none!important}
+  /* 卡片可以磨砂，hero 不再加模糊——它本来没有底色，加 blur 只会在壁纸上糊出一层淡色雾 */
+  html.dark[data-bg^="wall"] .card,html.dark[data-bg^="video"] .card{
+    backdrop-filter:blur(12px) saturate(140%);-webkit-backdrop-filter:blur(12px) saturate(140%);
+  }
+  html:not(.dark)[data-bg^="wall"] .card,html:not(.dark)[data-bg^="video"] .card{
+    backdrop-filter:blur(12px) saturate(140%);-webkit-backdrop-filter:blur(12px) saturate(140%);
+  }
+
+ /* ===== 封面首页：第一屏整屏看壁纸，往下滑（吸附）才进正文 ===== */
+  html{scroll-snap-type:y proximity}
+  .cover{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-height:100vh;min-height:100svh;padding:24px 24px 96px;text-align:center;
+    scroll-snap-align:start;}
+  /* 正文开头也是一个吸附点：慢慢滑会吸附回封面，滑过半屏就整段落到正文 */
+  .wrap{scroll-snap-align:start}
+  .cover h1{font-family:"LW Serif","Songti SC","Noto Serif SC",serif;
+    font-size:clamp(52px,9vw,110px);line-height:1.05;letter-spacing:.1em;font-weight:700;
+    color:var(--ink);}
+  html.dark .cover h1{color:#f6f9fd;text-shadow:0 10px 46px rgba(0,0,0,.62)}
+  .cover .cv-sub{margin-top:16px;font-size:clamp(13px,1.5vw,16px);letter-spacing:.22em;color:var(--ink-2)}
+  html.dark .cover .cv-sub{color:#dce7f3;text-shadow:0 2px 14px rgba(0,0,0,.58)}
+  .cover .cv-line{width:46px;height:1px;margin:22px auto 0;
+    background:linear-gradient(90deg,transparent,var(--acc),transparent);opacity:.75}
+  .cover-down{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);
+    display:flex;flex-direction:column;align-items:center;gap:7px;padding:8px 18px;
+    background:none;border:none;cursor:pointer;color:var(--ink-2);font-size:11.5px;
+    letter-spacing:.28em;font-family:inherit;transition:color .3s ease}
+  html.dark .cover-down{color:#d5e2f0}
+  .cover-down:hover{color:var(--ink)}
+  .cover-down i{font-style:normal;font-size:17px;line-height:1;animation:cvBounce 1.8s ease-in-out infinite}
+  @keyframes cvBounce{0%,100%{transform:translateY(0);opacity:.55}50%{transform:translateY(7px);opacity:1}}
+
 /* ===== 主题切换按钮（固定悬浮，固定液态玻璃样式，不随主题变色） ===== */
   .theme-fab{
     position:fixed;top:100px;right:20px;z-index:100;width:46px;height:46px;border-radius:50%;
@@ -342,11 +556,20 @@
     100%{transform:rotate(360deg) scale(1);opacity:1}
   }
   /* 主题选择器浮层 */
-  .theme-pop{position:fixed;top:156px;right:20px;z-index:101;min-width:132px;border-radius:16px;padding:8px;
+  .theme-pop{position:fixed;top:156px;right:20px;z-index:101;min-width:176px;border-radius:16px;padding:8px;
     background:var(--glass);border:1px solid var(--glass-bd);
     backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);
-    box-shadow:0 14px 34px rgba(60,100,130,.2);display:none;flex-direction:column;gap:4px;}
+    box-shadow:0 14px 34px rgba(60,100,130,.2);display:none;flex-direction:column;gap:4px;
+    max-height:calc(100vh - 190px);max-height:calc(100dvh - 190px);overflow-y:auto;overscroll-behavior:contain;}
   .theme-pop.open{display:flex;animation:popIn .18s ease;}
+  /* 壁纸按钮：沿用主题按钮的玻璃样式，往下挪一格；壁纸浮层独立 */
+  .wall-fab{top:158px}
+  .wall-pop{top:214px;min-width:196px;max-height:calc(100vh - 250px);max-height:calc(100dvh - 250px)}
+  .wall-pop .bg-opt:last-child:nth-child(2n+1){grid-column:1/-1}
+  /* 竖版手机壁纸只在手机端现身，电脑上藏掉（硬裁成 16:9 太难看） */
+  @media(min-width:1000px){
+    .wall-pop .bg-opt[data-bg="wall-cloudcut"],.wall-pop .bg-opt[data-bg="wall-anime"]{display:none}
+  }
   @keyframes popIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
   @keyframes popInUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
   /* 主题项改成 <button> 后要清掉浏览器默认样式，键盘/读屏才能操作 */
@@ -356,28 +579,31 @@
   .theme-pop .th i{width:18px;height:18px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--c1),var(--c2));border:1px solid rgba(255,255,255,.7);box-shadow:inset 0 1px 2px rgba(255,255,255,.5);}
   .theme-pop .th.cur{font-weight:700}
   .theme-pop .th.cur::after{content:"✓";margin-left:auto;font-size:11px;color:var(--acc)}
+  /* 外观弹层里的「背景」分区：只用 CSS 渐变，零额外图片、零请求 */
+  .tp-sep{height:1px;margin:5px 4px;background:rgba(43,58,74,.14)}
+  .tp-label{font-size:10px;letter-spacing:1.5px;color:var(--ink-2);opacity:.75;margin:2px 6px 4px}
+  .bg-opts{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+  .bg-opt{display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 4px;border-radius:9px;
+    border:1px solid transparent;background:rgba(255,255,255,.16);color:var(--ink-2);font-size:11px;
+    cursor:pointer;font-family:inherit;transition:background .18s,border-color .18s,color .18s}
+  .bg-opt:hover{background:rgba(255,255,255,.32)}
+  .bg-opt[aria-pressed="true"]{border-color:rgba(127,216,205,.55);color:var(--ink);background:rgba(127,216,205,.16);font-weight:600}
+  /* 随机换壁纸：单独一条，点了就随机挑一张 */
+  .bg-rand{width:100%;margin:0 0 6px;padding:8px 10px;border-radius:9px;cursor:pointer;
+    border:1px dashed rgba(127,216,205,.5);background:rgba(127,216,205,.10);color:var(--ink);
+    font-size:12px;letter-spacing:.5px;font-family:inherit;transition:background .18s,border-color .18s}
+  .bg-rand:hover{background:rgba(127,216,205,.22);border-color:rgba(127,216,205,.8)}
+  .bg-rand:active{transform:scale(.97)}
+  html.dark .bg-rand{background:rgba(127,216,205,.14);border-color:rgba(127,216,205,.4)}
+  html.dark .tp-sep{background:rgba(255,255,255,.14)}
+  html.dark .bg-opt{background:rgba(255,255,255,.06)}
+  html.dark .bg-opt:hover{background:rgba(255,255,255,.12)}
 
 /* ===== 打字机光标 ===== */
   .caret{display:inline-block;width:2px;height:1.1em;background:var(--acc);vertical-align:-2px;margin-left:2px;animation:blink 1s step-end infinite;}
   @keyframes blink{50%{opacity:0}}
 
-/* ===== 回到顶部 ===== */
-  .to-top{
-    position:fixed;right:18px;bottom:92px;z-index:98;width:42px;height:42px;border-radius:50%;
-    border:1px solid rgba(255,255,255,.75);background:rgba(255,255,255,.55);color:#3a4a5a;font-size:17px;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;
-    backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);
-    box-shadow:0 8px 20px rgba(80,120,140,.16),inset 0 1px 0 rgba(255,255,255,.6);
-    opacity:0;pointer-events:none;transform:translateY(8px);
-    transition:opacity .3s ease,transform .3s ease;
-  }
-  .to-top.show{opacity:1;pointer-events:auto;transform:none}
-  /* 动效包4：回到顶部按钮呼吸光环（手机/电脑通用，滚动出现即可见） */
-  .to-top.show::after{content:"";position:absolute;inset:-6px;border-radius:50%;
-    border:2px solid rgba(127,216,205,.6);pointer-events:none;
-    animation:toTopGlow 2.4s ease-out infinite;}
-  @keyframes toTopGlow{0%{transform:scale(.9);opacity:.9}70%{transform:scale(1.45);opacity:0}100%{opacity:0}}
-  .to-top:active{transform:scale(.92)}
+
 
 /* ===== 点击粒子特效 ===== */
   .spark{position:fixed;width:8px;height:8px;border-radius:50%;pointer-events:none;z-index:999;animation:spark .65s ease-out forwards;}
@@ -674,12 +900,12 @@
 
   /* ===== 鲸鱼助手（可对话桌宠） ===== */
   .pet-panel{
-    position:fixed;left:18px;bottom:90px;z-index:96;width:min(320px,calc(100vw - 36px));
+    position:fixed;right:18px;bottom:90px;z-index:96;width:min(320px,calc(100vw - 36px));
     border-radius:22px;padding:16px;
     background:var(--glass);border:1px solid var(--glass-bd);
     backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);
     box-shadow:0 20px 50px rgba(80,120,140,.24),inset 0 1px 0 rgba(255,255,255,.7);
-    opacity:0;pointer-events:none;transform:translateY(12px) scale(.96);transform-origin:bottom left;
+    opacity:0;pointer-events:none;transform:translateY(12px) scale(.96);transform-origin:bottom right;
     transition:opacity .3s ease,transform .3s ease,color .5s ease,border-color .5s ease;
   }
   .pet-panel.open{opacity:1;transform:none;pointer-events:auto;}
@@ -715,7 +941,7 @@
   .pet-row button:active{transform:scale(.95)}
   .pet-row button:disabled{opacity:.5;cursor:not-allowed}
   .pet-btn{
-    position:fixed;left:18px;bottom:18px;z-index:97;width:56px;height:56px;border-radius:50%;
+    position:fixed;right:18px;bottom:18px;z-index:97;width:56px;height:56px;border-radius:50%;
     border:1px solid var(--glass-bd);background:var(--glass);cursor:pointer;
     color:var(--ds);display:flex;align-items:center;justify-content:center;
     backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);
@@ -735,14 +961,14 @@
   }
   @keyframes petBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
   @keyframes swim{
-    0%{transform:translateX(0) scaleX(1)}
+    0%{transform:translateX(0) scaleX(-1)}
     18%{transform:translateX(0) scaleX(-1)}
-    45%{transform:translateX(calc(100vw - 92px)) scaleX(-1)}
-    72%{transform:translateX(calc(100vw - 92px)) scaleX(1)}
-    100%{transform:translateX(0) scaleX(1)}
+    45%{transform:translateX(calc(-100vw + 92px)) scaleX(1)}
+    72%{transform:translateX(calc(-100vw + 92px)) scaleX(-1)}
+    100%{transform:translateX(0) scaleX(-1)}
   }
   .pet-bubble{
-    position:fixed;left:84px;bottom:34px;z-index:96;max-width:190px;
+    position:fixed;right:84px;bottom:34px;z-index:96;max-width:190px;
     font-size:12px;line-height:1.6;color:var(--ink-2);padding:8px 12px;border-radius:14px;
     background:var(--glass);border:1px solid var(--glass-bd);
     backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);
@@ -753,7 +979,7 @@
   .pet-bubble.show{opacity:1;transform:none;}
   /* 引导气泡：可点击、带蓝色描边，点它直接打开聊天 */
   .pet-bubble.cta{pointer-events:auto;cursor:pointer;border-color:rgba(77,107,254,.55);}
-  .pet-bubble.cta::after{content:"👆";position:absolute;left:8px;bottom:-20px;font-size:13px;animation:ctaNod 1.2s ease-in-out infinite;}
+  .pet-bubble.cta::after{content:"👉";position:absolute;right:8px;bottom:-20px;font-size:13px;animation:ctaNod 1.2s ease-in-out infinite;}
   @keyframes ctaNod{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
   /* 音乐未自动播放时 dock 内的提示徽标 */
   .mp-hint{display:none;font-size:10px;color:var(--ds);border:1px solid rgba(77,107,254,.45);
@@ -761,12 +987,21 @@
     animation:hintBlink 1.6s ease-in-out infinite;flex-shrink:0;}
   .mp-hint.show{display:inline-block}
   @keyframes hintBlink{0%,100%{opacity:1}50%{opacity:.55}}
+  /* 底部音乐条在手机/桌面是隐藏的，自动播放被拦时用左下角这个按钮兜底 */
+  .mp-nudge{position:fixed;left:18px;bottom:18px;z-index:55;display:none;align-items:center;gap:6px;
+    font:inherit;font-size:12px;color:#eaf4ff;background:rgba(16,26,38,.86);
+    border:1px solid rgba(127,216,205,.5);padding:9px 15px;border-radius:999px;cursor:pointer;
+    box-shadow:0 10px 26px rgba(0,0,0,.32);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    transition:background .18s,border-color .18s}
+  .mp-nudge.show{display:inline-flex}
+  .mp-nudge:hover{background:rgba(24,38,54,.94);border-color:rgba(127,216,205,.8)}
+  .mp-nudge:active{transform:scale(.96)}
+  @media(max-width:640px){.mp-nudge{left:12px;bottom:18px;font-size:11.5px;padding:8px 13px}}
   @media(max-width:640px){
-    .pet-panel{left:12px;bottom:158px;width:calc(100vw - 24px)}
+    .pet-panel{right:12px;bottom:158px;width:calc(100vw - 24px);transform-origin:bottom right}
     /* 小屏没有底部音乐条，按钮贴底更不挡正文 */
-    .pet-btn{left:12px;bottom:18px}
-    .to-top{bottom:18px}
-    .pet-bubble{left:78px;bottom:110px}
+    .pet-btn{right:12px;bottom:18px}
+    .pet-bubble{right:78px;bottom:110px}
   }
 
   /* ===== 哔站式左侧名片栏（桌面端 ≥1000px） ===== */
@@ -811,29 +1046,10 @@
   
 
   
-/* ===== 新动效包：顶部滚动进度条 + 背景上升气泡 + Bento 卡片扫光 ===== */
+/* ===== 新动效包：顶部滚动进度条 + Bento 卡片扫光 ===== */
   .progress-bar{position:fixed;top:0;left:0;height:4px;width:0;z-index:200;
     background:linear-gradient(90deg,#7fd8cd,#a79bf0,#f7b6d0);
     box-shadow:0 1px 10px rgba(127,216,205,.7),0 0 18px rgba(167,155,240,.5);border-radius:0 4px 4px 0;}
-  .amb{position:fixed;bottom:-3rem;z-index:-1;border-radius:50%;pointer-events:none;opacity:0;
-    background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.9),rgba(127,216,205,.38) 60%,transparent);
-    box-shadow:inset 0 0 6px rgba(255,255,255,.5);
-    animation:ambRise var(--t,14s) linear var(--d,0s) infinite;}
-  @keyframes ambRise{
-    0%{transform:translateY(0) translateX(0);opacity:0}
-    8%{opacity:.9}
-    90%{opacity:.6}
-    100%{transform:translateY(-106vh) translateX(var(--dx,0));opacity:0}
-  }
-  .amb:nth-of-type(1){width:18px;height:18px;left:5%;--t:11s;--d:0s;--dx:26px}
-  .amb:nth-of-type(2){width:12px;height:12px;left:14%;--t:15s;--d:2.4s;--dx:-18px}
-  .amb:nth-of-type(3){width:24px;height:24px;left:26%;--t:12.5s;--d:1.2s;--dx:30px}
-  .amb:nth-of-type(4){width:14px;height:14px;left:39%;--t:16s;--d:.6s;--dx:-24px}
-  .amb:nth-of-type(5){width:30px;height:30px;left:53%;--t:14s;--d:3s;--dx:20px}
-  .amb:nth-of-type(6){width:13px;height:13px;left:66%;--t:12s;--d:1.8s;--dx:-16px}
-  .amb:nth-of-type(7){width:20px;height:20px;left:80%;--t:13.5s;--d:.3s;--dx:28px}
-  .amb:nth-of-type(8){width:16px;height:16px;left:91%;--t:11.5s;--d:2s;--dx:-20px}
-  @media(prefers-reduced-motion:reduce){.amb{display:none}}
   /* Bento 卡片悬停扫光（.g-card 自带 overflow:hidden） */
   .g-card::after{content:"";position:absolute;top:0;left:-60%;width:45%;height:100%;pointer-events:none;
     background:linear-gradient(105deg,transparent,rgba(255,255,255,.55),transparent);
@@ -866,13 +1082,11 @@
     .avatar-wrap::after{animation:none;opacity:0}
     .mp-head .eq{display:none}
     .tapripple{display:none}
-    .to-top.show::after{display:none}
-    .leaves{display:none}
   }
 
   /* ===== 动效包6：手机端性能与首屏精简（m00379 反馈：手机滚动到下方卡顿 + 首屏太乱） ===== */
   /* 标签页切后台时暂停装饰性无限动画（省电省帧） */
-  body.paused .amb,body.paused .leaf,body.paused .seal,body.paused .hero h1,
+  body.paused .leaf,body.paused .seal,body.paused .hero h1,
   body.paused .mp-head .eq i{animation-play-state:paused}
   /* 手机端：首屏去冗余（tag 欢迎胶囊与打字机问候/时钟重复）、装饰层减半、离屏卡片跳过渲染 */
   @media(max-width:999px){
@@ -883,9 +1097,6 @@
       box-shadow:0 12px 34px rgba(10,20,30,.18);}
     .avatar-wrap{margin-bottom:14px}
     .hero h1{font-size:28px;margin-bottom:8px}
-    .amb:nth-of-type(even){display:none}
-    .leaves .leaf:nth-child(even){display:none}
-    .leaves{opacity:.5}
   }
 
   /* ===== 动效包3：手机端也明显的动效 ===== */
@@ -912,25 +1123,6 @@
     font-size:12.5px;letter-spacing:.5px;color:var(--ink-2);font-variant-numeric:tabular-nums;}
   .clock-line .ck-ic{font-size:13px}
   .clock-line .ck-p{color:var(--acc,#5aa9a0)}
-  /* ② 秋叶飘落（wrapper 固定铺满，叶子 nth-child 错位飘落，两端通用） */
-  .leaves{position:fixed;inset:0;z-index:1;pointer-events:none;}
-  .leaves .leaf{position:absolute;top:-8vh;font-size:20px;opacity:0;
-    animation:leafFall linear infinite;}
-  .leaves .leaf:nth-child(1){left:4%;font-size:17px;animation-duration:12s;animation-delay:-1s}
-  .leaves .leaf:nth-child(2){left:16%;font-size:22px;animation-duration:15s;animation-delay:-6s}
-  .leaves .leaf:nth-child(3){left:30%;font-size:15px;animation-duration:11s;animation-delay:-3.5s}
-  .leaves .leaf:nth-child(4){left:44%;font-size:19px;animation-duration:14s;animation-delay:-9s}
-  .leaves .leaf:nth-child(5){left:58%;font-size:16px;animation-duration:12.5s;animation-delay:-5s}
-  .leaves .leaf:nth-child(6){left:71%;font-size:21px;animation-duration:16s;animation-delay:-2.5s}
-  .leaves .leaf:nth-child(7){left:83%;font-size:14px;animation-duration:10.5s;animation-delay:-7.5s}
-  .leaves .leaf:nth-child(8){left:92%;font-size:18px;animation-duration:13.5s;animation-delay:-4.5s}
-  @keyframes leafFall{
-    0%{transform:translate3d(0,-8vh,0) rotate(0deg);opacity:0}
-    10%{opacity:.8}
-    50%{transform:translate3d(6vw,48vh,0) rotate(160deg)}
-    90%{opacity:.8}
-    100%{transform:translate3d(-4vw,106vh,0) rotate(340deg);opacity:0}
-  }
   /* ③ 旋转小印章（「关于」卡右上角，两端通用） */
   .about{position:relative}
   .seal{position:absolute;right:14px;top:14px;width:86px;height:86px;color:#5aa9a0;opacity:.5;
@@ -971,6 +1163,21 @@
   .wcover{display:block;flex:0 0 96px;width:96px;height:96px;border-radius:14px;overflow:hidden;
     background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10)}
   .wcover img{display:block;width:100%;height:100%;object-fit:cover}
+  /* 网页作品没有截图，就用渐变 + 大表情做一张小海报封面 */
+  .cover-art{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+    container-type:size;position:relative;
+    background:radial-gradient(circle at 30% 22%,rgba(255,255,255,.30),transparent 55%),linear-gradient(140deg,var(--c1),var(--c2));}
+  .cover-art::before{content:"";position:absolute;inset:0;opacity:.85;background:
+    repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,transparent 1px 22px),
+    radial-gradient(circle at 72% 78%,rgba(255,255,255,.20),transparent 55%);}
+  .cover-art .ca-emoji{position:relative;z-index:1;font-size:44px;font-size:34cqh;line-height:1;
+    filter:drop-shadow(0 4px 12px rgba(0,0,0,.25));}
+  .cover-art .ca-label{position:relative;z-index:1;font-size:10px;font-size:3.2cqh;letter-spacing:.18em;
+    color:rgba(255,255,255,.78);font-weight:600;text-transform:uppercase;}
+  @container (max-height:150px){
+    .cover-art .ca-emoji{font-size:48px;font-size:50cqh}
+    .cover-art .ca-label{display:none}
+  }
   .wbody{flex:1;min-width:0}
   .chap{display:none}
 
@@ -1047,10 +1254,10 @@
     .works-rail{display:flex;gap:11px;overflow-x:auto;scroll-snap-type:x mandatory;
       margin:0 -20px;padding:2px 20px 10px;scrollbar-width:none}
     .works-rail::-webkit-scrollbar{display:none}
-    .work-item{display:block;flex:0 0 74%;scroll-snap-align:center;margin:0;padding:0;
+    .work-item{display:block;flex:0 0 68%;scroll-snap-align:center;margin:0;padding:0;
       border-radius:20px;overflow:hidden}
-    .wcover{width:auto;height:auto;aspect-ratio:4/3;flex:none;border-radius:0;border:none}
-    .wcover img{aspect-ratio:4/3}
+    .wcover{width:auto;height:auto;aspect-ratio:16/10;flex:none;border-radius:0;border:none}
+    .wcover img{aspect-ratio:16/10}
     .wbody{padding:13px 14px 15px}
     .wm{font-size:12.5px}
     .wd{font-size:10.5px;line-height:1.7;display:-webkit-box;-webkit-line-clamp:3;
@@ -1070,8 +1277,11 @@
     .theme-fab{top:auto;bottom:72px;right:14px;width:40px;height:40px;font-size:17px;
       background:rgba(10,18,28,.45);border-color:rgba(255,255,255,.18);color:#e6eef6}
     /* 按钮搬到右下后，选项必须跟着下来：原来它钉在 top:156px，一点就跑屏幕顶上 */
-    .theme-pop{top:auto;bottom:124px;right:14px;min-width:124px}
+    .theme-pop{top:auto;bottom:124px;right:14px;min-width:164px}
     .theme-pop.open{animation:popInUp .18s ease}
+    .wall-fab{top:auto;bottom:122px;right:14px;width:40px;height:40px;font-size:17px;
+      background:rgba(10,18,28,.45);border-color:rgba(255,255,255,.18);color:#e6eef6}
+    .wall-pop{top:auto;bottom:174px;right:14px;min-width:180px}
   }
   @media(min-width:641px) and (max-width:999px){
     .wrap{max-width:640px;margin:0 auto}
@@ -1113,9 +1323,13 @@
   .boot-tip{order:1;margin:0 0 10px;font-size:11px;letter-spacing:3px;color:rgba(255,255,255,.9);min-height:16px;text-shadow:0 1px 8px rgba(0,0,0,.6)}
   .boot-bar{order:3;width:100%;max-width:260px;height:2px;margin:0 0 9px;background:rgba(255,255,255,.2)}
   .boot-pct{order:4;font-size:10px;letter-spacing:1.5px;color:rgba(255,255,255,.75)}
+  /* 自动播放被浏览器拦下时，开屏末尾提示轻触一下 */
+  .boot-hint{order:5;display:none;margin-top:10px;font-size:11px;letter-spacing:1.5px;
+    color:rgba(255,255,255,.88);text-shadow:0 1px 8px rgba(0,0,0,.6)}
+  .boot-hint.show{display:block;animation:hintBlink 1.6s ease-in-out infinite}
   .boot .bub{opacity:.5}
   /* 蒙层是绝对定位的伪元素，会盖住静态文本，给文字单独提一层 */
-  .boot-name,.boot-tip,.boot-bar,.boot-pct{position:relative;z-index:1}
+  .boot-name,.boot-tip,.boot-bar,.boot-pct,.boot-hint{position:relative;z-index:1}
 
 /* ===== v1.3 桌面端：玻璃调透 + 版式收紧（只作用于 ≥1000px，手机端不受影响） ===== */
   @media(min-width:1000px){
@@ -1138,61 +1352,95 @@
     /* 透到 30% 之后，小字压在照片亮部会发虚，补一层极淡投影兜住 */
     html.dark .card,html.dark .hero{text-shadow:0 1px 2px rgba(0,0,0,.26)}
 
-    /* ② 两栏比例与间距（右栏拆成两格，给第七步的并排卡片用） */
-    .wrap{max-width:1200px;grid-template-columns:300px minmax(0,1fr) minmax(0,1fr);column-gap:34px}
-    .wrap > :not(nav):not(.hero){grid-column:2/-1}
-    .wrap > section.card,.wrap > .grid{margin-bottom:24px}
+    /* ② 杂志封面式：hero 通栏当封面，内容区按 12 栏编排 */
+    .wrap{max-width:1220px;grid-template-columns:repeat(12,minmax(0,1fr));
+      column-gap:28px;row-gap:24px;padding:0 30px 70px}
+    .wrap > :not(nav):not(.hero){grid-column:1/-1}
+    .wrap > section.card,.wrap > .grid{margin-bottom:0}
     .card{padding:26px;border-radius:24px}
     .g-card{padding:24px}
 
-    /* ③ 卡内标题右侧拉一条细线，版面有「刊头」的秩序感 */
+    /* 封面：头像在左侧、和大标题组成一个视觉块，其余信息在下方通栏 */
+    .hero{grid-column:1/-1;grid-row:auto;position:relative;top:auto;display:grid;
+      grid-template-columns:auto minmax(0,1fr);column-gap:40px;align-items:start;
+      padding:62px 0 42px;background:none;border:none;border-radius:0;box-shadow:none;
+      backdrop-filter:none;-webkit-backdrop-filter:none;text-align:left}
+    .hero .avatar-wrap{grid-column:1;grid-row:1/span 2;align-self:start;
+      width:164px;height:164px;margin:4px 0 0}
+    .hero .avatar{width:164px;height:164px}
+    .hero > :not(.avatar-wrap){grid-column:2}
+    .hero .tag,.hero .clock-line,.hero .quote,.hero .egg-hint,.hero .side-stats,.hero .bili-link{
+      grid-column:1/-1}
+    html .hero h1{font-family:"LW Serif","Songti SC","Noto Serif SC",serif;
+      font-size:clamp(64px,7vw,98px);line-height:1;letter-spacing:.06em;font-weight:700;
+      color:var(--ink);background:none!important;-webkit-text-fill-color:currentColor;
+      animation:none!important;margin:0 0 16px}
+    html.dark .hero h1{color:#f6f9fd;text-shadow:0 8px 44px rgba(0,0,0,.62)}
+    html.dark .hero{backdrop-filter:none;-webkit-backdrop-filter:none;
+      text-shadow:0 1px 2px rgba(0,0,0,.26)}
+    html.dark .hero .sub,html.dark .hero .quote,html.dark .side-stats{text-shadow:0 1px 8px rgba(0,0,0,.6)}
+    .hero .sub{font-size:15.5px;line-height:2;letter-spacing:1px;max-width:600px}
+    .hero .tag{justify-self:start}
+    .hero .clock-line{justify-content:flex-start}
+    .hero .quote{margin-top:14px;justify-content:flex-start;justify-self:start;text-align:left}
+    .hero .quote .qt{max-width:560px}
+    .side-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;
+      max-width:640px;width:100%;margin-top:22px}
+    .side-stats .ss{padding:13px 8px;border-radius:14px}
+    .side-stats .ss b{font-size:21px}
+    .side-stats .ss span{font-size:10.5px}
+    .bili-link{display:inline-flex;width:auto;justify-self:start;margin-top:18px;padding:11px 18px;border-radius:999px}
+
+    /* ③ 内容编排：左侧「关于 + 技能/最近在做」上下叠放，音乐在右侧跨两行；
+       作品通栏，足迹 + 留言并排 */
+    #about{grid-column:1/span 7;order:1;align-self:stretch}
+    .wrap > section.card.music-card{grid-column:8/span 5;order:1;grid-row:span 2;
+      align-self:stretch;display:flex;flex-direction:column}
+    .wrap > section.card.music-card .music-panel{display:flex;flex-direction:column;flex:1 1 auto}
+    .wrap > section.card.music-card .mp-list{flex:1 1 auto;justify-content:center}
+    .wrap > div.grid{grid-column:1/span 7;order:2;
+      grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+    .wrap > div.grid > .g-card{grid-column:auto}
+    .games-entry-wrap{grid-column:1/-1;order:3;margin:2px 0}
+    #works{grid-column:1/-1;order:4}
+    #timeline{grid-column:1/span 7;order:6}
+    #msgs{grid-column:8/span 5;order:6}
+    #contact{grid-column:1/-1;order:7}
+    footer{grid-column:1/-1;order:8}
+
+    /* ④ 卡内标题右侧拉一条细线，版面有「刊头」的秩序感 */
     .sec-title{margin:0 0 16px;font-size:17px;letter-spacing:.5px}
     .sec-title::after{content:"";flex:1;height:1px;margin-left:10px;align-self:center;
       background:linear-gradient(90deg,currentColor,transparent);opacity:.16}
     #contact .sec-title::after{display:none}
 
-    /* ④ 左栏名片：数据改两列，数字能放大，不再挤成一排 */
-    .hero{padding:28px 26px 26px;border-radius:24px}
-    .hero h1{font-size:27px;margin:16px 0 9px}
-    .side-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:16px}
-    .side-stats .ss{padding:11px 6px;border-radius:12px}
-    .side-stats .ss b{font-size:18px}
-    .side-stats .ss span{font-size:10.5px}
-    .bili-link{margin-top:12px;padding:11px 14px;border-radius:12px}
-
     /* ⑤ 导航 */
-    nav{padding:9px 16px 9px 20px}
+    nav{grid-column:1/-1;padding:9px 16px 9px 20px}
     nav a{font-size:13px;padding:7px 13px}
     nav a:hover{background:rgba(127,216,205,.14)}
 
-    /* ⑥ 作品：从竖排列表改成两列卡片，4:3 封面终于露得出来；
-       作品数是奇数时，最后一张自动通栏，不留半格空位（新增作品也不用改 CSS） */
+    /* ⑥ 作品：3×3 网格，九张卡一并排开，不再单独给最后一张通栏 */
     #works{padding:26px}
-    .works-rail{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+    .works-rail{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
     #works .work-item{display:flex;flex-direction:column;gap:0;margin:0;padding:0;border-radius:18px;overflow:hidden}
-    #works .wcover{flex:none;width:100%;height:auto;aspect-ratio:4/3;border-radius:0;border:none}
+    #works .wcover{flex:none;width:100%;height:auto;aspect-ratio:16/10;border-radius:0;border:none}
     #works .wcover img{width:100%;height:100%;object-fit:cover}
     #works .wbody{padding:16px 18px 18px;display:flex;flex-direction:column}
     #works .wd{margin-bottom:14px}
     #works .dl-btn{margin-top:auto;align-self:flex-start}
-    #works .work-item:last-child:nth-child(odd){grid-column:1/-1;display:grid;
-      grid-template-columns:44% minmax(0,1fr);align-items:center}
-    #works .work-item:last-child:nth-child(odd) .wbody{justify-content:center;padding:24px 26px}
 
-    /* ⑦ 留言 + 找到我：两张扁卡并排，不再一上一下各空半屏 */
-    #msgs{grid-column:2}
-    #contact{grid-column:3;display:flex;flex-direction:column;justify-content:center}
-
-    /* ⑧ 播放器：头部和曲目列表之间补一条细线，别再糊成一片 */
+    /* ⑦ 播放器：头部和曲目列表之间补一条细线，别再糊成一片 */
     .mp-head{padding-bottom:12px;border-bottom:1px solid rgba(43,58,74,.12);margin-bottom:12px}
     html.dark .mp-head{border-bottom-color:rgba(255,255,255,.12)}
   }
 </style>
 </head>
 <body>
-  <!-- 音乐：必须放在 body 最前面。浏览器解析到这一行就开始下音频数据；
-       以前它挂在页面底部、且只 preload=metadata，等于「点播了才去买菜」 -->
-  <audio id="bgm" src="music.m4a" preload="auto" playsinline></audio>
+  <!-- 音乐对象已在 <head> 里创建并开始下载，这里只把它挂进 body，
+       方便播放器继续按 id="bgm" 控制 -->
+  <script>
+    if(window.__bgm){window.__bgm.id='bgm';document.body.appendChild(window.__bgm);}
+  </script>
 
   <!-- 开屏动画 -->
   <div class="boot" id="boot">
@@ -1203,14 +1451,18 @@
     <div class="boot-bar"><div class="boot-fill"></div></div>
     <div class="boot-tip"><span class="tip-txt"></span><span class="boot-caret"></span></div>
     <div class="boot-pct">0%</div>
+    <div class="boot-hint" id="bootHint">轻触屏幕 · 音乐随行 🎵</div>
   </div>
 
-  <i class="amb"></i><i class="amb"></i><i class="amb"></i><i class="amb"></i>
-  <i class="amb"></i><i class="amb"></i><i class="amb"></i><i class="amb"></i>
-  <div class="leaves" aria-hidden="true">
-    <i class="leaf">🍂</i><i class="leaf">🍁</i><i class="leaf">🍂</i><i class="leaf">🍁</i>
-    <i class="leaf">🍂</i><i class="leaf">🍁</i><i class="leaf">🍂</i><i class="leaf">🍁</i>
-  </div>
+  <!-- 封面：整屏壁纸，点「下滑进入」或直接往下滑才进正文 -->
+  <section class="cover" id="cover" aria-label="封面">
+    <h1>乐乌</h1>
+    <div class="cv-sub">把日子过成自己喜欢的样子 🍃</div>
+    <div class="cv-line"></div>
+    <button class="cover-down" id="coverDown" type="button" aria-label="下滑进入">
+      <span>下滑进入</span><i>↓</i>
+    </button>
+  </section>
 
   <div class="wrap">
     <nav>
@@ -1233,7 +1485,7 @@
       <div class="egg-hint" id="eggHint">🎁 头像里藏着小秘密,连戳几下试试</div>
       <div class="side-stats">
         <div class="ss"><b id="stVisit">0</b><span>到访天数</span></div>
-        <div class="ss"><b>5</b><span>小作品</span></div>
+        <div class="ss"><b>16</b><span>小作品</span></div>
         <div class="ss"><b>4</b><span>背景音乐</span></div>
         <div class="ss"><b>5</b><span>主题皮肤</span></div>
       </div>
@@ -1254,18 +1506,24 @@
       <p>你好呀，我是 <b>乐乌</b>。一个喜欢记录生活、捣鼓点小玩意儿的普通人。<br>
       这里没有宏大叙事，只有我收藏的 <b>好物、灵感和小作品</b>。愿你在浏览的时候，
       也能感受到一点温柔和自在。🌿</p>
+      <p>小站分了几块：<b>小作品</b> 都是我自己做的小工具和小实验，<b>网页区</b> 是收藏来的开源小游戏，
+      <b>音乐</b> 是几首陪我逛站的纯音乐。没有广告，慢慢逛就好。</p>
+      <div class="about-tags">
+        <span class="skill">🎧 纯音乐</span><span class="skill p">🕹️ 摸鱼游戏</span>
+        <span class="skill">🛠 小工具</span><span class="skill p">🌿 慢生活</span>
+      </div>
     </section>
 
     <!-- 音乐 -->
     <div class="chap" id="c-music"><b>03</b><h2>音乐</h2><i></i></div>
     <section class="card music-card reveal">
-      <h2 class="sec-title">🎵 音乐 <span style="font-size:11px;font-weight:400;color:var(--ink-2);opacity:.7;margin-left:6px;">· 4 首纯音乐陪你逛</span></h2>
+      <h2 class="sec-title">🎵 音乐 <span style="font-size:11px;font-weight:400;color:var(--ink-2);opacity:.7;margin-left:6px;">· 3 首纯音乐陪你逛</span></h2>
       <div class="music-panel" id="mp">
         <div class="mp-head">
-          <div class="mp-cover" id="mpCover">🎻</div>
+          <div class="mp-cover" id="mpCover">🍃</div>
           <div style="flex:1;min-width:0;">
-            <div class="mp-title" id="mpTitle">无感（小提琴完整版）</div>
-            <div class="mp-artist" id="mpArtist">Strictlyviolin荀博 · 王朝</div>
+            <div class="mp-title" id="mpTitle">无仙</div>
+            <div class="mp-artist" id="mpArtist">Candy_Wind</div>
           </div>
           <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
         </div>
@@ -1356,14 +1614,6 @@
           </div>
         </div>
         <div class="work-item">
-          <div class="wcover"><img src="work-house.webp" alt="线稿魔女小屋内部" width="800" height="600" loading="lazy" decoding="async"></div>
-          <div class="wbody">
-            <div class="wm">🏡 线稿魔女小屋 <span class="wb">GitHub 开源</span></div>
-            <div class="wd">一栋会呼吸的线稿风 3D 魔女小屋：三视角漫步、昼夜与天气变换、壁炉火光，还能在墙上写字，电脑和手机都能玩 ✨ 小屋是 GitHub 上的开源项目，感谢作者的无私分享 💚 开源精神万岁！</div>
-            <a class="dl-btn" href="https://lewuxiaowu.pages.dev/" target="_blank" rel="noopener" title="去小屋逛逛"><span class="dl-ic">🚪</span><span class="dl-tx">去小屋逛逛</span></a>
-          </div>
-        </div>
-        <div class="work-item">
           <div class="wcover"><img src="work-globe.webp" alt="寰图小地球仪" width="800" height="600" loading="lazy" decoding="async"></div>
           <div class="wbody">
             <div class="wm">🌍 寰图小地球仪 <span class="wb">AI 共创</span></div>
@@ -1385,6 +1635,99 @@
             <div class="wd">想把每天的小确幸都收进来——四季展览正在慢慢长出来，欢迎常来逛逛 🌿</div>
           </div>
         </div>
+        <div class="work-item">
+          <div class="wcover"><img src="work-solar.webp" alt="太阳系轨道模拟界面" width="1200" height="750" loading="lazy" decoding="async"></div>
+          <div class="wbody">
+            <div class="wm">🪐 太阳系</div>
+            <div class="wd">实时轨道模拟：八大行星、卫星和小行星带，能暂停、倒放、切换视角。</div>
+            <a class="dl-btn" href="works/solar-system.html" target="_blank" rel="noopener"><span class="dl-ic">↗</span><span class="dl-tx">点开就玩</span></a>
+          </div>
+        </div>
+        <div class="work-item">
+          <div class="wcover"><img src="work-gravity.webp" alt="引力沙盒界面" width="1200" height="750" loading="lazy" decoding="async"></div>
+          <div class="wbody">
+            <div class="wm">🌌 引力沙盒</div>
+            <div class="wd">N 体引力沙盒：太阳系、双星、三体、星系对撞都能一键切换，随手丢几颗天体，看它们撞成星系或互相撕碎。</div>
+            <a class="dl-btn" href="works/gravity.html" target="_blank" rel="noopener"><span class="dl-ic">↗</span><span class="dl-tx">点开就玩</span></a>
+          </div>
+        </div>
+        <div class="work-item">
+          <div class="wcover"><img src="work-neural.webp" alt="Neural Lab 神经网络沙盒界面" width="1200" height="750" loading="lazy" decoding="async"></div>
+          <div class="wbody">
+            <div class="wm">🧠 Neural Lab</div>
+            <div class="wd">手搓的神经网络沙盒：调层数、激活函数和学习率，实时看激活图与损失。</div>
+            <a class="dl-btn" href="works/neural-lab.html" target="_blank" rel="noopener"><span class="dl-ic">↗</span><span class="dl-tx">点开就玩</span></a>
+          </div>
+        </div>
+        <div class="work-item">
+          <div class="wcover"><img src="work-ailab.webp" alt="AI 训练实验室界面" width="1200" height="750" loading="lazy" decoding="async"></div>
+          <div class="wbody">
+            <div class="wm">🤖 AI 训练实验室</div>
+            <div class="wd">TensorFlow.js 训练台：调超参、看损失曲线，还能回放模型每一轮的进化快照。</div>
+            <a class="dl-btn" href="works/ai-lab.html" target="_blank" rel="noopener"><span class="dl-ic">↗</span><span class="dl-tx">点开就玩</span></a>
+          </div>
+        </div>
+        <div class="work-item">
+          <div class="wcover"><img src="work-toolbox.webp" alt="乐乌工具箱界面" width="1200" height="750" loading="lazy" decoding="async"></div>
+          <div class="wbody">
+            <div class="wm">🧰 乐乌工具箱</div>
+            <div class="wd">离线小工具箱：记账、待办、习惯、专注、贷款、个税，数据只存在自己设备上。</div>
+            <a class="dl-btn" href="works/toolbox.html" target="_blank" rel="noopener"><span class="dl-ic">↗</span><span class="dl-tx">点开就玩</span></a>
+          </div>
+        </div>
+        <div class="work-item">
+          <div class="wcover"><img src="work-mc.webp" alt="网页版我的世界" width="1200" height="750" loading="lazy" decoding="async"></div>
+          <div class="wbody">
+            <div class="wm">🧱 网页版我的世界 <span class="wb">自建</span></div>
+            <div class="wd">EaglercraftX 1.8 单文件离线版：浏览器里直接挖矿、搭房子，不用装 Java，手机也能玩。</div>
+            <a class="dl-btn" href="https://lewumc.pages.dev/" target="_blank" rel="noopener"><span class="dl-ic">↗</span><span class="dl-tx">点开就玩</span></a>
+          </div>
+        </div>
+      </div>
+
+      <div class="webzone">
+        <div class="wz-head">
+          <h3>🌐 网页区</h3>
+          <span class="wz-src">来自网络</span>
+          <span class="wz-note">点开即玩 · 这些是网上找来的开源小玩意</span>
+        </div>
+        <div class="wz-grid">
+          <a class="wz-card" href="works/witch-house/index.html" target="_blank" rel="noopener">
+            <span class="wz-ic" style="--c1:#6a4a2a;--c2:#d8b07f">🏡</span>
+            <span class="wz-meta"><b>线稿魔女小屋</b><i>线稿风 3D 小屋：三个视角漫步，调昼夜与天气，点壁炉、在墙上写字，手机也能玩。</i></span>
+            <span class="wz-go">↗</span>
+          </a>
+          <a class="wz-card" href="works/kimi-ball.html" target="_blank" rel="noopener">
+            <span class="wz-ic" style="--c1:#4a86d8;--c2:#a9cdf6">🔵</span>
+            <span class="wz-meta"><b>Kimi 小圆球</b><i>一只会眨眼、会跟着指尖弹开的蓝色小圆球，点一下它试试。</i></span>
+            <span class="wz-go">↗</span>
+          </a>
+          <a class="wz-card" href="works/fluid.html" target="_blank" rel="noopener">
+            <span class="wz-ic" style="--c1:#0e7490;--c2:#67e8f9">💧</span>
+            <span class="wz-meta"><b>液态模拟器</b><i>WebGL 流体模拟：手指划过屏幕，就有彩色墨水跟着流动。</i></span>
+            <span class="wz-go">↗</span>
+          </a>
+          <a class="wz-card" href="works/blackhole.html" target="_blank" rel="noopener">
+            <span class="wz-ic" style="--c1:#1a1030;--c2:#c2410c">🕳️</span>
+            <span class="wz-meta"><b>黑洞渲染器</b><i>交互式黑洞：引力透镜、吸积盘和光线弯曲，拖滑块就能调。</i></span>
+            <span class="wz-go">↗</span>
+          </a>
+          <a class="wz-card" href="works/sniper.html" target="_blank" rel="noopener">
+            <span class="wz-ic" style="--c1:#3f4a2a;--c2:#8a9a5b">🎯</span>
+            <span class="wz-meta"><b>像素狙击手</b><i>像素风狙击小游戏：找目标、屏息瞄准、扣下扳机。</i></span>
+            <span class="wz-go">↗</span>
+          </a>
+          <a class="wz-card" href="works/scraper.html" target="_blank" rel="noopener">
+            <span class="wz-ic" style="--c1:#334155;--c2:#94a3b8">🕸️</span>
+            <span class="wz-meta"><b>网站源码抓取器</b><i>输入一个网址，抓下它的页面源码，适合研究别人的网页是怎么写的。</i></span>
+            <span class="wz-go">↗</span>
+          </a>
+          <a class="wz-card" href="works/music-player.html" target="_blank" rel="noopener">
+            <span class="wz-ic" style="--c1:#b31d1d;--c2:#f08a8a">🎵</span>
+            <span class="wz-meta"><b>网易云播放器</b><i>搜歌、收藏歌单、看歌词的网易云小播放器，接口来自公开镜像。</i></span>
+            <span class="wz-go">↗</span>
+          </a>
+        </div>
       </div>
     </section>
 
@@ -1393,6 +1736,18 @@
     <section id="timeline" class="card reveal">
       <h2 class="sec-title">足迹</h2>
       <div class="timeline">
+        <div class="tl-item">
+          <div class="tt">2026.10.31 · 小站又擦了一遍玻璃 🧽</div>
+          <div class="td">五个自制作品第一次有了真截图封面，作品卡也瘦了一圈；网易云播放器换成会转的黑胶唱片；狙击手加了画质档，卡就往下调。</div>
+        </div>
+        <div class="tl-item">
+          <div class="tt">2026.10.31 · 工具箱长大了 🧰</div>
+          <div class="td">多了密码生成器和「今天吃什么」的随机抽选，一共 14 个小工具；打开工具箱再也不是一片空地了。</div>
+        </div>
+        <div class="tl-item">
+          <div class="tt">2026.10.31 · 进门先听见《无仙》🍃</div>
+          <div class="td">音乐文件去掉了重复，删掉《城南花已开》，进门默认就放《无仙》，音频提前排在页面最前面加载。</div>
+        </div>
         <div class="tl-item">
           <div class="tt">2026.10 · 小站换了身衣服 👕</div>
           <div class="td">把玻璃卡片擦透了一层，背景照片终于透得出来；作品墙从一列列表改成两排卡片，五张封面第一次完整露脸。进门默认住进墨夜，不用再自己点主题。</div>
@@ -1458,6 +1813,10 @@
     </footer>
   </div>
 
+  <!-- 视频壁纸层：平时不加载（preload=none），选中视频壁纸时才挂上 src -->
+  <video class="bg-video" id="bgVideo" muted loop playsinline preload="none" aria-hidden="true"></video>
+  <div class="bg-scrim" aria-hidden="true"></div>
+
   <button class="theme-fab" id="themeBtn" title="切换主题" aria-label="切换主题" aria-haspopup="true" aria-expanded="false"><span id="themeIcon">🎨</span></button>
   <div class="theme-pop" id="themePop" role="group" aria-label="选择主题">
     <button type="button" class="th" data-t="qiwu" aria-pressed="false"><i style="--c1:#dff3f1;--c2:#e8e3fb"></i>青雾</button>
@@ -1465,15 +1824,38 @@
     <button type="button" class="th" data-t="tailv" aria-pressed="false"><i style="--c1:#eaf7ea;--c2:#dcefdc"></i>苔绿</button>
     <button type="button" class="th" data-t="moye" aria-pressed="false"><i style="--c1:#0b1626;--c2:#101f30"></i>墨夜</button>
     <button type="button" class="th" data-t="mublue" aria-pressed="false"><i style="--c1:#0d1b2e;--c2:#14263f"></i>暮蓝</button>
+    <div class="tp-sep"></div>
+    <div class="tp-label">背景</div>
+    <div class="bg-opts" role="group" aria-label="选择背景">
+      <button type="button" class="bg-opt" data-bg="photo" aria-pressed="false">🖼 照片</button>
+      <button type="button" class="bg-opt" data-bg="nebula" aria-pressed="false">🌌 星云</button>
+      <button type="button" class="bg-opt" data-bg="aurora" aria-pressed="false">🌿 极光</button>
+      <button type="button" class="bg-opt" data-bg="paper" aria-pressed="false">📜 纸感</button>
+    </div>
   </div>
-  <button class="to-top" id="toTop" title="回到顶部">↑</button>
+
+  <!-- 壁纸：单独一个按钮/浮层，和主题分开 -->
+  <button class="theme-fab wall-fab" id="wallBtn" title="切换壁纸" aria-label="切换壁纸" aria-haspopup="true" aria-expanded="false"><span>🖼</span></button>
+  <div class="theme-pop wall-pop" id="wallPop" role="group" aria-label="选择壁纸">
+    <div class="tp-label">壁纸</div>
+    <button type="button" class="bg-rand" id="bgRand">🎲 随机换一张</button>
+    <div class="bg-opts" role="group" aria-label="壁纸选项">
+      <button type="button" class="bg-opt" data-bg="wall-cloud" aria-pressed="true">☁️ 云之门</button>
+      <button type="button" class="bg-opt" data-bg="wall-suit" aria-pressed="false">⭐ 毛主席</button>
+      <button type="button" class="bg-opt" data-bg="wall-cloudcut" title="手机壁纸" aria-pressed="false">🪁 剪纸夜空</button>
+      <button type="button" class="bg-opt" data-bg="wall-anime" title="手机壁纸" aria-pressed="false">🌸 动漫少女</button>
+      <button type="button" class="bg-opt" data-bg="video-guofeng" title="动态壁纸" aria-pressed="false">🎞 古风</button>
+      <button type="button" class="bg-opt" data-bg="video-mc" title="动态壁纸" aria-pressed="false">❄️ 雪林</button>
+      <button type="button" class="bg-opt" data-bg="photo" aria-pressed="false">🖼 原照片</button>
+    </div>
+  </div>
 
   <!-- 音乐播放器（<audio> 已提到 body 开头，这里只留界面） -->
   <div class="music-dock" id="mpDock">
-    <div class="disc" id="mpDisc">🎻</div>
+    <div class="disc" id="mpDisc">🍃</div>
     <div class="dt">
-      <b id="dockTitle">无感（小提琴完整版）</b>
-      <span id="dockArtist">Strictlyviolin荀博 · 王朝</span>
+      <b id="dockTitle">无仙</b>
+      <span id="dockArtist">Candy_Wind</span>
     </div>
     <span class="mp-hint" id="mpHint">🔊 点击播放</span>
     <button class="dbtn" id="mpPlay2" title="播放 / 暂停" aria-label="播放或暂停">
@@ -1481,6 +1863,9 @@
       <svg class="ic-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><path d="M9.2 5.6v12.8"/><path d="M14.8 5.6v12.8"/></svg>
     </button>
   </div>
+
+  <!-- 自动播放被浏览器拦下时，左下角出现的一次性按钮 -->
+  <button class="mp-nudge" id="mpNudge" type="button" aria-label="点击开始播放音乐">🔊 点一下，音乐走起</button>
 
   <!-- 鲸鱼助手（可对话桌宠） -->
   <div class="pet-panel" id="petPanel">
@@ -1536,10 +1921,9 @@
   bgm.volume=0.15; // 默认音量 15%
   // 曲库：想加歌就在这里加一行 {src,title,artist,emoji}
   const TUNES=[
-    {src:'music.m4a',title:'无感（小提琴完整版）',artist:'Strictlyviolin荀博 · 王朝',emoji:'🎻'},
-    {src:'wake.m4a',title:'Wake',artist:'',emoji:'🌊'},
     {src:'wuxian.m4a',title:'无仙',artist:'Candy_Wind',emoji:'🍃'},
-    {src:'chengnan.m4a',title:'城南花已开',artist:'三亩地',emoji:'🌸'}
+    {src:'wake.m4a',title:'Wake',artist:'',emoji:'🌊'},
+    {src:'music.m4a',title:'无感（小提琴完整版）',artist:'Strictlyviolin荀博 · 王朝',emoji:'🎻'}
   ];
   let cur=0;
   const fmt=t=>{if(!isFinite(t))return'00:00';const m=Math.floor(t/60),s=Math.floor(t%60);return(m<10?'0':'')+m+':'+(s<10?'0':'')+s};
@@ -1584,16 +1968,18 @@
   bar.addEventListener('click',e=>{const r=bar.getBoundingClientRect();bgm.currentTime=((e.clientX-r.left)/r.width)*bgm.duration});
   document.addEventListener('click',e=>{if(!pan.contains(e.target)&&e.target!==dock&&!dock.contains(e.target))pan.classList.remove('open')});
   // ---- 自动播放音乐 ----
-  // 目标：打开页面就开始放。浏览器会拦「没有用户交互的带声音播放」，所以分四步：
-  // ① 解析到这段就立刻 play()（此时音频已在 body 开头下了几百 KB）
+  // 目标：打开页面就开始放。浏览器会拦「没有用户交互的带声音播放」，所以：
+  // ① 解析到这段就立刻 play()（音频已在 <head> 里提前排队下载）
   // ② 音频攒够数据、触发 canplay 时再补一枪
-  // ③ 开屏收起后再试   ④ 1.5s 保底
-  // 全被拦就挂一次性手势兜底：开屏那 1.8 秒里随手点一下，音乐就起来了。
+  // ③ 开屏收起后再试   ④ 1.5s 保底   ⑤ 页面重新可见/获得焦点再试
+  // 全被拦就挂手势兜底：开屏提示「轻触屏幕」，随手碰一下音乐就起来。
   (function(){
     const hint=document.getElementById('mpHint');
-    let started=false,armed=false;
-    const EVS=['pointerdown','touchend','click','keydown'];
-    const isCtrl=t=>!!(t&&t.closest&&t.closest('.music-dock,.music-panel'));
+    const bootHint=document.getElementById('bootHint');
+    const nudge=document.getElementById('mpNudge');
+    let started=false,armed=false,nudgeTimer=null;
+    const EVS=['pointerdown','pointerup','touchstart','touchend','mousedown','click','keydown'];
+    const isCtrl=t=>!!(t&&t.closest&&t.closest('.music-dock,.music-panel,.mp-nudge'));
     // 第一首出声后，趁页面闲着预取下一首：切歌不用再等一轮下载（省流模式/2G 跳过）
     let pfDone=false;
     const prefetch=()=>{
@@ -1608,10 +1994,18 @@
     const ok=()=>{
       if(started)return;
       started=true;sync();
-      if(hint)hint.classList.remove('show');
+      [hint,bootHint,nudge].forEach(el=>{if(el)el.classList.remove('show')});
+      clearTimeout(nudgeTimer);
       EVS.forEach(ev=>document.removeEventListener(ev,kick,true));
       document.removeEventListener('visibilitychange',onVis);
+      window.removeEventListener('pageshow',onPage);
+      window.removeEventListener('focus',onPage);
       setTimeout(prefetch,3000);
+    };
+    const tryPlay=()=>{
+      const p=bgm.play();
+      if(p&&p.then)p.then(ok).catch(()=>{});
+      return p;
     };
     const kick=e=>{
       if(started)return;
@@ -1619,7 +2013,8 @@
       const p=bgm.play();
       if(p&&p.then)p.then(ok).catch(()=>{});
     };
-    const onVis=()=>{if(!document.hidden&&!started){const p=bgm.play();if(p&&p.then)p.then(ok).catch(()=>{})}};
+    const onVis=()=>{if(!document.hidden&&!started)tryPlay()};
+    const onPage=()=>{if(!started)tryPlay()};
     const arm=()=>{
       if(armed)return;armed=true;
       EVS.forEach(ev=>document.addEventListener(ev,kick,true));
@@ -1631,11 +2026,25 @@
       if(!p||!p.then)return;
       p.then(ok).catch(arm);
     };
-    attempt();                                                   // ① 立刻试（音频已在 body 开头下载中，数据到齐就出声）
-    bgm.addEventListener('canplay',()=>{if(!started)attempt()});  // ② 第一次拉到足够数据时再补一枪
+    attempt();                                                   // ① 立刻试
+    bgm.addEventListener('canplay',()=>{if(!started)attempt()});  // ② 拉到足够数据再补一枪
     document.addEventListener('bootdone',attempt,{once:true});    // ③ 开屏收起后再试
     setTimeout(attempt,1500);                                     // ④ 保底
+    window.addEventListener('pageshow',onPage);                   // ⑤ 回前台/重新获得焦点再试
+    window.addEventListener('focus',onPage);
+    setTimeout(()=>{if(!started&&bootHint)bootHint.classList.add('show')},700);
     setTimeout(()=>{if(!started&&hint)hint.classList.add('show')},2600);
+    // 开屏结束后仍没响：左下角给一个真正看得见的按钮（底部音乐条在手机/桌面是隐藏的）
+    const showNudge=()=>{
+      if(started||!nudge)return;
+      nudge.classList.add('show');
+      nudgeTimer=setTimeout(()=>nudge.classList.remove('show'),20000);
+    };
+    setTimeout(showNudge,3400);
+    if(nudge)nudge.addEventListener('click',e=>{
+      e.stopPropagation();
+      if(!started)tryPlay();
+    });
   })();
 
   // ---- 打字机标语（完整字符数组，避免emoji截断；删字保底到0，保证接下一句） ----
@@ -1802,20 +2211,31 @@
     });
   }
   const setThemePop=open=>{themePop.classList.toggle('open',open);themeBtn.setAttribute('aria-expanded',String(open))};
-  themeBtn.addEventListener('click',e=>{e.stopPropagation();setThemePop(!themePop.classList.contains('open'))});
+
+  // ---- 壁纸按钮/浮层（专门换壁纸，和主题分开） ----
+  const wallBtn=document.getElementById('wallBtn'),wallPop=document.getElementById('wallPop');
+  const setWallPop=open=>{wallPop.classList.toggle('open',open);wallBtn.setAttribute('aria-expanded',String(open))};
+
+  themeBtn.addEventListener('click',e=>{e.stopPropagation();setWallPop(false);setThemePop(!themePop.classList.contains('open'))});
+  wallBtn.addEventListener('click',e=>{e.stopPropagation();setThemePop(false);setWallPop(!wallPop.classList.contains('open'))});
   themePop.addEventListener('click',e=>{
     const th=e.target.closest('.th');if(!th)return;
     applyTheme(th.dataset.t);setThemePop(false);themeBtn.focus();
   });
   document.addEventListener('click',e=>{
-    if(themePop.classList.contains('open')&&!themePop.contains(e.target)&&e.target!==themeBtn)setThemePop(false);
+    const t=e.target;
+    if(themePop.classList.contains('open')&&!themePop.contains(t)&&t!==themeBtn)setThemePop(false);
+    if(wallPop.classList.contains('open')&&!wallPop.contains(t)&&t!==wallBtn)setWallPop(false);
   });
   document.addEventListener('keydown',e=>{
     if(e.key!=='Escape')return;
-    const wasOpen=themePop.classList.contains('open');
-    const focusInside=themePop.contains(document.activeElement);
-    setThemePop(false);
-    if(wasOpen&&focusInside)themeBtn.focus();
+    const wasTheme=themePop.classList.contains('open');
+    const inTheme=themePop.contains(document.activeElement);
+    const wasWall=wallPop.classList.contains('open');
+    const inWall=wallPop.contains(document.activeElement);
+    setThemePop(false);setWallPop(false);
+    if(wasTheme&&inTheme)themeBtn.focus();
+    if(wasWall&&inWall)wallBtn.focus();
   });
   let themeName='qiwu';
   try{
@@ -1825,6 +2245,105 @@
     if(!THEMES[themeName])themeName='moye';
   }catch(e){themeName='moye'}
   applyTheme(themeName,true); // 初始应用（不播 flip 动画）
+
+  // ---- 背景/壁纸（渐变与图片不额外请求；视频 1080p60，选中才下载） ----
+  const bgOpts=[...document.querySelectorAll('.bg-opt')];
+  const bgVideo=document.getElementById('bgVideo');
+  const VIDEO_BGS={'video-guofeng':'wall-guofeng.mp4','video-mc':'wall-mc-snow.mp4'};
+  const isVideoBg=n=>/^video/.test(n||'');
+  let vbgFailed=false;
+
+  // 视频真正解出第一帧再露脸，加载期间仍显示上一张壁纸，不会一片黑
+  function vbgReady(){
+    if(isVideoBg(document.documentElement.getAttribute('data-bg')))
+      document.documentElement.classList.add('vbg-ready');
+  }
+  if(bgVideo){
+    bgVideo.addEventListener('loadeddata',vbgReady);
+    bgVideo.addEventListener('playing',vbgReady);
+    bgVideo.addEventListener('error',()=>{
+      document.documentElement.classList.remove('vbg-ready');
+      if(vbgFailed)return;
+      vbgFailed=true;
+      // 视频读不出来就退回云之门，别留一块空白
+      setTimeout(()=>{
+        if(isVideoBg(document.documentElement.getAttribute('data-bg')))applyBg('wall-cloud');
+      },0);
+    });
+  }
+
+  function setBgVideo(n){
+    if(!bgVideo)return;
+    const src=VIDEO_BGS[n];
+    if(!src){
+      if(bgVideo.dataset.cur){
+        bgVideo.pause();bgVideo.removeAttribute('src');bgVideo.load();bgVideo.dataset.cur='';
+      }
+      document.documentElement.classList.remove('vbg-ready');
+      return;
+    }
+    if(bgVideo.dataset.cur!==src){
+      document.documentElement.classList.remove('vbg-ready');
+      vbgFailed=false; // 重新选了视频，允许再一次失败回退
+      bgVideo.dataset.cur=src;
+      bgVideo.src=src;
+      bgVideo.load();
+    }
+    const p=bgVideo.play();if(p&&p.catch)p.catch(()=>{});
+  }
+  // 竖版壁纸是给手机的：电脑上自动退回云之门，不硬裁
+  const PHONE_WALLS=['wall-cloudcut','wall-anime'];
+  const isWide=()=>window.matchMedia('(min-width:1000px)').matches;
+  function applyBg(n){
+    const root=document.documentElement;
+    const req=n;
+    if(req&&PHONE_WALLS.indexOf(req)>-1&&isWide())n='wall-cloud';
+    if(!n||n==='photo')root.removeAttribute('data-bg');
+    else root.setAttribute('data-bg',n);
+    bgOpts.forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.bg||'photo')===n)));
+    setBgVideo(n);
+    if(n===req)try{localStorage.setItem('lewu_bg2',n)}catch(e){}
+  }
+  bgOpts.forEach(b=>b.addEventListener('click',e=>{
+    e.stopPropagation();
+    applyBg(b.dataset.bg);
+    if(b.closest('.wall-pop')){setWallPop(false);wallBtn.focus();}
+    else{setThemePop(false);themeBtn.focus();}
+  }));
+  // 随机换一张：排除当前这张，避免点了没变化
+  const BG_POOL=['wall-cloud','wall-suit','wall-cloudcut','wall-anime','video-guofeng','video-mc'];
+  const bgRand=document.getElementById('bgRand');
+  if(bgRand)bgRand.addEventListener('click',e=>{
+    e.stopPropagation();
+    const cur=document.documentElement.getAttribute('data-bg')||'photo';
+    const pool=isWide()?BG_POOL.filter(x=>PHONE_WALLS.indexOf(x)<0):BG_POOL;
+    let n=cur;
+    while(n===cur)n=pool[Math.floor(Math.random()*pool.length)];
+    applyBg(n);
+    setWallPop(false);wallBtn.focus();
+  });
+  // 封面：「下滑进入」直接滑到正文开头
+  const coverDown=document.getElementById('coverDown');
+  if(coverDown)coverDown.addEventListener('click',()=>{
+    const w=document.querySelector('.wrap');
+    if(w)w.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+  let bgName='wall-cloud';
+  try{bgName=localStorage.getItem('lewu_bg2')||'wall-cloud'}catch(e){}
+  applyBg(bgName);
+  // 窗口跨过 1000px 时重新评估一次（手机存的竖版壁纸，电脑上要自动换掉）
+  const mqWide=window.matchMedia('(min-width:1000px)');
+  if(mqWide.addEventListener)mqWide.addEventListener('change',()=>{
+    let v='wall-cloud';
+    try{v=localStorage.getItem('lewu_bg2')||'wall-cloud'}catch(e){}
+    applyBg(v);
+  });
+  // 切到后台就暂停视频壁纸，回来再续播，省电
+  document.addEventListener('visibilitychange',()=>{
+    if(!bgVideo||!bgVideo.dataset.cur)return;
+    if(document.hidden)bgVideo.pause();
+    else{const p=bgVideo.play();if(p&&p.catch)p.catch(()=>{});}
+  });
 
   // ---- 滚动时让悬浮按钮淡出 ----
   (function(){
@@ -1837,10 +2356,7 @@
     window.addEventListener('scroll',onScroll,{passive:true});
   })();
 
-  // ---- 回到顶部 ----
-  const toTop=document.getElementById('toTop');
-  window.addEventListener('scroll',()=>toTop.classList.toggle('show',window.scrollY>400),{passive:true});
-  toTop.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+
 
   // ---- 足迹折叠：默认只露最近 3 条 ----
   // 条目写多少都不会再把页面拉长：超出的先藏起来，点按钮才展开。
